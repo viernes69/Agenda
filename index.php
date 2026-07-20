@@ -455,7 +455,6 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
       <a href="<?= h(url('categorias/')) ?>">Categorías</a>
       <a href="<?= h(url('ubicaciones/')) ?>">Ubicaciones</a>
       <a href="#faq">FAQ</a>
-      <a href="<?= h(url('sitemap.php')) ?>">Sitemap</a>
     </nav>
     <div class="site-footer__social">
       <a href="https://instagram.com/agendarte.uy" aria-label="Instagram" target="_blank" rel="noopener"><i class="bx bxl-instagram" aria-hidden="true"></i></a>
