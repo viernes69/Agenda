@@ -1735,34 +1735,44 @@ $summaryCards = [
     </nav>
   </div>
   <div id="admin-modal-root">
-    <?php if (file_exists('../src/components/admin_reserva_modal.php')) { echo include '../src/components/admin_reserva_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_qr_modal.php')) { echo include '../src/components/admin_qr_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_cliente_modal.php')) { echo include '../src/components/admin_cliente_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_client_form_modal.php')) { echo include '../src/components/admin_client_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_historial_modal.php')) { echo include '../src/components/admin_historial_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_reservas_summary_modal.php')) { echo include '../src/components/admin_reservas_summary_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_productos_summary_modal.php')) { echo include '../src/components/admin_productos_summary_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_service_form_modal.php')) { echo include '../src/components/admin_service_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_service_modal.php')) { echo include '../src/components/admin_service_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_product_form_modal.php')) { echo include '../src/components/admin_product_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_barber_modal.php')) { echo include '../src/components/admin_barber_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_barber_edit_modal.php')) { echo include '../src/components/admin_barber_edit_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_business_info_modal.php')) { echo include '../src/components/admin_business_info_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_auth_guard_modal.php')) { echo include '../src/components/admin_auth_guard_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_redes_modal.php')) { echo include '../src/components/admin_config_redes_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_seo_modal.php')) { echo include '../src/components/admin_config_seo_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_notifications_modal.php')) { echo include '../src/components/admin_config_notifications_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_features_modal.php')) { echo include '../src/components/admin_config_features_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_mercadopago_modal.php')) { echo include '../src/components/admin_config_mercadopago_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_fiscal_modal.php')) { echo include '../src/components/admin_config_fiscal_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_moneda_modal.php')) { echo include '../src/components/admin_config_moneda_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_hours_modal.php')) { echo include '../src/components/admin_hours_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_reservas_config_modal.php')) { echo include '../src/components/admin_reservas_config_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_trial_modal.php')) { echo include '../src/components/admin_plan_trial_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_cancel_modal.php')) { echo include '../src/components/admin_plan_cancel_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_membership_modal.php')) { echo include '../src/components/admin_plan_membership_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_theme_modal.php')) { echo include '../src/components/admin_theme_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_legales_modal.php')) { echo include '../src/components/admin_config_legales_modal.php'; } ?>
+    <?php
+    $adminComponentsDir = __DIR__ . '/../src/components';
+    foreach ([
+        'admin_reserva_modal.php',
+        'admin_qr_modal.php',
+        'admin_cliente_modal.php',
+        'admin_client_form_modal.php',
+        'admin_historial_modal.php',
+        'admin_reservas_summary_modal.php',
+        'admin_productos_summary_modal.php',
+        'admin_service_form_modal.php',
+        'admin_service_modal.php',
+        'admin_product_form_modal.php',
+        'admin_barber_modal.php',
+        'admin_barber_edit_modal.php',
+        'admin_business_info_modal.php',
+        'admin_auth_guard_modal.php',
+        'admin_config_redes_modal.php',
+        'admin_config_seo_modal.php',
+        'admin_config_notifications_modal.php',
+        'admin_config_features_modal.php',
+        'admin_config_mercadopago_modal.php',
+        'admin_config_fiscal_modal.php',
+        'admin_config_moneda_modal.php',
+        'admin_hours_modal.php',
+        'admin_reservas_config_modal.php',
+        'admin_plan_trial_modal.php',
+        'admin_plan_cancel_modal.php',
+        'admin_plan_membership_modal.php',
+        'admin_theme_modal.php',
+        'admin_config_legales_modal.php',
+    ] as $adminComponentFile) {
+        $adminComponentPath = $adminComponentsDir . '/' . $adminComponentFile;
+        if (is_file($adminComponentPath)) {
+            include $adminComponentPath;
+        }
+    }
+    ?>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
