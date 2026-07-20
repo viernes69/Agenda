@@ -205,6 +205,16 @@ final class CommerceRegistrar
                     $rubroId
                 );
                 self::writeDatabase($databasePath, $legacy);
+            } else {
+                CentralCommerceData::provision(
+                    $idCommerce,
+                    $idUser,
+                    ['nombre' => $name, 'apellido' => $last, 'cedula' => $cedula, 'email' => $email],
+                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'telefono' => $tel],
+                    $schedule,
+                    $services,
+                    $rubroId
+                );
             }
 
             $userRow = $db->fetchOne('SELECT * FROM users WHERE id_user = :id', [':id' => $idUser]);
@@ -317,10 +327,7 @@ final class CommerceRegistrar
 
     public static function buildRedirectUrl(string $slug): string
     {
-        if (TenantConfig::useLegacyFolders() && self::tenantDashboardExists($slug)) {
-            return url($slug . '/private/dashboard/admin/');
-        }
-        return url('admin/commerce_dashboard.php');
+        return CommercePanel::urlForSlug($slug);
     }
 
     public static function buildCentralDashboardUrl(): string

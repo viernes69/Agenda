@@ -13,6 +13,16 @@ ob_start();
     </header>
     <form class="modal__body admin-form" data-admin-config-notificaciones-form autocomplete="off" novalidate>
       <section class="admin-form__group">
+        <h3 class="admin-form__title">Email del negocio</h3>
+        <label class="admin-form__field" for="admin-config-notificaciones-owner-email">
+          <span class="admin-form__label">Recibir reservas en</span>
+          <input id="admin-config-notificaciones-owner-email" type="email" placeholder="admin@tunegocio.com" data-admin-config-notificaciones-owner-email required>
+        </label>
+        <p class="admin-form__hint">Las nuevas reservas se envían a este correo usando el SMTP global de Agendarte.</p>
+      </section>
+
+      <section class="admin-form__group">
+        <h3 class="admin-form__title">WhatsApp</h3>
         <label class="admin-checkbox">
           <input type="checkbox" data-admin-config-notificaciones-enabled>
           <span>Habilitar notificaciones vía WhatsApp</span>

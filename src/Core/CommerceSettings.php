@@ -10,7 +10,7 @@ final class CommerceSettings
 {
     public const SECTIONS = [
         'horarios', 'reservas', 'moneda', 'fiscal', 'redes',
-        'seo', 'legal', 'notificaciones', 'funciones', 'tema',
+        'seo', 'legal', 'notificaciones', 'funciones', 'tema', 'email_plantillas',
     ];
 
     public static function get(int $idCommerce, string $section, array $defaults = []): array
@@ -82,7 +82,21 @@ final class CommerceSettings
             'seo' => ['title' => '', 'description' => '', 'keywords' => [], 'canonical' => '', 'robots' => 'index,follow', 'og_image' => ''],
             'legal' => ['terminos' => '', 'privacidad' => '', 'cookies' => ''],
             'redes' => ['instagram' => '', 'facebook' => '', 'tiktok' => '', 'whatsapp' => ''],
-            'notificaciones' => ['whatsapp_enabled' => true, 'email_enabled' => true],
+            'notificaciones' => [
+                'whatsapp_enabled' => true,
+                'email_enabled' => true,
+                'owner_email' => '',
+            ],
+            'email_plantillas' => [
+                'appointment_confirmed_client' => [
+                    'subject' => 'Reserva confirmada - {negocio}',
+                    'body' => "Hola {cliente}, tu reserva en {negocio} quedó confirmada.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                ],
+                'appointment_confirmed_owner' => [
+                    'subject' => 'Nueva reserva - {cliente}',
+                    'body' => "Nueva reserva en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                ],
+            ],
             'funciones' => ['productos' => true, 'servicios' => true, 'barberos' => true],
             'tema' => ['publico' => 'claro', 'privado' => 'claro'],
             default => [],

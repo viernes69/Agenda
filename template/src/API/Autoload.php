@@ -3,8 +3,13 @@
 // Location: src/db/Autoload.php
 
 class AutoloadDB {
-    // Point to the actual database file under src/db
-    private const DB_PATH = __DIR__ . '/../db/database.php';
+    private static function dbPath(): string
+    {
+        if (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) && AGENDUY_LOCAL_DB_PATH !== '') {
+            return AGENDUY_LOCAL_DB_PATH;
+        }
+        return __DIR__ . '/../db/database.php';
+    }
 
     // Public API helpers
     public static function all(string $table): array {
@@ -225,10 +230,11 @@ class AutoloadDB {
     }
 
     private static function openAndLock(bool $exclusive) {
-        $mode = file_exists(self::DB_PATH) ? ($exclusive ? 'r+' : 'r') : 'c+';
-        $fh = @fopen(self::DB_PATH, $mode);
+        $dbPath = self::dbPath();
+        $mode = file_exists($dbPath) ? ($exclusive ? 'r+' : 'r') : 'c+';
+        $fh = @fopen($dbPath, $mode);
         if (!$fh) {
-            throw new RuntimeException('No se puede abrir la base: ' . self::DB_PATH);
+            throw new RuntimeException('No se puede abrir la base: ' . $dbPath);
         }
         $locked = flock($fh, $exclusive ? LOCK_EX : LOCK_SH);
         if (!$locked) {
@@ -247,7 +253,7 @@ class AutoloadDB {
 
     private static function includeDb(): array {
         // Include returns the array structure from database.php
-        $data = @include self::DB_PATH;
+        $data = @include self::dbPath();
         if (!is_array($data)) {
             throw new RuntimeException('El archivo de base no retornó un array.');
         }

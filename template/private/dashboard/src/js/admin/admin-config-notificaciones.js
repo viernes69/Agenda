@@ -13,6 +13,7 @@
   if (!form) return;
 
   const enabledCheckbox = form.querySelector('[data-admin-config-notificaciones-enabled]');
+  const ownerEmailInput = form.querySelector('[data-admin-config-notificaciones-owner-email]');
   const countrySelect = form.querySelector('[data-admin-config-notificaciones-country]');
   const numberInput = form.querySelector('[data-admin-config-notificaciones-number]');
   const submitBtn = form.querySelector('[data-admin-config-notificaciones-submit]');
@@ -58,6 +59,10 @@
   const fillForm = () => {
     current = clone(window.ADMIN_INFO_BARBERIA || {});
     const whatsappConfig = (current.notificaciones && current.notificaciones.whatsapp) || {};
+    const ownerEmail = (current.notificaciones && current.notificaciones.owner_email)
+      || current.email
+      || '';
+    if (ownerEmailInput) ownerEmailInput.value = String(ownerEmail || '').trim();
     if (enabledCheckbox) enabledCheckbox.checked = !!whatsappConfig.enabled;
     const parts = splitNumber(whatsappConfig.number || '');
     if (countrySelect) countrySelect.value = COUNTRY_CODES.includes(parts.prefix) ? parts.prefix : (COUNTRY_CODES[0] || '+598');
@@ -109,6 +114,7 @@
     const fullNumber = `${prefix}${number}`;
     const payload = {
       notificaciones: {
+        owner_email: ownerEmailInput ? ownerEmailInput.value.trim() : '',
         whatsapp: {
           enabled: enabledCheckbox ? !!enabledCheckbox.checked : true,
           number: fullNumber.startsWith('+') ? fullNumber : `+${fullNumber}`,

@@ -112,9 +112,23 @@ if ($centralRole === 'commerce_admin') {
     );
     $ownedSlug = trim((string)($commerce['slug'] ?? ''));
     if ($ownedSlug === '' || !hash_equals($ownedSlug, $tenantSlug)) {
-        http_response_code(403);
-        header('Location: ' . ($ownedSlug !== '' ? \url($ownedSlug . '/private/dashboard/admin/index.php') : $loginUrl));
-        exit;
+        $centralSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+        $isCentralTemplate = $tenantSlug === 'template'
+            && $centralSlug !== ''
+            && hash_equals($ownedSlug, $centralSlug);
+        if ($isCentralTemplate) {
+            \Agenduy\Core\CommercePanel::defineLocalDatabasePath($commerceId);
+        } elseif ($ownedSlug !== '' && \Agenduy\Core\CommercePanel::hasLegacyPanel($ownedSlug)) {
+            header('Location: ' . \Agenduy\Core\CommercePanel::legacyUrl($ownedSlug));
+            exit;
+        } elseif ($ownedSlug !== '') {
+            header('Location: ' . \Agenduy\Core\CommercePanel::centralUrl($ownedSlug));
+            exit;
+        } else {
+            http_response_code(403);
+            header('Location: ' . $loginUrl);
+            exit;
+        }
     }
     // Garantizar campos legacy para el resto del dashboard.
     $_SESSION['user']['Rol'] = 'Admin';

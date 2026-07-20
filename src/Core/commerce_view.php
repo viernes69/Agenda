@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 use Agenduy\Core\Availability;
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
@@ -60,7 +61,7 @@ if (!function_exists('agenduy_render_commerce')) {
             && Auth::role() === Auth::ROLE_LOCAL
             && (int)Auth::commerceId() === $commerceIdEarly;
         $ownerDashboardUrl = $isCommerceOwner
-            ? url($slug . '/private/dashboard/admin/index.php')
+            ? CommercePanel::urlForSlug($slug)
             : null;
         $clientSession = $_SESSION['client'] ?? null;
         $clientLoggedIn = is_array($clientSession)

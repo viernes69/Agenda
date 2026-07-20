@@ -198,14 +198,9 @@ final class Auth
             return null;
         }
 
-        $tenantDashboard = dirname(__DIR__, 2)
-            . DIRECTORY_SEPARATOR . $slug
-            . DIRECTORY_SEPARATOR . 'private'
-            . DIRECTORY_SEPARATOR . 'dashboard'
-            . DIRECTORY_SEPARATOR . 'admin'
-            . DIRECTORY_SEPARATOR . 'index.php';
-        if (is_file($tenantDashboard)) {
-            return \url($slug . '/private/dashboard/admin/index.php');
+        $panelUrl = CommercePanel::urlForSlug($slug);
+        if ($panelUrl !== '') {
+            return $panelUrl;
         }
 
         return CommerceRegistrar::buildCentralDashboardUrl();

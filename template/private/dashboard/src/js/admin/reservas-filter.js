@@ -229,7 +229,7 @@
   syncClearBtn();
   fetchData(currentStatus, { quiet: true });
   // Soft refresh so new public bookings appear without a hard reload.
-  window.setInterval(() => fetchData(currentStatus, { quiet: true }), 15000);
+  window.setInterval(() => fetchData(currentStatus, { quiet: true }), 2000);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       fetchData(currentStatus, { quiet: true });

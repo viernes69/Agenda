@@ -22,6 +22,10 @@ ServerSignature Off
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
+    # Panel admin del negocio sin carpeta tenant → panel central compartido
+    RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/index\.php$ admin/commerce_panel.php?slug=$1 [L,QSA]
+    RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/?$ admin/commerce_panel.php?slug=$1 [L,QSA]
+
     # Si NO es archivo ni directorio (ej: /agenduy.uy/la-barberia/ sin carpeta física),
     # enrutar al index.php raíz que detecta el slug y renderiza el comercio
     RewriteRule ^(.*)$ index.php [L,QSA]

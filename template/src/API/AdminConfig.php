@@ -33,7 +33,10 @@ try {
 
     if ($action === 'config_update') {
         requireConfigKey($key);
-        $tenantSlug = basename($tenantRoot);
+        $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+        if ($tenantSlug === '') {
+            $tenantSlug = basename((string)$tenantRoot);
+        }
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan) && !MembershipPlan::allowsConfigKey($plan, $key)) {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
@@ -60,7 +63,10 @@ try {
     }
 
     if ($action === 'apply_theme') {
-        $tenantSlug = basename($tenantRoot);
+        $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+        if ($tenantSlug === '') {
+            $tenantSlug = basename((string)$tenantRoot);
+        }
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan) && MembershipPlan::isBasicSettingsOnly($plan)) {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
@@ -109,7 +115,10 @@ function assertAdminRequest(): void
             [':id' => $commerceId]
         );
         $ownedSlug = trim((string)($commerce['slug'] ?? ''));
-        $tenantSlug = basename((string)$tenantRoot);
+        $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+        if ($tenantSlug === '') {
+            $tenantSlug = basename((string)$tenantRoot);
+        }
         if ($ownedSlug === '' || !hash_equals($ownedSlug, $tenantSlug)) {
             throw new UnexpectedValueException('No autorizado para este comercio.');
         }
@@ -292,6 +301,7 @@ function sectionMap(): array
         'seo' => 'seo',
         'legal' => 'legales',
         'notificaciones' => 'notificaciones',
+        'email_plantillas' => 'email_plantillas',
         'funciones' => 'features',
         'tema' => 'temas',
     ];

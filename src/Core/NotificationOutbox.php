@@ -52,12 +52,32 @@ final class NotificationOutbox
         $email = (string)$appointment['cliente_email'];
         $svcName = (string)($service['nombre'] ?? 'Servicio');
         $bizName = (string)($commerce['nombre'] ?? 'Negocio');
-        $bizEmail = (string)($commerce['email'] ?? '');
+        $bizEmail = EmailTemplates::ownerEmail($idCommerce, $commerce);
         $bizWhatsapp = (string)($commerce['whatsapp'] ?? $commerce['telefono'] ?? '');
         $idAppt = (int)$appointment['id_appointment'];
+        $vars = [
+            'cliente' => $cliente,
+            'telefono' => $tel,
+            'servicio' => $svcName,
+            'negocio' => $bizName,
+            'fecha' => $fecha,
+            'hora' => $hora,
+        ];
 
-        $clientMsg = "Hola {$cliente}, tu reserva en {$bizName} quedó confirmada.\n"
-            . "Servicio: {$svcName}\nFecha: {$fecha}\nHora: {$hora}";
+        $clientMsg = EmailTemplates::render(
+            $idCommerce,
+            'appointment_confirmed_client',
+            $vars,
+            'body',
+            "Hola {$cliente}, tu reserva en {$bizName} quedó confirmada.\nServicio: {$svcName}\nFecha: {$fecha}\nHora: {$hora}"
+        );
+        $clientSubject = EmailTemplates::render(
+            $idCommerce,
+            'appointment_confirmed_client',
+            $vars,
+            'subject',
+            "Reserva confirmada - {$bizName}"
+        );
 
         if ($email !== '') {
             self::enqueue(
@@ -65,8 +85,8 @@ final class NotificationOutbox
                 'email',
                 $email,
                 'appointment_confirmed_client',
-                "Reserva confirmada - {$bizName}",
-                '<p>' . nl2br(htmlspecialchars($clientMsg, ENT_QUOTES, 'UTF-8')) . '</p>',
+                $clientSubject,
+                EmailTemplates::renderHtmlFromText($clientMsg, $vars),
                 ['appointment_id' => $idAppt],
                 date('Y-m-d H:i:s'),
                 "appt:{$idAppt}:email:client:confirm"
@@ -87,9 +107,20 @@ final class NotificationOutbox
             );
         }
 
-        $ownerMsg = "Nueva reserva en {$bizName}\n"
-            . "Cliente: {$cliente}\nCelular: {$tel}\n"
-            . "Servicio: {$svcName}\nFecha: {$fecha}\nHora: {$hora}";
+        $ownerMsg = EmailTemplates::render(
+            $idCommerce,
+            'appointment_confirmed_owner',
+            $vars,
+            'body',
+            "Nueva reserva en {$bizName}\nCliente: {$cliente}\nCelular: {$tel}\nServicio: {$svcName}\nFecha: {$fecha}\nHora: {$hora}"
+        );
+        $ownerSubject = EmailTemplates::render(
+            $idCommerce,
+            'appointment_confirmed_owner',
+            $vars,
+            'subject',
+            "Nueva reserva - {$cliente}"
+        );
 
         if ($bizEmail !== '') {
             self::enqueue(
@@ -97,8 +128,8 @@ final class NotificationOutbox
                 'email',
                 $bizEmail,
                 'appointment_confirmed_owner',
-                "Nueva reserva - {$cliente}",
-                '<p>' . nl2br(htmlspecialchars($ownerMsg, ENT_QUOTES, 'UTF-8')) . '</p>',
+                $ownerSubject,
+                EmailTemplates::renderHtmlFromText($ownerMsg, $vars),
                 ['appointment_id' => $idAppt],
                 date('Y-m-d H:i:s'),
                 "appt:{$idAppt}:email:owner:confirm"

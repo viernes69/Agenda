@@ -9,6 +9,7 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 
 Auth::start();
@@ -62,7 +63,7 @@ $activeSection = '';
     </div>
     <nav class="topbar__nav">
         <a href="commerce_dashboard.php" class="is-active">Resumen</a>
-        <a href="<?= htmlspecialchars(url($commerce['slug'] . '/private/dashboard/admin/index.php'), ENT_QUOTES, 'UTF-8') ?>">Panel del negocio</a>
+        <a href="<?= htmlspecialchars(CommercePanel::urlForSlug((string)$commerce['slug']), ENT_QUOTES, 'UTF-8') ?>">Panel del negocio</a>
         <a href="commerce_appointments.php">Turnos</a>
         <a href="commerce_clients.php">Clientes</a>
         <a href="commerce_services.php">Servicios</a>
@@ -145,7 +146,7 @@ $activeSection = '';
         <h2>Administrá tu negocio</h2>
         <p>Abrí el panel completo para editar horarios, SEO, legal, tema, redes y el resto de la configuración que ven tus clientes.</p>
         <p>
-            <a class="btn btn-primary" href="<?= htmlspecialchars(url($commerce['slug'] . '/private/dashboard/admin/index.php'), ENT_QUOTES, 'UTF-8') ?>">
+            <a class="btn btn-primary" href="<?= htmlspecialchars(CommercePanel::urlForSlug((string)$commerce['slug']) . '#config', ENT_QUOTES, 'UTF-8') ?>">
                 Ir al panel de configuración
             </a>
         </p>
