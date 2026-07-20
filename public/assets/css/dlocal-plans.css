@@ -1,0 +1,58 @@
+/* dLocal Plans - estilos del componente publico de planes recurrentes.
+   Mobile-first, sin frameworks, con scope por clase (BEM-ish). */
+
+.dlocal-plans { padding: 32px 16px; max-width: 1100px; margin: 0 auto; }
+.dlocal-plans__head { text-align: center; margin-bottom: 24px; }
+.dlocal-plans__title { font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+.dlocal-plans__sub { color: #64748b; margin: 0; }
+
+.dlocal-plans__grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+    .dlocal-plans__grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+
+.dlocal-plan {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    display: flex; flex-direction: column;
+}
+.dlocal-plan__badge {
+    position: absolute; top: -10px; right: 16px;
+    background: #2563eb; color: #fff;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+}
+.dlocal-plan__name { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+.dlocal-plan__desc { color: #475569; font-size: 14px; min-height: 36px; margin: 0 0 12px; }
+.dlocal-plan__price { margin: 6px 0 16px; display: flex; align-items: baseline; gap: 6px; }
+.dlocal-plan__amount { font-size: 28px; font-weight: 800; color: #0f172a; }
+.dlocal-plan__freq { color: #64748b; font-size: 14px; }
+
+.dlocal-plan__form { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.dlocal-plan__field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.dlocal-plan__field span { color: #475569; }
+.dlocal-plan__field input {
+    border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px;
+    font-size: 14px; background: #f8fafc;
+}
+.dlocal-plan__field input:focus { outline: 2px solid #2563eb33; border-color: #2563eb; background: #fff; }
+
+.dlocal-plan__cta {
+    margin-top: 4px; padding: 12px 16px; border: 0; border-radius: 8px;
+    background: #2563eb; color: #fff; font-weight: 700; cursor: pointer;
+    transition: background .15s ease;
+}
+.dlocal-plan__cta:hover { background: #1d4ed8; }
+.dlocal-plan__cta:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.dlocal-plan__msg { font-size: 13px; margin: 4px 0 0; min-height: 18px; }
+.dlocal-plan__msg.is-error { color: #dc2626; }
+.dlocal-plan__msg.is-ok    { color: #15803d; }

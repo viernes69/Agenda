@@ -1,0 +1,8 @@
+# src/ - Bloquear acceso directo a database.php
+# Solo acceso via include PHP.
+<Files "database.php">
+    Require all denied
+</Files>
+<FilesMatch "\.(sql|sqlite|db|bak|log)$">
+    Require all denied
+</FilesMatch>

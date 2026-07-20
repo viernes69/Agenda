@@ -1,0 +1,7 @@
+{
+    "require": {
+        "mercadopago/dx-php": "^3.7",
+        "minishlink/web-push": "^9.0",
+        "phpmailer/phpmailer": "^7.0"
+    }
+}

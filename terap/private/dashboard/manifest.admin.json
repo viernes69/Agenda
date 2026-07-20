@@ -1,0 +1,23 @@
+{
+  "name": "Agenda Privada",
+  "short_name": "Agenda Pro",
+  "description": "Panel para gestionar reservas, pedidos y pagos en tiempo real.",
+  "start_url": "/agenda/template/private/dashboard/admin/index.php",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/agenda/src/media/logo/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/agenda/src/media/logo/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

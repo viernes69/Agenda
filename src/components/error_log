@@ -1,0 +1,71 @@
+[22-Nov-2025 02:03:22 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtoupper() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:21
+Stack trace:
+#0 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(94): business_initials()
+#1 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 21
+[23-Nov-2025 16:06:43 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[23-Nov-2025 16:06:47 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[23-Nov-2025 23:42:29 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[24-Nov-2025 15:25:32 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[24-Nov-2025 15:25:40 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[27-Nov-2025 19:22:29 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[28-Nov-2025 17:41:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[29-Nov-2025 01:42:31 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[29-Nov-2025 02:50:51 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[29-Nov-2025 02:51:06 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63
+[28-Dec-2025 04:45:54 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function mb_strtolower() in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php:63
+Stack trace:
+#0 [internal function]: {closure}()
+#1 /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php(62): usort()
+#2 {main}
+  thrown in /home/appsuyne/agenduy.uy/src/components/buscar-servicios.php on line 63

@@ -1,0 +1,16 @@
+# /admin/ - Panel super admin
+# - Bloquea el listado de directorios
+# - Permite el tráfico; la autenticación se valida en cada PHP.
+Options -Indexes
+
+# Bloquear archivos sensibles por si quedan en la carpeta admin
+<FilesMatch "\.(sqlite|sqlite3|db|sqlite-journal|sqlite-shm|sqlite-wal|env|ini|bak|log)$">
+    Require all denied
+</FilesMatch>
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

@@ -1,0 +1,3 @@
+# Storage - Deny all direct web access.
+# Solo accesible desde PHP en el mismo servidor.
+Require all denied

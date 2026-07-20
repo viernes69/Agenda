@@ -1,0 +1,49 @@
+<?php
+ob_start();
+?>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-reserva-title" data-admin-modal="reserva" hidden>
+  <div class="modal__backdrop" data-admin-reserva-close></div>
+  <div class="modal__dialog">
+    <header class="modal__header">
+      <div class="modal__header-text">
+        <p class="modal__eyebrow">Reserva</p>
+        <h2 id="admin-reserva-title">Detalle de la reserva</h2>
+      </div>
+      <button type="button" class="modal__close" data-admin-reserva-close aria-label="Cerrar">&times;</button>
+    </header>
+      <div class="modal__body">
+        <div class="resumen">
+        <p><strong>Cliente:</strong> <span data-admin-res-cliente>-</span></p>
+        <p><strong>Profesional:</strong> <span data-admin-res-barbero>-</span></p>
+        <p><strong>Servicio:</strong> <span data-admin-res-servicio>-</span></p>
+        <p><strong>Precio:</strong> <span data-admin-res-precio>-</span></p>
+        <p><strong>Fecha:</strong> <span data-admin-res-fecha>-</span></p>
+        <p><strong>Hora:</strong> <span data-admin-res-hora>-</span></p>
+          <p><strong>Status:</strong> <span class="status-pill" data-admin-res-status>-</span><button type="button" class="pill-action" data-admin-res-retomar hidden>Retomar</button></p>
+        </div>
+        <div class="admin-reserva-actions">
+          <button type="button" class="btn btn-warning" data-admin-res-ver-cliente>Datos del cliente</button>
+          <button type="button" class="btn btn-danger" data-admin-res-rechazar>Rechazar</button>
+          <button type="button" class="btn btn-success" data-admin-res-atender>Atender</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<style>
+  .admin-reserva-actions {
+    display: flex;
+    gap: .5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+  .admin-reserva-actions .btn {
+    padding: .45rem .9rem;
+    font-size: .88rem;
+    min-width: 0;
+  }
+</style>
+<?php
+return trim(ob_get_clean());
+?>
+
+

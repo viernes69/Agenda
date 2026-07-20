@@ -1,0 +1,38 @@
+/* dLocal Admin - estilos para el panel de gestion. */
+.dlocal-admin { padding: 24px; max-width: 900px; margin: 0 auto; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.dlocal-admin__title { font-size: 24px; font-weight: 700; margin: 0 0 16px; }
+.dlocal-admin__form { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin: 0 0 20px; }
+.dlocal-admin__form h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+.dlocal-admin__help { color: #64748b; font-size: 13px; margin: 0 0 12px; }
+.dlocal-admin__row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 8px; }
+@media (min-width: 720px) { .dlocal-admin__row { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .dlocal-admin__row { grid-template-columns: repeat(4, 1fr); } }
+.dlocal-admin__form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #475569; margin-bottom: 8px; }
+.dlocal-admin__form label > span { font-weight: 600; }
+.dlocal-admin__form input[type=text],
+.dlocal-admin__form input[type=password],
+.dlocal-admin__form input[type=number],
+.dlocal-admin__form select {
+    border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 14px; background: #f8fafc;
+}
+.dlocal-admin__form input:focus,
+.dlocal-admin__form select:focus { outline: 2px solid #2563eb33; border-color: #2563eb; background: #fff; }
+.dlocal-admin__check { flex-direction: row !important; align-items: center; gap: 6px; }
+.dlocal-admin__btn {
+    background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 16px;
+    font-weight: 700; cursor: pointer; margin-top: 8px;
+}
+.dlocal-admin__btn:hover { background: #1d4ed8; }
+.dlocal-admin__msg { font-size: 13px; margin: 8px 0 0; min-height: 18px; }
+.dlocal-admin__status { font-size: 13px; color: #475569; margin: 8px 0; }
+.dlocal-admin__plans { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin: 0 0 20px; }
+.dlocal-admin__plans h3 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+.dlocal-admin__empty { color: #64748b; font-size: 14px; margin: 0; }
+.dlocal-admin__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dlocal-admin__table th, .dlocal-admin__table td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
+.dlocal-admin__table th { color: #475569; font-weight: 600; }
+.dlocal-admin__table code { font-family: ui-monospace, monospace; font-size: 12px; color: #334155; }
+.dlocal-admin__info { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 16px 20px; }
+.dlocal-admin__info h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: #475569; }
+.dlocal-admin__info p { font-size: 13px; color: #64748b; margin: 0 0 8px; }
+.dlocal-admin__webhook { display: block; word-break: break-all; font-size: 12px; color: #334155; background: #fff; padding: 8px; border-radius: 6px; }

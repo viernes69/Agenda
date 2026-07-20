@@ -1,0 +1,48 @@
+# Agenduy - Raíz
+Options -Indexes
+ServerSignature Off
+
+# Activar mod_rewrite para el router genérico
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Si la URL es un archivo real (CSS, JS, imágenes), servirlo tal cual
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Si la URL es un directorio real (admin/, src/, public/, etc.),
+    # Apache sirve su index.php automáticamente
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Si NO es archivo ni directorio (ej: /agenduy.uy/la-barberia/ sin carpeta física),
+    # enrutar al index.php raíz que detecta el slug y renderiza el comercio
+    RewriteRule ^(.*)$ index.php [L,QSA]
+</IfModule>
+
+# Bloquear listados de directorios y archivos sensibles
+<FilesMatch "\.(sqlite|sqlite3|db|sqlite-journal|sqlite-shm|sqlite-wal|env|ini|log|bak|sql)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acceso directo a la "BD" vieja y a los secretos
+<Files "database.php">
+    Require all denied
+</Files>
+<Files "mail_secret.php">
+    Require all denied
+</Files>
+<Files "composer.json">
+    Require all denied
+</Files>
+<Files "composer.lock">
+    Require all denied
+</Files>
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>

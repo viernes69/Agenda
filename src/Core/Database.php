@@ -1,0 +1,512 @@
+<?php
+/**
+ * Agenduy - Database
+ * Wrapper sobre PDO/SQLite con:
+ *   - singleton (instancia por proceso)
+ *   - migraciones automáticas
+ *   - helpers de INSERT/UPDATE/SELECT
+ *   - transacciones
+ *   - logging de queries lentas (opcional)
+ */
+
+declare(strict_types=1);
+
+namespace Agenduy\Core;
+
+use PDO;
+use PDOException;
+use PDOStatement;
+use RuntimeException;
+
+final class Database
+{
+    private static ?Database $instance = null;
+
+    private PDO $pdo;
+    private array $config;
+    private string $path;
+
+    private function __construct(array $config)
+    {
+        $this->config = $config;
+        $this->path   = $config['db']['path'];
+
+        $this->ensureDirectory();
+        $this->pdo = $this->connect();
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+
+        $this->runMigrations();
+    }
+
+    public static function getInstance(?array $config = null): self
+    {
+        if (self::$instance === null) {
+            if ($config === null) {
+                $configFile = __DIR__ . DIRECTORY_SEPARATOR . 'config.php';
+                $config = require $configFile;
+            }
+            self::$instance = new self($config);
+        }
+        return self::$instance;
+    }
+
+    public function pdo(): PDO
+    {
+        return $this->pdo;
+    }
+
+    private function ensureDirectory(): void
+    {
+        $dir = dirname($this->path);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new RuntimeException("No se pudo crear el directorio de la base de datos: {$dir}");
+        }
+    }
+
+    private function connect(): PDO
+    {
+        try {
+            return new PDO('sqlite:' . $this->path);
+        } catch (PDOException $e) {
+            throw new RuntimeException('No se pudo abrir la base de datos SQLite: ' . $e->getMessage());
+        }
+    }
+
+    private function runMigrations(): void
+    {
+        $schemaFile = __DIR__ . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR . 'schema.sql';
+        if (!is_file($schemaFile)) {
+            throw new RuntimeException("Falta el schema: {$schemaFile}");
+        }
+        $sql = (string) file_get_contents($schemaFile);
+
+        // SQLite ejecuta un script completo con exec().
+        $this->pdo->exec($sql);
+
+        // Parches incrementales (CREATE IF NOT EXISTS no altera tablas existentes)
+        $this->ensureSchemaPatches();
+
+        // Llave de encriptación: si no está en env ni en archivo, autogenerar y guardar
+        $this->ensureEncryptionKey();
+    }
+
+    private function ensureSchemaPatches(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(rubros)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        if (!in_array('orden', $names, true)) {
+            $this->pdo->exec('ALTER TABLE rubros ADD COLUMN orden INTEGER NOT NULL DEFAULT 0');
+            $ids = $this->pdo->query('SELECT id_rubro FROM rubros ORDER BY nombre COLLATE NOCASE')->fetchAll(PDO::FETCH_COLUMN);
+            $stmt = $this->pdo->prepare('UPDATE rubros SET orden = ? WHERE id_rubro = ?');
+            $orden = 10;
+            foreach ($ids as $id) {
+                $stmt->execute([$orden, (int)$id]);
+                $orden += 10;
+            }
+        }
+
+        $this->ensureMembershipPlanColumns();
+        $this->ensureSubscriptionBillingPeriod();
+        $this->ensureServicesIdLocal();
+        $this->seedMembershipPlanDefaults();
+        $this->retireLegacySeedMembership();
+        $this->ensureDlocalEnums();
+    }
+
+    /**
+     * Agrega 'dlocal' a los CHECK constraints de provider/gateway en SQLite.
+     * SQLite no permite ALTER CHECK, asi que detecta si la tabla ya incluye 'dlocal'
+     * en su definicion y, si no, la recrea copiando los datos.
+     */
+    private function ensureDlocalEnums(): void
+    {
+        $this->ensureCheckContainsDlocal(
+            'subscriptions',
+            "CREATE TABLE IF NOT EXISTS subscriptions_new (
+                id_subscription    INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce        INTEGER NOT NULL,
+                id_membership      INTEGER NOT NULL,
+                status             TEXT    NOT NULL DEFAULT 'trial'
+                                   CHECK (status IN ('trial','active','past_due','cancelled')),
+                gateway            TEXT    DEFAULT NULL
+                                   CHECK (gateway IN ('mercadopago','paypal','transfer','manual','dlocal',NULL)),
+                gateway_id         TEXT    DEFAULT NULL,
+                started_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+                trial_expires_at   TEXT    DEFAULT NULL,
+                current_period_start TEXT  DEFAULT NULL,
+                current_period_end TEXT    DEFAULT NULL,
+                cancelled_at       TEXT    DEFAULT NULL,
+                billing_period     TEXT    NOT NULL DEFAULT 'monthly'
+                                   CHECK (billing_period IN ('monthly','yearly')),
+                notes              TEXT    DEFAULT '',
+                created_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce)   REFERENCES commerces(id_commerce) ON DELETE CASCADE,
+                FOREIGN KEY (id_membership) REFERENCES memberships(id_membership)
+            )",
+            "INSERT INTO subscriptions_new
+                (id_subscription, id_commerce, id_membership, status, gateway, gateway_id,
+                 started_at, trial_expires_at, current_period_start, current_period_end,
+                 cancelled_at, billing_period, notes, created_at, updated_at)
+             SELECT
+                id_subscription, id_commerce, id_membership, status, gateway, gateway_id,
+                started_at, trial_expires_at, current_period_start, current_period_end,
+                cancelled_at, COALESCE(billing_period, 'monthly'), COALESCE(notes, ''),
+                created_at, updated_at
+             FROM subscriptions"
+        );
+
+        $this->ensureCheckContainsDlocal(
+            'payment_provider_config',
+            "CREATE TABLE IF NOT EXISTS payment_provider_config_new (
+                id_config     INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider      TEXT    NOT NULL UNIQUE
+                              CHECK (provider IN ('mercadopago','paypal','transfer','smtp','ultramsg','dlocal')),
+                is_enabled    INTEGER NOT NULL DEFAULT 0,
+                config_json   TEXT    NOT NULL DEFAULT '{}',
+                notes         TEXT    DEFAULT '',
+                updated_by    INTEGER,
+                updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+            )",
+            "INSERT INTO payment_provider_config_new
+                (id_config, provider, is_enabled, config_json, notes, updated_by, updated_at)
+             SELECT
+                id_config, provider, is_enabled,
+                COALESCE(config_json, '{}'), COALESCE(notes, ''), updated_by, updated_at
+             FROM payment_provider_config"
+        );
+
+        $this->ensureCheckContainsDlocal(
+            'api_keys',
+            "CREATE TABLE IF NOT EXISTS api_keys_new (
+                id_key        INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce   INTEGER DEFAULT NULL,
+                provider      TEXT    NOT NULL
+                              CHECK (provider IN ('mercadopago','paypal','google_calendar',
+                                                  'google_service_account','smtp','ultramsg','generic','dlocal')),
+                key_name      TEXT    NOT NULL,
+                key_value     TEXT    NOT NULL,
+                key_preview   TEXT    NOT NULL,
+                label         TEXT    DEFAULT '',
+                is_active     INTEGER NOT NULL DEFAULT 1,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE CASCADE
+            )",
+            "INSERT INTO api_keys_new
+                (id_key, id_commerce, provider, key_name, key_value, key_preview,
+                 label, is_active, created_at, updated_at)
+             SELECT
+                id_key, id_commerce, provider, key_name, key_value, key_preview,
+                COALESCE(label, ''), is_active, created_at, updated_at
+             FROM api_keys"
+        );
+    }
+
+    /**
+     * Si la definicion de la tabla no contiene 'dlocal' en su CHECK, la recrea
+     * copiando los datos con un INSERT selectivo que sanea NULLs.
+     */
+    private function ensureCheckContainsDlocal(string $table, string $createNewSql, string $copySql): void
+    {
+        $sql = $this->pdo->query(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=" . $this->pdo->quote($table)
+        )->fetchColumn();
+        if (!is_string($sql) || $sql === '') {
+            return;
+        }
+        if (strpos($sql, "'dlocal'") !== false) {
+            return;
+        }
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->exec($createNewSql);
+            $this->pdo->exec($copySql);
+            $this->pdo->exec("DROP TABLE {$table}");
+            $this->pdo->exec("ALTER TABLE {$table}_new RENAME TO {$table}");
+            if ($table === 'subscriptions') {
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_subs_commerce ON subscriptions(id_commerce)');
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_subs_status   ON subscriptions(status)');
+            }
+            if ($table === 'api_keys') {
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_keys_commerce  ON api_keys(id_commerce)');
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_keys_provider  ON api_keys(provider)');
+                $this->pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_keys_unique ON api_keys(IFNULL(id_commerce,0), provider, key_name)');
+            }
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            $this->pdo->rollBack();
+            error_log('[Database::ensureCheckContainsDlocal] ' . $table . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Maps tenant database.php ID_Servicio → central services row.
+     * Prevents duplicate service names from overwriting each other on sync.
+     */
+    private function ensureServicesIdLocal(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(services)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        if (!in_array('id_local', $names, true)) {
+            $this->pdo->exec('ALTER TABLE services ADD COLUMN id_local INTEGER DEFAULT NULL');
+        }
+        $this->pdo->exec(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_services_commerce_local
+             ON services(id_commerce, id_local)
+             WHERE id_local IS NOT NULL'
+        );
+    }
+
+    /**
+     * Old seed created "Plan Básico" at $800. Modern catalog is Free / Básico / Profesional.
+     * Soft-deactivate the legacy row so it no longer appears in the membership modal grid.
+     */
+    private function retireLegacySeedMembership(): void
+    {
+        $hasModern = $this->pdo->query(
+            "SELECT 1 FROM memberships WHERE activo = 1 AND nombre IN ('Free', 'Básico', 'Profesional') LIMIT 1"
+        )->fetchColumn();
+        if (!$hasModern) {
+            return;
+        }
+        $this->pdo->exec(
+            "UPDATE memberships
+             SET activo = 0, updated_at = datetime('now')
+             WHERE activo = 1
+               AND nombre = 'Plan Básico'
+               AND ABS(precio - 800) < 0.01"
+        );
+    }
+
+    private function ensureMembershipPlanColumns(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(memberships)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        $add = [
+            'features' => "ALTER TABLE memberships ADD COLUMN features TEXT DEFAULT '[]'",
+            'limits' => "ALTER TABLE memberships ADD COLUMN limits TEXT DEFAULT '{}'",
+            'precio_anual' => 'ALTER TABLE memberships ADD COLUMN precio_anual REAL DEFAULT NULL',
+            'descuento_anual_pct' => 'ALTER TABLE memberships ADD COLUMN descuento_anual_pct REAL NOT NULL DEFAULT 0',
+            'anual_habilitado' => 'ALTER TABLE memberships ADD COLUMN anual_habilitado INTEGER NOT NULL DEFAULT 0',
+        ];
+        foreach ($add as $col => $sql) {
+            if (!in_array($col, $names, true)) {
+                $this->pdo->exec($sql);
+            }
+        }
+    }
+
+    private function ensureSubscriptionBillingPeriod(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(subscriptions)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        if (!in_array('billing_period', $names, true)) {
+            $this->pdo->exec(
+                "ALTER TABLE subscriptions ADD COLUMN billing_period TEXT NOT NULL DEFAULT 'monthly'"
+            );
+        }
+    }
+
+    /**
+     * Soft-fill / upgrade features+limits for Free/Básico/Profesional.
+     * Upgrades when limits lack settings_tier (new catalog). Does not overwrite prices.
+     */
+    private function seedMembershipPlanDefaults(): void
+    {
+        $defaults = MembershipPlan::catalogDefaults();
+
+        $rows = $this->pdo->query(
+            'SELECT id_membership, nombre, descripcion, features, limits, anual_habilitado, descuento_anual_pct FROM memberships'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare(
+            'UPDATE memberships SET descripcion = ?, features = ?, limits = ?, anual_habilitado = ?, descuento_anual_pct = ?, updated_at = datetime(\'now\')
+             WHERE id_membership = ?'
+        );
+
+        foreach ($rows as $row) {
+            $name = (string)($row['nombre'] ?? '');
+            if (!isset($defaults[$name])) {
+                continue;
+            }
+            $def = $defaults[$name];
+            $featuresRaw = trim((string)($row['features'] ?? ''));
+            $limitsRaw = trim((string)($row['limits'] ?? ''));
+            $featuresEmpty = $featuresRaw === '' || $featuresRaw === '[]' || $featuresRaw === 'null';
+            $limitsEmpty = $limitsRaw === '' || $limitsRaw === '{}' || $limitsRaw === 'null';
+            $decodedLimits = json_decode($limitsRaw, true);
+            $limitsNeedUpgrade = $limitsEmpty
+                || !is_array($decodedLimits)
+                || !array_key_exists(MembershipPlan::LIMIT_SETTINGS_TIER, $decodedLimits);
+            // Free/Básico must carry max_professionals + max_clients; Profesional refreshes marketing when peers upgrade.
+            if (!$limitsNeedUpgrade && is_array($decodedLimits)) {
+                if ($name === 'Free' || $name === 'Básico') {
+                    $limitsNeedUpgrade = !array_key_exists(
+                        MembershipPlan::LIMIT_MAX_PROFESSIONALS,
+                        $decodedLimits
+                    ) || !array_key_exists(
+                        MembershipPlan::LIMIT_MAX_CLIENTS,
+                        $decodedLimits
+                    );
+                } elseif ($name === 'Profesional') {
+                    $featRaw = (string)($row['features'] ?? '');
+                    $limitsNeedUpgrade = stripos($featRaw, 'Profesionales ilimitados') === false
+                        || stripos($featRaw, 'Clientes') === false;
+                }
+            }
+            if (!$featuresEmpty && !$limitsNeedUpgrade) {
+                continue;
+            }
+            $features = ($featuresEmpty || $limitsNeedUpgrade)
+                ? json_encode($def['features'], JSON_UNESCAPED_UNICODE)
+                : $featuresRaw;
+            $limits = $limitsNeedUpgrade
+                ? json_encode($def['limits'], JSON_UNESCAPED_UNICODE)
+                : $limitsRaw;
+            $descripcion = trim((string)($row['descripcion'] ?? ''));
+            if ($descripcion === '' || $limitsNeedUpgrade) {
+                $descripcion = (string)($def['descripcion'] ?? $descripcion);
+            }
+            $anual = (int)($row['anual_habilitado'] ?? 0);
+            $discount = (float)($row['descuento_anual_pct'] ?? 0);
+            if ($featuresEmpty || $limitsNeedUpgrade) {
+                if ($anual === 0 && $discount <= 0 && !empty($def['anual_habilitado'])) {
+                    $anual = (int)$def['anual_habilitado'];
+                    $discount = (float)$def['descuento_anual_pct'];
+                }
+            }
+            $stmt->execute([$descripcion, $features, $limits, $anual, $discount, (int)$row['id_membership']]);
+        }
+    }
+
+    private function ensureEncryptionKey(): void
+    {
+        $key = (string)($this->config['security']['encryption_key'] ?? '');
+        if ($key !== '') {
+            return;
+        }
+        $keyFile = dirname($this->path) . DIRECTORY_SEPARATOR . '.app_key';
+        if (is_file($keyFile)) {
+            $stored = trim((string)file_get_contents($keyFile));
+            if ($stored !== '' && strlen($stored) >= 32) {
+                $this->config['security']['encryption_key'] = $stored;
+                return;
+            }
+        }
+        $new = bin2hex(random_bytes(32));
+        // 0640 para que solo el dueño del proceso pueda leerla
+        @file_put_contents($keyFile, $new);
+        @chmod($keyFile, 0640);
+        $this->config['security']['encryption_key'] = $new;
+    }
+
+    public function config(): array
+    {
+        return $this->config;
+    }
+
+    // ===== Helpers =====
+
+    public function fetchAll(string $sql, array $params = []): array
+    {
+        $stmt = $this->execute($sql, $params);
+        return $stmt->fetchAll();
+    }
+
+    public function fetchOne(string $sql, array $params = []): ?array
+    {
+        $stmt = $this->execute($sql, $params);
+        $row  = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    public function fetchValue(string $sql, array $params = [])
+    {
+        $stmt = $this->execute($sql, $params);
+        $val  = $stmt->fetchColumn();
+        return $val === false ? null : $val;
+    }
+
+    public function insert(string $table, array $data): int
+    {
+        $cols      = array_keys($data);
+        $placeholders = array_map(fn($c) => ':' . $c, $cols);
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s)',
+            $this->quoteIdent($table),
+            implode(',', array_map([$this, 'quoteIdent'], $cols)),
+            implode(',', $placeholders)
+        );
+        $params = [];
+        foreach ($data as $k => $v) {
+            $params[':' . $k] = $v;
+        }
+        $this->execute($sql, $params);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function update(string $table, array $data, string $where, array $whereParams = []): int
+    {
+        $set = [];
+        $params = [];
+        foreach ($data as $col => $val) {
+            $set[] = $this->quoteIdent($col) . ' = :set_' . $col;
+            $params[':set_' . $col] = $val;
+        }
+        foreach ($whereParams as $k => $v) {
+            $params[':' . ltrim($k, ':')] = $v;
+        }
+        $sql = sprintf(
+            'UPDATE %s SET %s WHERE %s',
+            $this->quoteIdent($table),
+            implode(', ', $set),
+            $where
+        );
+        return $this->execute($sql, $params)->rowCount();
+    }
+
+    public function delete(string $table, string $where, array $params = []): int
+    {
+        $sql = sprintf('DELETE FROM %s WHERE %s', $this->quoteIdent($table), $where);
+        return $this->execute($sql, $params)->rowCount();
+    }
+
+    public function transaction(callable $fn)
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $result = $fn($this);
+            $this->pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    private function execute(string $sql, array $params): PDOStatement
+    {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+
+    private function quoteIdent(string $name): string
+    {
+        // SQLite acepta comillas dobles para identificadores. Reemplaza cualquier " interna.
+        return '"' . str_replace('"', '""', $name) . '"';
+    }
+
+    public function tableExists(string $table): bool
+    {
+        $row = $this->fetchOne(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = :t",
+            [':t' => $table]
+        );
+        return $row !== null;
+    }
+}

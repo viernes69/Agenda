@@ -1,0 +1,7 @@
+# /admin/api/ - Endpoints JSON
+# Permitir todo el tráfico (la seguridad la maneja cada endpoint
+# vía CSRF + auth en PHP).
+Require all granted
+
+# Bloquear listado de directorios
+Options -Indexes

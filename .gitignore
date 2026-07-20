@@ -1,0 +1,38 @@
+# Dependencies
+/vendor/
+
+# Runtime / secrets
+/storage/agenduy.db
+/storage/agenduy.db-*
+/storage/.app_key
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+/storage/backups/*
+!/storage/backups/.gitkeep
+**/.mail_secret
+**/Private/mail_secret.php
+**/.env
+**/.env.*
+
+# Tenant runtime
+**/src/db/backups/
+**/src/db/database.lock
+**/logs/*
+!**/logs/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temp / inspect
+storage/_inspect_db.php
+.phpunit.result.cache
+
+# Course template (not product)
+/template_curso/
