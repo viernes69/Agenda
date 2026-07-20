@@ -842,6 +842,19 @@ $summaryCards = [
     'target' => '#servicios',
   ],
 ];
+$isCentralPanelEmbed = defined('AGENDUY_COMMERCE_PANEL_EMBED') && AGENDUY_COMMERCE_PANEL_EMBED;
+if (!function_exists('admin_panel_href')) {
+    function admin_panel_href(string $relative): string {
+        if (!defined('AGENDUY_COMMERCE_PANEL_EMBED') || !AGENDUY_COMMERCE_PANEL_EMBED) {
+            return $relative;
+        }
+        return \Agenduy\Core\CommercePanel::dashboardAssetUrl($relative);
+    }
+}
+$panelApiEndpoints = $isCentralPanelEmbed ? \Agenduy\Core\CommercePanel::dashboardApiEndpoints() : [];
+$tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
+    ? url($tenantSlug . '/')
+    : url('');
 ?>
 <!doctype html>
 <html lang="es">
@@ -856,12 +869,12 @@ $summaryCards = [
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
-  <link rel="manifest" href="../manifest.admin.php">
-  <link rel="stylesheet" href="../../../src/css/main.css">
+  <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="../src/admin.css">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
-  <link rel="stylesheet" href="../src/reservas-ledger.css">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(\Agenduy\Core\AdminBrand::faviconUrl()); ?>">
   <link rel="apple-touch-icon" href="<?php echo e(\Agenduy\Core\AdminBrand::iconUrl()); ?>">
@@ -1826,23 +1839,56 @@ $summaryCards = [
   ?>
   <script>
     window.ADMIN_INFO_BARBERIA = <?php echo $infoBarberiaJson; ?>;
+    window.ADMIN_DASHBOARD = <?php echo json_encode($panelApiEndpoints, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     window.__TENANT_CONFIG__ = {
       slug: <?php echo json_encode($tenantSlug, JSON_UNESCAPED_SLASHES); ?>,
-      basePath: <?php echo json_encode($publicUrl, JSON_UNESCAPED_SLASHES); ?>
+      basePath: <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>,
+      publicUrl: <?php echo json_encode($tenantPublicUrl, JSON_UNESCAPED_SLASHES); ?>,
+      logoutUrl: <?php echo json_encode(url('admin/logout.php'), JSON_UNESCAPED_SLASHES); ?>
     };
-    (function attachAdminCsrf() {
+    (function attachAdminFetch() {
       const nativeFetch = window.fetch.bind(window);
       const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      const dash = window.ADMIN_DASHBOARD || {};
+
+      const resolveUrl = (input) => {
+        if (typeof input !== 'string') {
+          return input;
+        }
+        let url = input;
+        if (dash.adminConfig && url.includes('AdminConfig.php')) {
+          return dash.adminConfig;
+        }
+        if (dash.autoload && url.includes('Autoload.php')) {
+          return dash.autoload;
+        }
+        if (dash.adminPush && url.includes('AdminPush.php')) {
+          return dash.adminPush;
+        }
+        if (dash.reservas && url.includes('reservas_admin.php')) {
+          return dash.reservas;
+        }
+        return url;
+      };
+
       window.fetch = function(resource, options) {
-        const url = typeof resource === 'string' ? resource : resource?.url || '';
-        if (!url.includes('/src/API/AdminConfig.php') && !url.includes('../../../src/API/AdminConfig.php')) {
-          return nativeFetch(resource, options);
+        const originalUrl = typeof resource === 'string' ? resource : resource?.url || '';
+        const resolvedUrl = resolveUrl(originalUrl);
+        let finalResource = resource;
+        if (typeof resource === 'string' && resolvedUrl !== originalUrl) {
+          finalResource = resolvedUrl;
+        } else if (resource && typeof resource === 'object' && resolvedUrl !== originalUrl) {
+          finalResource = new Request(resolvedUrl, resource);
+        }
+        const url = typeof finalResource === 'string' ? finalResource : finalResource?.url || resolvedUrl;
+        if (!url.includes('AdminConfig.php')) {
+          return nativeFetch(finalResource, options);
         }
         const next = { ...(options || {}) };
         next.headers = new Headers(next.headers || {});
         next.headers.set('X-CSRF-Token', token);
         next.credentials = next.credentials || 'same-origin';
-        return nativeFetch(resource, next);
+        return nativeFetch(finalResource, next);
       };
     })();
     window.AdminNotify = function(message, icon) {
@@ -1946,7 +1992,10 @@ $summaryCards = [
 
   <script>
     window.ADMIN_PUSH_PUBLIC_KEY = '<?php echo e($pushPublicKey); ?>';
-    window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
+    window.ADMIN_PUSH_ENDPOINT = <?php echo json_encode(
+        $panelApiEndpoints['adminPush'] ?? admin_panel_href('../../../src/API/AdminPush.php'),
+        JSON_UNESCAPED_SLASHES
+    ); ?>;
     (function setupWelcomeToast() {
       try {
         var params = new URLSearchParams(window.location.search);
@@ -1964,41 +2013,41 @@ $summaryCards = [
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
-  <script src="../src/js/admin/core.js"></script>
-  <script src="../src/js/admin/admin-orders.js"></script>
-  <script src="../src/js/admin/plan-trial-modal.js"></script>
-  <script src="../src/js/admin/plan-membership-modal.js"></script>
-  <script src="../src/js/admin/modal-loading.js"></script>
-  <script src="../src/js/admin/layout-sidebar.js"></script>
-  <script src="../src/js/admin/bottom-nav.js?v=4"></script>
-  <script src="../src/js/admin/reservas-filter.js"></script>
-  <script src="../src/js/admin/clientes-list.js"></script>
-  <script src="../src/js/admin/clientes-form.js"></script>
-  <script src="../src/js/admin/barberos-list.js"></script>
-  <script src="../src/js/admin/barbero-create-modal.js"></script>
-  <script src="../src/js/admin/barbero-edit-modal.js"></script>
-  <script src="../src/js/admin/reserva-modal.js"></script>
-  <script src="../src/js/admin/reservas-summary-modal.js"></script>
-  <script src="../src/js/admin/productos-summary-modal.js"></script>
-  <script src="../src/js/admin/cliente-modal.js"></script>
-  <script src="../src/js/admin/servicios-crud.js"></script>
-  <script src="../src/js/admin/productos-crud.js"></script>
-  <script src="../src/js/admin/service-modal.js"></script>
-  <script src="../src/js/admin/config-info-modal.js"></script>
-  <script src="../src/js/admin/admin-auth-guard.js"></script>
-  <script src="../src/js/admin/admin-config-redes.js"></script>
-  <script src="../src/js/admin/admin-config-seo.js"></script>
-  <script src="../src/js/admin/admin-config-notificaciones.js"></script>
-  <script src="../src/js/admin/admin-config-legales.js"></script>
-  <script src="../src/js/admin/admin-config-features.js"></script>
-  <script src="../src/js/admin/admin-config-theme.js"></script>
-  <script src="../src/js/admin/admin-config-fiscal.js"></script>
-  <script src="../src/js/admin/admin-config-moneda.js"></script>
-  <script src="../src/js/admin/admin-config-mercadopago.js"></script>
-  <script src="../src/js/admin/config-reservas-modal.js"></script>
-  <script src="../src/js/admin/config-hours.js"></script>
-  <script src="../src/js/admin/config-cards.js"></script>
-  <script src="../src/js/admin/pwa.js"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/layout-sidebar.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/bottom-nav.js?v=4')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-filter.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-list.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-form.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barberos-list.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-create-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-edit-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reserva-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-summary-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-summary-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/cliente-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/servicios-crud.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-crud.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/service-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-info-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-auth-guard.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-redes.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-seo.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-notificaciones.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-legales.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-features.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-theme.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-mercadopago.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-reservas-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>
   </body>
   </html>
 

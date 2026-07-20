@@ -79,7 +79,9 @@
   const initialHash = normalizeSectionId(window.location.hash);
   activate(initialHash || defaultSectionId);
 
-  const optimizeEndpoint = '../optimizar.php';
+  const optimizeEndpoint = (window.ADMIN_DASHBOARD && window.ADMIN_DASHBOARD.optimize)
+    ? window.ADMIN_DASHBOARD.optimize
+    : '../optimizar.php';
   let isOptimizing = false;
   const runOptimization = async () => {
     if (isOptimizing) return true;
@@ -151,6 +153,12 @@
 
   const tenantUrls = () => {
     const config = window.__TENANT_CONFIG__ || {};
+    if (config.logoutUrl && config.publicUrl) {
+      return {
+        logout: String(config.logoutUrl),
+        public: String(config.publicUrl),
+      };
+    }
     const slug = String(config.slug || document.querySelector('meta[name="tenant-slug"]')?.content || '').trim();
     const configuredBase = String(config.basePath || document.querySelector('meta[name="url-base"]')?.content || '/');
     const baseUrl = new URL(configuredBase, window.location.origin);

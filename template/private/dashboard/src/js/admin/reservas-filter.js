@@ -10,7 +10,9 @@
   const badgeEl = document.querySelector('[data-bottom-badge="reservas"]');
   if (!tbody) return;
 
-  const API_URL = '../src/api/reservas_admin.php';
+  const API_URL = (window.ADMIN_DASHBOARD && window.ADMIN_DASHBOARD.reservas)
+    ? window.ADMIN_DASHBOARD.reservas
+    : '../src/api/reservas_admin.php';
   const defaultValue = select ? (select.getAttribute('data-admin-reserva-default') || select.value || 'todos') : 'todos';
   const defaultDate = dateInput ? (dateInput.getAttribute('data-admin-reserva-date-default') || dateInput.value || '') : '';
   if (dateInput && !dateInput.value && defaultDate) {

@@ -125,6 +125,76 @@ final class CommercePanel
         return $url . '#' . $section;
     }
 
+    /** URL base del admin compartido (/template/private/dashboard/admin/). */
+    public static function templateDashboardAdminBase(): string
+    {
+        return rtrim(url('template/private/dashboard/admin/'), '/') . '/';
+    }
+
+    /**
+     * Convierte un path relativo al index del admin (../src/...) en URL absoluta del sitio.
+     */
+    public static function dashboardAssetUrl(string $relativeFromAdmin): string
+    {
+        $query = '';
+        if (str_contains($relativeFromAdmin, '?')) {
+            [$relativeFromAdmin, $suffix] = explode('?', $relativeFromAdmin, 2);
+            $query = '?' . $suffix;
+        }
+
+        $relativeFromAdmin = str_replace('\\', '/', trim($relativeFromAdmin));
+        if ($relativeFromAdmin === '') {
+            return self::templateDashboardAdminBase() . ltrim($query, '?');
+        }
+        if (preg_match('#^https?://#i', $relativeFromAdmin)) {
+            return $relativeFromAdmin . $query;
+        }
+
+        $projectRoot = realpath(dirname(__DIR__, 2));
+        $adminDir = realpath($projectRoot . '/template/private/dashboard/admin');
+        if ($projectRoot === false || $adminDir === false) {
+            return url(ltrim($relativeFromAdmin, '/')) . $query;
+        }
+
+        $path = $adminDir;
+        foreach (explode('/', $relativeFromAdmin) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                $path = dirname($path);
+                continue;
+            }
+            $path .= DIRECTORY_SEPARATOR . $part;
+        }
+
+        $normalizedRoot = str_replace('\\', '/', $projectRoot);
+        $normalizedPath = str_replace('\\', '/', $path);
+        if (!str_starts_with($normalizedPath, $normalizedRoot)) {
+            return url(ltrim($relativeFromAdmin, '/')) . $query;
+        }
+
+        $rel = ltrim(substr($normalizedPath, strlen($normalizedRoot)), '/');
+        return url($rel) . $query;
+    }
+
+    /**
+     * Endpoints absolutos del panel (APIs compartidas en /template/).
+     *
+     * @return array{reservas:string,adminConfig:string,autoload:string,adminPush:string,optimize:string,manifest:string}
+     */
+    public static function dashboardApiEndpoints(): array
+    {
+        return [
+            'reservas'    => url('template/private/dashboard/src/api/reservas_admin.php'),
+            'adminConfig' => url('template/src/API/AdminConfig.php'),
+            'autoload'    => url('template/src/API/Autoload.php'),
+            'adminPush'   => url('template/src/API/AdminPush.php'),
+            'optimize'    => url('template/private/dashboard/optimizar.php'),
+            'manifest'    => url('template/private/dashboard/manifest.admin.php'),
+        ];
+    }
+
     public static function localDatabasePath(int $idCommerce): string
     {
         $dir = CommerceStorage::baseDir($idCommerce);
