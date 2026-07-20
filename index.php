@@ -18,6 +18,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\Database;
 use Agenduy\Core\GoogleAuth;
 use Agenduy\Core\LandingContent;
+use Agenduy\Core\PlatformSettings;
 
 // ¿Hay un slug de comercio en la URL?
 $slug = current_slug();
@@ -58,6 +59,9 @@ $mpConfig = $cfgRow ? json_decode((string)$cfgRow['config_json'], true) : [];
 $mpPublicKey = (string)($mpConfig['public_key'] ?? '');
 $freeTrial = (int)($planDestacado['trial_dias'] ?? 30);
 $googleClientId = GoogleAuth::isEnabled() ? GoogleAuth::clientId() : '';
+$platformContact = PlatformSettings::contact();
+$platformInstagramUrl = $platformContact['instagram_url'];
+$platformWhatsAppUrl = $platformContact['whatsapp_url'];
 
 $clientAvatars = [];
 $clientDir = __DIR__ . '/src/img/clients';
@@ -189,12 +193,16 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
              decoding="async" loading="eager">
       </a>
       <nav class="site-header__actions" aria-label="Acciones principales">
-        <a class="site-header__icon" href="https://instagram.com/agendarte.uy" target="_blank" rel="noopener" aria-label="Instagram">
+        <?php if ($platformInstagramUrl !== ''): ?>
+        <a class="site-header__icon" href="<?= h($platformInstagramUrl) ?>" target="_blank" rel="noopener" aria-label="Instagram">
           <i class="bx bxl-instagram" aria-hidden="true"></i>
         </a>
-        <a class="site-header__icon" href="https://wa.me/59892365135" target="_blank" rel="noopener" aria-label="WhatsApp">
+        <?php endif; ?>
+        <?php if ($platformWhatsAppUrl !== ''): ?>
+        <a class="site-header__icon" href="<?= h($platformWhatsAppUrl) ?>" target="_blank" rel="noopener" aria-label="WhatsApp">
           <i class="bx bxl-whatsapp" aria-hidden="true"></i>
         </a>
+        <?php endif; ?>
         <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" aria-label="Cambiar a tema oscuro" title="Tema oscuro">
           <i class="bx bx-sun theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true"></i>
           <i class="bx bx-moon theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"></i>
@@ -476,8 +484,12 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
       <a href="#faq">FAQ</a>
     </nav>
     <div class="site-footer__social">
-      <a href="https://instagram.com/agendarte.uy" aria-label="Instagram" target="_blank" rel="noopener"><i class="bx bxl-instagram" aria-hidden="true"></i></a>
-      <a href="https://wa.me/59892365135" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="bx bxl-whatsapp" aria-hidden="true"></i></a>
+      <?php if ($platformInstagramUrl !== ''): ?>
+      <a href="<?= h($platformInstagramUrl) ?>" aria-label="Instagram" target="_blank" rel="noopener"><i class="bx bxl-instagram" aria-hidden="true"></i></a>
+      <?php endif; ?>
+      <?php if ($platformWhatsAppUrl !== ''): ?>
+      <a href="<?= h($platformWhatsAppUrl) ?>" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="bx bxl-whatsapp" aria-hidden="true"></i></a>
+      <?php endif; ?>
     </div>
   </div>
 </footer>

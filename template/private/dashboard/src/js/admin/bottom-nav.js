@@ -159,16 +159,32 @@
         public: String(config.publicUrl),
       };
     }
-    const slug = String(config.slug || document.querySelector('meta[name="tenant-slug"]')?.content || '').trim();
-    const configuredBase = String(config.basePath || document.querySelector('meta[name="url-base"]')?.content || '/');
+
+    const visibleSegments = window.location.pathname.split('/').filter(Boolean);
+    const privateIndex = visibleSegments.indexOf('private');
+    const visibleSlug = privateIndex > 0 ? visibleSegments[privateIndex - 1] : '';
+    const slug = String(
+      config.slug
+      || document.querySelector('meta[name="tenant-slug"]')?.content
+      || visibleSlug
+      || ''
+    ).trim();
+    const configuredBase = String(
+      config.basePath
+      || document.querySelector('meta[name="url-base"]')?.content
+      || '/'
+    );
     const baseUrl = new URL(configuredBase, window.location.origin);
-    let tenantPath = `/${baseUrl.pathname.split('/').filter(Boolean).join('/')}/`;
-    if (slug && !tenantPath.endsWith(`/${slug}/`)) {
-      tenantPath += `${slug}/`;
+    const tenantSegments = baseUrl.pathname.split('/').filter(Boolean);
+    if (slug && tenantSegments[tenantSegments.length - 1] !== slug) {
+      tenantSegments.push(slug);
     }
-    const platformPath = slug && tenantPath.endsWith(`/${slug}/`)
-      ? tenantPath.slice(0, -`${slug}/`.length)
-      : tenantPath;
+    const tenantPath = `/${tenantSegments.join('/')}${tenantSegments.length ? '/' : ''}`;
+    const platformSegments = [...tenantSegments];
+    if (slug && platformSegments[platformSegments.length - 1] === slug) {
+      platformSegments.pop();
+    }
+    const platformPath = `/${platformSegments.join('/')}${platformSegments.length ? '/' : ''}`;
     return {
       logout: new URL(`${platformPath}admin/logout.php`, window.location.origin).href,
       public: new URL(tenantPath, window.location.origin).href,

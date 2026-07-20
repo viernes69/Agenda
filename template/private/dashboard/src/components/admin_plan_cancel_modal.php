@@ -1,4 +1,5 @@
 <?php
+$reactivatePlanUrl = \Agenduy\Core\PlatformSettings::whatsappUrl('Hola, Deseo reactivar mi plan para Agenduy');
 ob_start();
 ?>
 <div class="modal modal--locked" role="dialog" aria-modal="true" aria-labelledby="plan-cancelled-title" data-plan-cancel-modal hidden>
@@ -12,9 +13,11 @@ ob_start();
     </header>
     <div class="modal__body plan-lock-modal__body">
       <p>Su servicio ha sido cancelado por el desarrollador. Por favor comuniquese con nosotros para reactivar el servicio.</p>
+      <?php if ($reactivatePlanUrl !== ''): ?>
       <div class="plan-lock-modal__actions">
-        <a class="btn btn-success plan-lock-modal__btn" href="https://wa.me/59892365135?text=Hola%2C%20Deseo%20reactivar%20mi%20plan%20para%20Agenduy" target="_blank" rel="noopener">Reactivar</a>
+        <a class="btn btn-success plan-lock-modal__btn" href="<?php echo htmlspecialchars($reactivatePlanUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">Reactivar</a>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>

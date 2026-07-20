@@ -41,6 +41,24 @@ final class CommercePanel
         return \url('admin/commerce_panel.php');
     }
 
+    public static function publicUrlForSlug(string $slug): string
+    {
+        $slug = trim($slug, '/');
+        if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+            return \url('');
+        }
+
+        $base = rtrim(\url(''), '/');
+        $parts = parse_url($base);
+        $path = is_array($parts) ? trim((string)($parts['path'] ?? ''), '/') : '';
+        $segments = $path !== '' ? explode('/', $path) : [];
+        if ($segments !== [] && end($segments) === $slug) {
+            return $base . '/';
+        }
+
+        return \url($slug . '/');
+    }
+
     /**
      * @param array<string,mixed>|null $commerce
      */

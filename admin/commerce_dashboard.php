@@ -27,6 +27,7 @@ if ($idCommerce <= 0) {
 $db = Database::getInstance();
 $commerce = $db->fetchOne('SELECT * FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
 if (!$commerce) { echo 'Comercio no encontrado.'; exit; }
+$commercePublicUrl = CommercePanel::publicUrlForSlug((string)$commerce['slug']);
 
 $plan = $db->fetchOne('SELECT * FROM memberships WHERE id_membership = :id', [':id' => $commerce['id_membership']]);
 $subscription = $db->fetchOne('SELECT * FROM subscriptions WHERE id_commerce = :c ORDER BY id_subscription DESC LIMIT 1', [':c' => $idCommerce]);
@@ -155,8 +156,8 @@ $activeSection = '';
     <article class="card">
         <h2>Tu link público</h2>
         <p>Compartí este link para que tus clientes puedan reservar:</p>
-        <p><code class="code"><?= htmlspecialchars(url($commerce['slug']), ENT_QUOTES, 'UTF-8') ?></code></p>
-        <p><a href="<?= htmlspecialchars(url($commerce['slug']), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Ver sitio público</a></p>
+        <p><code class="code"><?= htmlspecialchars($commercePublicUrl, ENT_QUOTES, 'UTF-8') ?></code></p>
+        <p><a href="<?= htmlspecialchars($commercePublicUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Ver sitio público</a></p>
     </article>
 
     <article class="card">

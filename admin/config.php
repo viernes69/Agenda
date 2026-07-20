@@ -10,6 +10,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
+use Agenduy\Core\PlatformSettings;
 use Agenduy\Core\ProviderConfig;
 
 Auth::start();
@@ -23,7 +24,19 @@ $flash = ['type' => '', 'msg' => ''];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     CSRF::checkRequest('config_admin');
     $action = $_POST['action'] ?? '';
-    if ($action === 'save_provider') {
+    if ($action === 'save_platform_contact') {
+        try {
+            PlatformSettings::saveContact([
+                'instagram' => (string)($_POST['platform_instagram'] ?? ''),
+                'whatsapp'  => (string)($_POST['platform_whatsapp'] ?? ''),
+            ]);
+            Auth::audit('save_platform_contact', 'platform_settings', null);
+            $flash = ['type' => 'ok', 'msg' => 'Contacto publico guardado.'];
+        } catch (Throwable $e) {
+            error_log('[admin/config.php] save_platform_contact: ' . $e->getMessage());
+            $flash = ['type' => 'error', 'msg' => 'No se pudo guardar el contacto publico.'];
+        }
+    } elseif ($action === 'save_provider') {
         try {
         $provider = (string)($_POST['provider'] ?? '');
         $isEnabled = !empty($_POST['is_enabled']) ? 1 : 0;
@@ -80,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $providers = $db->fetchAll('SELECT * FROM payment_provider_config ORDER BY provider');
+$platformContact = PlatformSettings::contact();
 
 // Asegurar que smtp y ultramsg aparezcan aunque aún no tengan fila guardada
 $known = array_column($providers, 'provider');
@@ -111,6 +125,36 @@ require __DIR__ . '/partials/header.php';
     <h1>Configuración global</h1>
     <p>Pasarelas de pago, datos bancarios y ajustes generales.</p>
 </section>
+
+<article class="card">
+    <h2>Contacto publico de la plataforma</h2>
+    <form method="post">
+        <?= CSRF::field('config_admin') ?>
+        <input type="hidden" name="action" value="save_platform_contact">
+        <div class="form-grid">
+            <div class="field">
+                <label>Instagram</label>
+                <input type="text" name="platform_instagram" value="<?= htmlspecialchars($platformContact['instagram'], ENT_QUOTES, 'UTF-8') ?>" placeholder="@agendarte.uy o https://instagram.com/agendarte.uy">
+                <?php if ($platformContact['instagram_url'] !== ''): ?>
+                    <span class="hint">Actual: <a href="<?= htmlspecialchars($platformContact['instagram_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener"><?= htmlspecialchars($platformContact['instagram_url'], ENT_QUOTES, 'UTF-8') ?></a></span>
+                <?php endif; ?>
+            </div>
+            <div class="field">
+                <label>WhatsApp</label>
+                <input type="text" name="platform_whatsapp" value="<?= htmlspecialchars($platformContact['whatsapp'], ENT_QUOTES, 'UTF-8') ?>" placeholder="+598 99 000 000">
+                <?php if ($platformContact['whatsapp_url'] !== ''): ?>
+                    <span class="hint">Actual: <a href="<?= htmlspecialchars($platformContact['whatsapp_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener"><?= htmlspecialchars($platformContact['whatsapp_url'], ENT_QUOTES, 'UTF-8') ?></a></span>
+                <?php endif; ?>
+            </div>
+            <div class="field col-2">
+                <span class="hint">Estos enlaces se usan en la landing publica y en los botones de contacto/renovacion del panel.</span>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Guardar contacto</button>
+        </div>
+    </form>
+</article>
 
 <?php foreach ($providers as $p):
     $cfg = json_decode((string)$p['config_json'], true) ?: [];

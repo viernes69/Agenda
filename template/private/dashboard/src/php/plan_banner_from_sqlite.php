@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 use Agenduy\Core\ProviderConfig;
 
@@ -138,8 +139,19 @@ try {
 
     $tenantNegocioId = (int)$commerce['id_commerce'];
     $membershipId = (int)($commerce['id_membership'] ?? 0);
-    $publicShareUrl = url((string)$commerce['slug']);
-    $publicShareUrlDisplay = 'www.agenduy.uy/' . $commerce['slug'];
+    $publicShareUrl = CommercePanel::publicUrlForSlug((string)$commerce['slug']);
+    $publicShareUrlParts = parse_url($publicShareUrl);
+    if (is_array($publicShareUrlParts) && !empty($publicShareUrlParts['host'])) {
+        $displayHost = (string)$publicShareUrlParts['host'];
+        if (isset($publicShareUrlParts['port'])) {
+            $displayHost .= ':' . (string)$publicShareUrlParts['port'];
+        }
+        $displayPath = rtrim((string)($publicShareUrlParts['path'] ?? ''), '/');
+        $displayQuery = isset($publicShareUrlParts['query']) ? '?' . (string)$publicShareUrlParts['query'] : '';
+        $publicShareUrlDisplay = $displayHost . $displayPath . $displayQuery;
+    } else {
+        $publicShareUrlDisplay = $publicShareUrl;
+    }
     if (!empty($commerce['rubro_nombre'])) {
         $infoBarberia['rubro_nombre'] = (string)$commerce['rubro_nombre'];
     }

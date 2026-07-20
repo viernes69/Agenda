@@ -853,7 +853,7 @@ if (!function_exists('admin_panel_href')) {
 }
 $panelApiEndpoints = $isCentralPanelEmbed ? \Agenduy\Core\CommercePanel::dashboardApiEndpoints() : [];
 $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
-    ? url($tenantSlug . '/')
+    ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
     : url('');
 ?>
 <!doctype html>

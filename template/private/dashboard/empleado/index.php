@@ -14,7 +14,8 @@ require_once dirname(__DIR__, 2) . '/session_guard.php';
 
 function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
-$tenantSlug = basename(dirname(__DIR__, 3));
+$tenantRootPath = dirname(__DIR__, 3);
+$tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug($tenantRootPath);
 $maxClientsLimit = null;
 $maxProductsLimit = null;
 try {
@@ -155,6 +156,9 @@ if (is_array($pushConfig) && isset($pushConfig['publicKey'])) {
   $pushPublicKey = trim((string)$pushConfig['publicKey']);
 }
 require __DIR__ . '/../src/php/plan_banner_from_sqlite.php';
+$tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
+  ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
+  : url('');
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
   $dayNameMap = [
@@ -822,6 +826,8 @@ $summaryCards = [
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#7c3aed">
+  <meta name="url-base" content="<?php echo e($publicShareUrl !== '' ? $publicShareUrl : $tenantPublicUrl); ?>">
+  <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
   <link rel="manifest" href="../manifest.admin.php">
   <link rel="stylesheet" href="../../../src/css/main.css">
@@ -1888,6 +1894,12 @@ $summaryCards = [
   </div>
 
   <script>
+    window.__TENANT_CONFIG__ = {
+      slug: <?php echo json_encode($tenantSlug, JSON_UNESCAPED_SLASHES); ?>,
+      basePath: <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>,
+      publicUrl: <?php echo json_encode($tenantPublicUrl, JSON_UNESCAPED_SLASHES); ?>,
+      logoutUrl: <?php echo json_encode(url('admin/logout.php'), JSON_UNESCAPED_SLASHES); ?>
+    };
     window.ADMIN_PUSH_PUBLIC_KEY = '<?php echo e($pushPublicKey); ?>';
     window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
   </script>
@@ -1900,7 +1912,7 @@ $summaryCards = [
   <script src="../src/js/admin/plan-membership-modal.js"></script>
   <script src="../src/js/admin/modal-loading.js"></script>
   <script src="../src/js/admin/layout-sidebar.js"></script>
-  <script src="../src/js/admin/bottom-nav.js?v=3"></script>
+  <script src="../src/js/admin/bottom-nav.js?v=4"></script>
   <script src="../src/js/admin/reservas-filter.js"></script>
   <script src="../src/js/admin/clientes-list.js"></script>
   <script src="../src/js/admin/clientes-form.js"></script>
