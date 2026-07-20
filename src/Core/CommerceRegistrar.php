@@ -224,10 +224,16 @@ final class CommerceRegistrar
 
             Mail::send(
                 $email,
-                'Bienvenido a Agenduy',
-                '<p>Hola ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ',</p>'
-                . '<p>Creamos tu cuenta para <strong>' . htmlspecialchars($bizName, ENT_QUOTES, 'UTF-8') . '</strong>.</p>'
-                . '<p>Prueba gratis hasta <strong>' . htmlspecialchars($trialEnd, ENT_QUOTES, 'UTF-8') . '</strong>.</p>',
+                PlatformTemplates::render('email', 'registration_welcome', [
+                    'nombre' => $name,
+                    'negocio' => $bizName,
+                    'trial_end' => $trialEnd,
+                ], 'subject', 'Bienvenido a Agendarte'),
+                PlatformTemplates::renderHtml('email', 'registration_welcome', [
+                    'nombre' => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                    'negocio' => htmlspecialchars($bizName, ENT_QUOTES, 'UTF-8'),
+                    'trial_end' => htmlspecialchars($trialEnd, ENT_QUOTES, 'UTF-8'),
+                ], ''),
                 null,
                 $idCommerce
             );

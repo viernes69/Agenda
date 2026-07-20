@@ -408,3 +408,15 @@ CREATE TABLE IF NOT EXISTS notification_outbox (
 
 CREATE INDEX IF NOT EXISTS idx_outbox_status_sched ON notification_outbox(status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_outbox_commerce ON notification_outbox(id_commerce);
+
+-- ---------------------------------------------------------------------
+-- 18. PLATFORM SETTINGS (config global del super admin)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS platform_settings (
+    id_setting    INTEGER PRIMARY KEY AUTOINCREMENT,
+    section       TEXT    NOT NULL UNIQUE,
+    config_json   TEXT    NOT NULL DEFAULT '{}',
+    updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_platform_settings_section ON platform_settings(section);

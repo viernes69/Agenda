@@ -36,12 +36,13 @@ final class MagicLink
         $link = url('admin/auth/magic.php?token=' . rawurlencode($token));
         $cfg = $db->config();
         $fromName = (string)($cfg['mail']['from_name'] ?? 'Agendarte');
-        $subject = 'Tu acceso a ' . $fromName;
-        $body = '<p>Hola,</p>'
-            . '<p>Hacé clic para ingresar a tu panel. El link vence en ' . self::TTL_MINUTES . ' minutos.</p>'
-            . '<p style="margin:1.2rem 0"><a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '" '
-            . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ingresar a Agendarte</a></p>'
-            . '<p style="color:#64748b;font-size:.9rem">Si no pediste este acceso, ignorá este email.</p>';
+        $tplVars = [
+            'link' => $link,
+            'from_name' => $fromName,
+            'ttl_minutes' => (string)self::TTL_MINUTES,
+        ];
+        $subject = PlatformTemplates::render('email', 'magic_link_admin', $tplVars, 'subject', 'Tu acceso a ' . $fromName);
+        $body = PlatformTemplates::renderHtml('email', 'magic_link_admin', $tplVars, '');
 
         if (!Mail::isConfigured()) {
             error_log('[MagicLink.admin] SMTP no configurado');
@@ -87,11 +88,12 @@ final class MagicLink
         $link = url($path);
         $commerce = $db->fetchOne('SELECT nombre FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
         $biz = (string)($commerce['nombre'] ?? 'tu negocio');
-        $subject = 'Acceso a tus reservas - ' . $biz;
-        $body = '<p>Hola,</p>'
-            . '<p>Usá este link para ver tus reservas en <strong>' . htmlspecialchars($biz, ENT_QUOTES, 'UTF-8') . '</strong>.</p>'
-            . '<p style="margin:1.2rem 0"><a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '" '
-            . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ver mis reservas</a></p>';
+        $tplVars = [
+            'link' => $link,
+            'negocio' => $biz,
+        ];
+        $subject = PlatformTemplates::render('email', 'magic_link_client', $tplVars, 'subject', 'Acceso a tus reservas - ' . $biz);
+        $body = PlatformTemplates::renderHtml('email', 'magic_link_client', $tplVars, '');
 
         if (!Mail::isConfigured()) {
             error_log('[MagicLink.client] SMTP no configurado');

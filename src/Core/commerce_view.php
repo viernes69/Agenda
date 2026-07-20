@@ -300,9 +300,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bx bx-grid-alt"></i> Panel
                     </a>
+                    <?php elseif ($clientLoggedIn): ?>
+                    <a class="client-auth-btn client-auth-btn--profile" href="#mis-reservas" id="client-profile-link">
+                        <i class="bx bx-user"></i> Perfil
+                    </a>
                     <?php else: ?>
                     <button class="client-auth-btn" type="button" id="client-auth-toggle" aria-expanded="false">
-                        <i class="bx bx-user"></i> Mis reservas
+                        <i class="bx bx-log-in"></i> Iniciar sesión
                     </button>
                     <?php endif; ?>
                     <a href="#reservar" class="btn btn--primary">Reservar</a>
@@ -585,7 +589,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                 <span class="eyebrow">Panel del negocio</span>
                 <h2 class="section-title">Administrá tu negocio</h2>
-                <p class="section-sub">Estás logueado como dueño. Gestioná reservas, servicios, horarios y plantillas de email desde tu panel.</p>
+                <p class="section-sub">Estás logueado como dueño. Gestioná reservas, servicios y horarios desde tu panel.</p>
                 <div style="display:flex; gap:.75rem; flex-wrap:wrap">
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
                     <i class="bx bx-grid-alt"></i> Ir al panel

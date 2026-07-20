@@ -185,7 +185,7 @@ if (isset($_GET['id'])) {
 
 $rubros      = $db->fetchAll('SELECT id_rubro, nombre FROM rubros WHERE activo = 1 ORDER BY orden ASC, nombre COLLATE NOCASE ASC');
 $memberships = $db->fetchAll('SELECT id_membership, nombre, precio, moneda FROM memberships WHERE activo=1 ORDER BY nombre');
-$tenantFolders = TenantMigrator::scanFolders(dirname(__DIR__));
+$tenantFolders = TenantMigrator::scanFoldersForAdmin(dirname(__DIR__));
 $tenantAudit = TenantAudit::run(dirname(__DIR__));
 
 $pageTitle = 'Comercios';
@@ -201,7 +201,8 @@ require __DIR__ . '/partials/header.php';
     <h1>Comercios</h1>
     <p>Gestioná los negocios registrados, su membresía, status y administradores.</p>
     <p class="hint">Modo registro: <strong><?= TenantConfig::useLegacyFolders() ? 'carpetas legacy (template/)' : 'central sin carpetas' ?></strong>
-        — variable <code>AGENDUY_TENANT_FOLDERS</code></p>
+        — variable <code>AGENDUY_TENANT_FOLDERS</code>
+        · Ignorados del escaneo: <code><?= htmlspecialchars(implode(', ', TenantConfig::ignoredTenantSlugs()), ENT_QUOTES, 'UTF-8') ?></code></p>
 </section>
 
 <article class="card">

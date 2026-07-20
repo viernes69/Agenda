@@ -32,6 +32,8 @@ if ($slug !== null) {
 // No es un comercio: mostrar la landing principal
 Auth::start();
 $db = Database::getInstance();
+$authUser = Auth::check() ? Auth::user() : null;
+$profileUrl = ($authUser !== null) ? Auth::dashboardUrl($authUser) : null;
 
 // Rubros
 $rubros = $db->fetchAll('SELECT * FROM rubros WHERE activo = 1 ORDER BY orden ASC, nombre COLLATE NOCASE ASC');
@@ -198,6 +200,12 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
           <i class="bx bx-moon theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"></i>
         </button>
         <div class="site-header__user" id="site-user">
+          <?php if ($profileUrl): ?>
+          <a href="<?= h($profileUrl) ?>" class="site-header__login-btn" id="site-profile-link">
+            <i class="bx bx-user-circle" aria-hidden="true"></i>
+            <span class="site-header__login-label">Perfil</span>
+          </a>
+          <?php else: ?>
           <button type="button" class="site-header__login-btn" id="site-login-toggle" aria-expanded="false" aria-haspopup="dialog" aria-controls="site-login-dropdown">
             <i class="bx bx-user-circle" aria-hidden="true"></i>
             <span class="site-header__login-label">Iniciar sesion</span>
@@ -234,6 +242,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
             <?php endif; ?>
             <p class="site-login-form__msg" id="site-login-msg" role="status" aria-live="polite"></p>
           </div>
+          <?php endif; ?>
         </div>
       </nav>
     </div>

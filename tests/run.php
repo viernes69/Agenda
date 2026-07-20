@@ -13,6 +13,7 @@ use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\Database;
 use Agenduy\Core\Keys;
 use Agenduy\Core\NotificationOutbox;
+use Agenduy\Core\PlatformTemplates;
 use Agenduy\Core\UltraMsg;
 
 $failures = 0;
@@ -62,6 +63,49 @@ test('Tenant migrado existe en SQLite', function () {
     );
     if ((int)$settings < 1) {
         throw new RuntimeException('commerce_settings vacío para terapeuta-luck');
+    }
+});
+
+test('PlatformTemplates render placeholders', function () {
+    $text = PlatformTemplates::render('ultramsg', 'appointment_confirmed_client', [
+        'cliente' => 'Ana',
+        'negocio' => 'Spa',
+        'servicio' => 'Masaje',
+        'fecha' => '2026-07-21',
+        'hora' => '10:00',
+    ], 'body', '');
+    if (!str_contains($text, 'Ana') || !str_contains($text, 'Spa')) {
+        throw new RuntimeException('placeholders no aplicados: ' . $text);
+    }
+    $catalog = PlatformTemplates::catalog();
+    if (!isset($catalog['email']['magic_link_admin'], $catalog['ultramsg']['appointment_reminder_2h'])) {
+        throw new RuntimeException('catalog incompleto');
+    }
+});
+
+test('PlatformTemplates save y restore', function () {
+    PlatformTemplates::save([
+        'email' => [
+            'appointment_confirmed_client' => [
+                'subject' => 'Test {negocio}',
+                'body' => 'Hola {cliente}',
+            ],
+        ],
+        'ultramsg' => [],
+    ]);
+    $subject = PlatformTemplates::render('email', 'appointment_confirmed_client', [
+        'negocio' => 'Demo',
+        'cliente' => 'Juan',
+    ], 'subject', '');
+    if ($subject !== 'Test Demo') {
+        throw new RuntimeException('save no persistió subject: ' . $subject);
+    }
+    PlatformTemplates::save([]);
+    $defaultSubject = PlatformTemplates::render('email', 'appointment_confirmed_client', [
+        'negocio' => 'Demo',
+    ], 'subject', '');
+    if ($defaultSubject !== 'Reserva confirmada - Demo') {
+        throw new RuntimeException('reset no restauró defaults: ' . $defaultSubject);
     }
 });
 

@@ -94,6 +94,39 @@ section.alt { background: var(--bg-soft); }
 .btn--block { width: 100%; }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
 
+.client-auth-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: .45rem .85rem;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+.client-auth-btn--profile {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.client-auth-btn--profile:hover {
+  background: var(--primary-soft);
+}
+.client-auth-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.client-auth-panel[hidden] { display: none !important; }
+.client-auth-panel__msg { font-size: .85rem; margin: .5rem 0 0; color: var(--muted); }
+.client-auth-panel__msg.is-error { color: var(--danger); }
+.client-auth-panel__msg.is-success { color: var(--success); }
+
 /* Hero */
 .hero {
   position: relative; padding: 4rem 0 5rem;

@@ -56,6 +56,8 @@ return [
     'tenant' => [
         // true = copiar template/ al registrar (legacy). false = solo SQLite + panel central.
         'legacy_folders' => filter_var(getenv('AGENDUY_TENANT_FOLDERS') ?: 'false', FILTER_VALIDATE_BOOLEAN),
+        // Slugs extra a ocultar del escaneo tenant (además de template_curso, terap, terapeuta-luck).
+        // Env: AGENDUY_TENANT_IGNORE=slug1,slug2
     ],
 
     'uploads' => [

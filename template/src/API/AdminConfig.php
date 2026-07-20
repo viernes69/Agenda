@@ -42,7 +42,11 @@ try {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
         }
         $payload = requestData();
+        if ($key === 'email_plantillas') {
+            throw new UnexpectedValueException('Las plantillas de email las administra el super admin.');
+        }
         if ($key === 'info_barberia') {
+            unset($payload['email_plantillas']);
             if (is_array($plan) && MembershipPlan::isBasicSettingsOnly($plan)) {
                 foreach (MembershipPlan::basicBlockedInfoSections() as $blocked) {
                     if (isset($payload[$blocked])) {
@@ -301,7 +305,6 @@ function sectionMap(): array
         'seo' => 'seo',
         'legal' => 'legales',
         'notificaciones' => 'notificaciones',
-        'email_plantillas' => 'email_plantillas',
         'funciones' => 'features',
         'tema' => 'temas',
     ];

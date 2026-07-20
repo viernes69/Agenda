@@ -47,6 +47,7 @@ $active = $activeSection ?? '';
         <a href="subscriptions.php"class="<?= $active === 'subscriptions' ? 'is-active' : '' ?>">Suscripciones</a>
         <a href="keys.php"         class="<?= $active === 'keys' ? 'is-active' : '' ?>">API Keys</a>
         <a href="payments.php"     class="<?= $active === 'payments' ? 'is-active' : '' ?>">Pagos</a>
+        <a href="plantillas.php"   class="<?= $active === 'plantillas' ? 'is-active' : '' ?>">Plantillas</a>
         <a href="config.php"       class="<?= $active === 'config' ? 'is-active' : '' ?>">Config</a>
     </nav>
     <div class="topbar__user">

@@ -94,13 +94,20 @@ final class NotificationOutbox
         }
 
         if ($tel !== '') {
+            $waClientMsg = PlatformTemplates::render(
+                'ultramsg',
+                'appointment_confirmed_client',
+                $vars,
+                'body',
+                $clientMsg
+            );
             self::enqueue(
                 $idCommerce,
                 'whatsapp',
                 $tel,
                 'appointment_confirmed_client',
                 '',
-                $clientMsg,
+                $waClientMsg,
                 ['appointment_id' => $idAppt],
                 date('Y-m-d H:i:s'),
                 "appt:{$idAppt}:wa:client:confirm"
@@ -137,13 +144,20 @@ final class NotificationOutbox
         }
 
         if ($bizWhatsapp !== '') {
+            $waOwnerMsg = PlatformTemplates::render(
+                'ultramsg',
+                'appointment_confirmed_owner',
+                $vars,
+                'body',
+                $ownerMsg
+            );
             self::enqueue(
                 $idCommerce,
                 'whatsapp',
                 $bizWhatsapp,
                 'appointment_confirmed_owner',
                 '',
-                $ownerMsg,
+                $waOwnerMsg,
                 ['appointment_id' => $idAppt],
                 date('Y-m-d H:i:s'),
                 "appt:{$idAppt}:wa:owner:confirm"
@@ -155,7 +169,48 @@ final class NotificationOutbox
             $dt = new \DateTimeImmutable("{$fecha} {$hora}", new \DateTimeZone($tz));
             $remind24 = $dt->modify('-1 day')->format('Y-m-d H:i:s');
             $remind2 = $dt->modify('-2 hours')->format('Y-m-d H:i:s');
-            $reminderMsg = "Recordatorio: mañana tienes {$svcName} en {$bizName} a las {$hora}.";
+            $reminderMsg24 = PlatformTemplates::render(
+                'ultramsg',
+                'appointment_reminder_24h',
+                $vars,
+                'body',
+                "Recordatorio: mañana tienes {$svcName} en {$bizName} a las {$hora}."
+            );
+            $reminderMsg2 = PlatformTemplates::render(
+                'ultramsg',
+                'appointment_reminder_2h',
+                $vars,
+                'body',
+                "Recordatorio: en 2 horas tienes {$svcName} en {$bizName} ({$hora})."
+            );
+            $reminderSubject24 = EmailTemplates::render(
+                $idCommerce,
+                'appointment_reminder_24h',
+                $vars,
+                'subject',
+                "Recordatorio de reserva - {$bizName}"
+            );
+            $reminderBody24 = EmailTemplates::render(
+                $idCommerce,
+                'appointment_reminder_24h',
+                $vars,
+                'body',
+                $reminderMsg24
+            );
+            $reminderSubject2 = EmailTemplates::render(
+                $idCommerce,
+                'appointment_reminder_2h',
+                $vars,
+                'subject',
+                "Tu cita es pronto - {$bizName}"
+            );
+            $reminderBody2 = EmailTemplates::render(
+                $idCommerce,
+                'appointment_reminder_2h',
+                $vars,
+                'body',
+                $reminderMsg2
+            );
 
             if ($tel !== '') {
                 self::enqueue(
@@ -164,7 +219,7 @@ final class NotificationOutbox
                     $tel,
                     'appointment_reminder_24h',
                     '',
-                    $reminderMsg,
+                    $reminderMsg24,
                     ['appointment_id' => $idAppt],
                     $remind24,
                     "appt:{$idAppt}:wa:client:24h"
@@ -175,7 +230,7 @@ final class NotificationOutbox
                     $tel,
                     'appointment_reminder_2h',
                     '',
-                    "Recordatorio: en 2 horas tienes {$svcName} en {$bizName} ({$hora}).",
+                    $reminderMsg2,
                     ['appointment_id' => $idAppt],
                     $remind2,
                     "appt:{$idAppt}:wa:client:2h"
@@ -187,11 +242,22 @@ final class NotificationOutbox
                     'email',
                     $email,
                     'appointment_reminder_24h',
-                    "Recordatorio de reserva - {$bizName}",
-                    '<p>' . htmlspecialchars($reminderMsg, ENT_QUOTES, 'UTF-8') . '</p>',
+                    $reminderSubject24,
+                    EmailTemplates::renderHtmlFromText($reminderBody24, $vars),
                     ['appointment_id' => $idAppt],
                     $remind24,
                     "appt:{$idAppt}:email:client:24h"
+                );
+                self::enqueue(
+                    $idCommerce,
+                    'email',
+                    $email,
+                    'appointment_reminder_2h',
+                    $reminderSubject2,
+                    EmailTemplates::renderHtmlFromText($reminderBody2, $vars),
+                    ['appointment_id' => $idAppt],
+                    $remind2,
+                    "appt:{$idAppt}:email:client:2h"
                 );
             }
         } catch (\Throwable $e) {

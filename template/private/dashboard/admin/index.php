@@ -1654,7 +1654,6 @@ $summaryCards = [
               ['id' => 'redes', 'title' => 'Redes', 'icon' => 'bx-share-alt'],
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
-              ['id' => 'email_plantillas', 'title' => 'Plantillas email', 'icon' => 'bx-envelope'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
               ['id' => 'funciones', 'title' => 'Funciones', 'icon' => 'bx-wrench'],
               ['id' => 'temas', 'title' => 'Tema visual', 'icon' => 'bx-palette'],
@@ -1730,7 +1729,6 @@ $summaryCards = [
     <?php if (file_exists('../src/components/admin_config_redes_modal.php')) { echo include '../src/components/admin_config_redes_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_config_seo_modal.php')) { echo include '../src/components/admin_config_seo_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_config_notifications_modal.php')) { echo include '../src/components/admin_config_notifications_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_email_templates_modal.php')) { echo include '../src/components/admin_config_email_templates_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_config_features_modal.php')) { echo include '../src/components/admin_config_features_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_config_mercadopago_modal.php')) { echo include '../src/components/admin_config_mercadopago_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_config_fiscal_modal.php')) { echo include '../src/components/admin_config_fiscal_modal.php'; } ?>
@@ -1945,7 +1943,6 @@ $summaryCards = [
   <script src="../src/js/admin/admin-config-redes.js"></script>
   <script src="../src/js/admin/admin-config-seo.js"></script>
   <script src="../src/js/admin/admin-config-notificaciones.js"></script>
-  <script src="../src/js/admin/admin-config-email-templates.js"></script>
   <script src="../src/js/admin/admin-config-legales.js"></script>
   <script src="../src/js/admin/admin-config-features.js"></script>
   <script src="../src/js/admin/admin-config-theme.js"></script>

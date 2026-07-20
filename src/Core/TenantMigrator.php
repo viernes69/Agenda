@@ -121,19 +121,27 @@ final class TenantMigrator
     {
         $root = $projectRoot ?? dirname(__DIR__, 2);
         $skip = [
-            'admin', 'src', 'storage', 'template', 'assets', 'public', 'bin', 'tests',
-            'vendor', 'components', 'node_modules', '.git', '.cursor',
+            'admin', 'src', 'storage', 'template', 'template_curso', 'assets', 'public', 'bin', 'tests',
+            'vendor', 'components', 'node_modules', '.git', '.cursor', 'Private', 'docs', 'tools',
+            'categorias', 'ubicaciones', 'cgi-bin', '.well-known',
         ];
         $db = Database::getInstance();
         $registered = [];
         foreach ($db->fetchAll('SELECT slug, nombre FROM commerces ORDER BY slug') as $row) {
-            $registered[(string)$row['slug']] = (string)$row['nombre'];
+            $slug = (string)$row['slug'];
+            if (TenantConfig::isIgnoredTenantSlug($slug)) {
+                continue;
+            }
+            $registered[$slug] = (string)$row['nombre'];
         }
 
         $rows = [];
         $seen = [];
         foreach (scandir($root) ?: [] as $entry) {
             if ($entry === '.' || $entry === '..' || in_array($entry, $skip, true)) {
+                continue;
+            }
+            if (TenantConfig::isIgnoredTenantSlug($entry)) {
                 continue;
             }
             $path = $root . DIRECTORY_SEPARATOR . $entry;
@@ -171,6 +179,25 @@ final class TenantMigrator
 
         usort($rows, static fn(array $a, array $b): int => strcmp($a['slug'], $b['slug']));
         return $rows;
+    }
+
+    /**
+     * Filas relevantes para el panel super admin (sin tenants ignorados ni ruido en modo central).
+     *
+     * @return list<array{slug:string, folder:bool, registered:bool, nombre:string}>
+     */
+    public static function scanFoldersForAdmin(?string $projectRoot = null): array
+    {
+        $rows = self::scanFolders($projectRoot);
+        if (TenantConfig::useLegacyFolders()) {
+            return $rows;
+        }
+
+        // Modo central: solo carpetas huérfanas en disco que aún no están en SQLite.
+        return array_values(array_filter(
+            $rows,
+            static fn(array $row): bool => !empty($row['folder']) && empty($row['registered'])
+        ));
     }
 
     private static function syncAdminUser(Database $db, array $legacy, array $info, int $commerceId, string $slug): void

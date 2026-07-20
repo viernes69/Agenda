@@ -40,7 +40,7 @@ final class TenantAudit
         $templateCount = self::countFiles($root . DIRECTORY_SEPARATOR . 'template');
         $tenants = [];
         foreach ($folders as $row) {
-            if (empty($row['folder'])) {
+            if (empty($row['folder']) || TenantConfig::isIgnoredTenantSlug((string)($row['slug'] ?? ''))) {
                 continue;
             }
             $slug = (string)$row['slug'];
@@ -76,11 +76,14 @@ final class TenantAudit
             $tips[] = 'Registros nuevos sin carpeta tenant (modo central activo).';
         }
         foreach ($folders as $row) {
+            if (TenantConfig::isIgnoredTenantSlug((string)($row['slug'] ?? ''))) {
+                continue;
+            }
             if (!empty($row['folder']) && empty($row['registered'])) {
                 $tips[] = 'Carpeta "' . $row['slug'] . '" sin fila SQLite → importar desde admin/commerces.php.';
             }
-            if (empty($row['folder']) && !empty($row['registered'])) {
-                $tips[] = 'Comercio "' . $row['slug'] . '" en SQLite sin carpeta (OK en modo central).';
+            if (empty($row['folder']) && !empty($row['registered']) && TenantConfig::useLegacyFolders()) {
+                $tips[] = 'Comercio "' . $row['slug'] . '" en SQLite sin carpeta legacy.';
             }
         }
         if ($tips === []) {

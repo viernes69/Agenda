@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Agenduy\Core;
 
 /**
- * Plantillas de email por comercio con placeholders simples.
+ * Plantillas de email globales (super admin) con placeholders simples.
  */
 final class EmailTemplates
 {
@@ -13,16 +13,12 @@ final class EmailTemplates
      */
     public static function render(int $idCommerce, string $templateKey, array $vars, string $field, string $fallback = ''): string
     {
-        $templates = CommerceSettings::get(
-            $idCommerce,
-            'email_plantillas',
-            CommerceSettings::defaultsForSection('email_plantillas')
-        );
-        $tpl = is_array($templates[$templateKey] ?? null) ? $templates[$templateKey] : [];
-        $text = trim((string)($tpl[$field] ?? ''));
+        unset($idCommerce);
+        $platform = PlatformTemplates::all();
+        $text = trim((string)($platform['email'][$templateKey][$field] ?? ''));
         if ($text === '') {
-            $defaults = CommerceSettings::defaultsForSection('email_plantillas');
-            $text = trim((string)(($defaults[$templateKey][$field] ?? $fallback)));
+            $catalog = PlatformTemplates::catalog();
+            $text = trim((string)($catalog['email'][$templateKey]['defaults'][$field] ?? $fallback));
         }
         if ($text === '') {
             $text = $fallback;

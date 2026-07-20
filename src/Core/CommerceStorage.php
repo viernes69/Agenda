@@ -216,8 +216,11 @@ final class CommerceStorage
         $db = Database::getInstance();
         $rows = [];
         foreach ($db->fetchAll('SELECT id_commerce, slug FROM commerces ORDER BY slug') as $c) {
-            $id = (int)$c['id_commerce'];
             $slug = (string)$c['slug'];
+            if (TenantConfig::isIgnoredTenantSlug($slug)) {
+                continue;
+            }
+            $id = (int)$c['id_commerce'];
             $centralDir = self::baseDir($id);
             $legacyDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . $slug;
             $rows[] = [

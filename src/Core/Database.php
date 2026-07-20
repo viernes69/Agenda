@@ -116,6 +116,20 @@ final class Database
         $this->ensurePaymentProviderGoogleOauth();
         $this->ensureOAuthAuth();
         $this->ensureRateLimitsTable();
+        $this->ensurePlatformSettingsTable();
+    }
+
+    private function ensurePlatformSettingsTable(): void
+    {
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS platform_settings (
+                id_setting    INTEGER PRIMARY KEY AUTOINCREMENT,
+                section       TEXT    NOT NULL UNIQUE,
+                config_json   TEXT    NOT NULL DEFAULT \'{}\',
+                updated_at    TEXT    NOT NULL DEFAULT (datetime(\'now\'))
+            )'
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_platform_settings_section ON platform_settings(section)');
     }
 
     private function ensureRateLimitsTable(): void

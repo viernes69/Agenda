@@ -6,7 +6,7 @@ declare(strict_types=1);
  *
  * Uso:
  *   php bin/cleanup-legacy-tenants.php              # listar
- *   php bin/cleanup-legacy-tenants.php --delete=terap,terapeuta-luck
+ *   php bin/cleanup-legacy-tenants.php --delete=terap,terapeuta-luck,template_curso
  *   php bin/cleanup-legacy-tenants.php --delete=terap --yes
  */
 if (PHP_SAPI !== 'cli') {
@@ -35,12 +35,15 @@ foreach ($registered as $row) {
     $registeredSlugs[(string)$row['slug']] = $row;
 }
 
-$skip = ['template', 'admin', 'src', 'public', 'assets', 'Private', 'storage', 'bin', 'tests', 'categorias', 'ubicaciones', 'vendor'];
+$skip = ['template', 'template_curso', 'admin', 'src', 'public', 'assets', 'Private', 'storage', 'bin', 'tests', 'categorias', 'ubicaciones', 'vendor', 'docs', 'tools', 'cgi-bin', '.well-known'];
 $entries = scandir($projectRoot);
 $legacyFolders = [];
 if ($entries !== false) {
     foreach ($entries as $entry) {
         if ($entry === '.' || $entry === '..' || in_array($entry, $skip, true)) {
+            continue;
+        }
+        if (\Agenduy\Core\TenantConfig::isIgnoredTenantSlug($entry)) {
             continue;
         }
         $path = $projectRoot . DIRECTORY_SEPARATOR . $entry;
