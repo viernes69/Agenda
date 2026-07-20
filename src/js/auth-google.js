@@ -79,10 +79,19 @@
         }
         return;
       }
-      showLoginMsg(data.error || 'No se pudo iniciar sesión con Google.', true);
+      showLoginMsg(mapAuthError(result), true);
     }).catch(function () {
       showLoginMsg('Error de conexión. Intentá de nuevo.', true);
     });
+  }
+
+  function mapAuthError(result) {
+    var data = result.data || {};
+    var err = data.error || 'No se pudo iniciar sesión con Google.';
+    if (result.status === 419 || String(err).indexOf('CSRF') !== -1) {
+      return 'Sesión expirada. Recargá la página e intentá de nuevo.';
+    }
+    return err;
   }
 
   function renderGoogleButton(container, context) {

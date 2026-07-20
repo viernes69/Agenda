@@ -117,7 +117,11 @@
                 }).then(function (res) {
                     return res.json().catch(function () { return null; }).then(function (data) {
                         if (!res.ok || !data || !data.ok) {
-                            showMsg((data && data.error) || 'No se pudo enviar el link.', true);
+                            var err = (data && data.error) || 'No se pudo enviar el link.';
+                            if (res.status === 419 || err.indexOf('CSRF') !== -1) {
+                                err = 'Sesion expirada. Recarga la pagina e intenta de nuevo.';
+                            }
+                            showMsg(err, true);
                             return;
                         }
                         showMsg(data.message || 'Revisá tu correo.', false);

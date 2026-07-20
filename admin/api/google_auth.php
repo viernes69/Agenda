@@ -15,6 +15,8 @@ use Agenduy\Core\GoogleAuth;
 
 header('Content-Type: application/json; charset=utf-8');
 
+Auth::start();
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'Método no permitido']);
@@ -28,7 +30,7 @@ if (!is_array($payload)) {
 }
 
 $csrf = $payload['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login')) {
+if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login', false)) {
     http_response_code(419);
     echo json_encode(['ok' => false, 'error' => 'CSRF inválido.']);
     exit;

@@ -302,6 +302,7 @@ body.modal-open{ overflow:hidden; }
   z-index:120;
 }
 .site-login-dropdown[hidden]{ display:none !important; }
+.site-login-form[hidden]{ display:none !important; }
 .site-login-form{ display:flex; flex-direction:column; gap:10px; margin:0; }
 .site-login-form__field{ display:flex; flex-direction:column; gap:4px; font-size:.85rem; color: var(--text-muted); }
 .site-login-form__field input{

@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
+use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\MagicLink;
 
 header('Content-Type: application/json; charset=utf-8');
+
+Auth::start();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -27,7 +30,7 @@ if (!is_array($payload)) {
 }
 
 $csrf = $payload['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login')) {
+if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login', false)) {
     http_response_code(419);
     echo json_encode(['ok' => false, 'error' => 'CSRF inválido.']);
     exit;
