@@ -184,7 +184,7 @@ if (!function_exists('current_slug')) {
         if (empty($parts)) return null;
 
         $first = strtolower($parts[0]);
-        if (in_array($first, ['admin', 'src', 'storage', 'private', 'index.php', 'login.php', 'logout.php', 'api'], true)) {
+        if (in_array($first, ['admin', 'src', 'storage', 'private', 'index.php', 'login.php', 'logout.php', 'api', 'categorias', 'ubicaciones'], true)) {
             return null;
         }
         return $parts[0] ?: null;

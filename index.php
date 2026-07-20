@@ -17,6 +17,7 @@ $config = require __DIR__ . '/src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\Database;
 use Agenduy\Core\GoogleAuth;
+use Agenduy\Core\LandingContent;
 
 // ¿Hay un slug de comercio en la URL?
 $slug = current_slug();
@@ -75,6 +76,10 @@ function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
 $stylesPath = __DIR__ . '/src/css/styles.css';
 $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
+$siteUrl = rtrim(url(''), '/');
+$seoTitle = 'Agendarte UY | Reservas online y agenda digital en Uruguay';
+$seoDescription = LandingContent::SITE_DESCRIPTION;
+$seoKeywords = implode(', ', LandingContent::metaKeywords());
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -106,8 +111,24 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
   <script src="src/js/about-modal.js" defer></script>
   <script src="src/js/buscar-modal.js" defer></script>
   <script src="src/js/register/modal.js" defer></script>
-  <title>Agendarte | Sistema de Reservas Online</title>
-  <meta name="description" content="Agendarte: reservas online para negocios de Uruguay. Agenda digital, recordatorios por WhatsApp y pagos online. Probalo gratis.">
+  <title><?= h($seoTitle) ?></title>
+  <meta name="description" content="<?= h($seoDescription) ?>">
+  <meta name="keywords" content="<?= h($seoKeywords) ?>">
+  <meta name="author" content="Agendarte UY">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="<?= h($siteUrl . '/') ?>">
+  <meta property="og:locale" content="es_UY">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Agendarte UY">
+  <meta property="og:title" content="<?= h($seoTitle) ?>">
+  <meta property="og:description" content="<?= h($seoDescription) ?>">
+  <meta property="og:url" content="<?= h($siteUrl . '/') ?>">
+  <meta property="og:image" content="<?= h($siteUrl . '/src/media/logo/og-image.png') ?>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<?= h($seoTitle) ?>">
+  <meta name="twitter:description" content="<?= h($seoDescription) ?>">
+  <script type="application/ld+json"><?= LandingContent::jsonLdOrganization($siteUrl) ?></script>
+  <script type="application/ld+json"><?= LandingContent::jsonLdFaq() ?></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -125,8 +146,8 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
   </style>
   <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="src/img/favicon/favicon.png">
-  <link rel="apple-touch-icon" href="src/img/favicon/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
+  <link rel="apple-touch-icon" href="<?= h(url('src/media/logo/logo-icon.png')) ?>">
   <meta name="csrf-token" content="<?= h(\Agenduy\Core\CSRF::generate('public_booking')) ?>">
 </head>
 <body>
@@ -134,7 +155,7 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
   <div class="page-loader__glow"></div>
   <div class="page-loader__card">
     <div class="page-loader__badge">
-      <span>Agendarte</span>
+      <span>Agendarte <span class="brand-uy">UY</span></span>
     </div>
     <div class="page-loader__spinner">
       <span></span>
@@ -148,16 +169,12 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
 </div>
   <header class="site-header">
     <div class="site-header__inner">
-      <a class="site-header__brand" href="<?= h(url_base()) ?>" aria-label="Inicio de Agendarte">
-        <img src="src/media/logo/logo.png"
-             alt="Logotipo de Agendarte"
-             class="brand-logo"
-             width="40" height="40"
+      <a class="site-header__brand" href="<?= h(url_base()) ?>" aria-label="Inicio de Agendarte UY">
+        <img src="<?= h(url('src/media/logo/logo-horizontal.png')) ?>"
+             alt="Agendarte UY — Reservas online en Uruguay"
+             class="brand-logo brand-logo--horizontal"
+             width="168" height="44"
              decoding="async" loading="eager">
-        <span class="site-header__brand-text">
-          <span class="brand-title">Agendarte</span>
-          <span class="brand-tagline">Reservas online para negocios de Uruguay.</span>
-        </span>
       </a>
       <nav class="site-header__actions" aria-label="Acciones principales">
         <a class="site-header__icon" href="https://instagram.com/agendarte.uy" target="_blank" rel="noopener" aria-label="Instagram">
@@ -218,17 +235,22 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
       <i class="bx bx-gift" aria-hidden="true"></i>
       <?= $freeTrial ?> días gratis · sin tarjeta
     </p>
-    <h1 class="hero__title">Tu agenda online,<br><span class="hero__title-accent">simple y profesional</span></h1>
+    <h1 class="hero__title">Llevá tu agenda<br><span class="hero__title-accent">al siguiente nivel</span></h1>
     <p class="hero__subtitle">
-      Agendarte es la plataforma de reservas para negocios de Uruguay:
-      calendario inteligente, recordatorios por WhatsApp y pagos online, todo en un solo lugar.
+      Organizá tus horarios, recibí reservas online y permití que tus clientes agenden cuando quieran.
+      Con Agendarte UY, tu negocio puede estar disponible las 24 horas, reducir el tiempo dedicado a coordinar turnos
+      y centralizar sus reservas en una plataforma profesional.
+    </p>
+    <p class="hero__audience">
+      Ideal para profesionales independientes, centros de salud, salones de belleza, barberías, clínicas, consultorios,
+      gimnasios, talleres, academias y muchos otros servicios.
     </p>
     <div class="hero__actions">
       <a class="btn-primary hero__cta" href="#rubros">
-        Comenzar gratis
+        Registrá tu negocio
         <i class="bx bx-right-arrow-alt" aria-hidden="true"></i>
       </a>
-      <a class="hero__secondary" href="#explorar">Conocer la plataforma</a>
+      <a class="hero__secondary" href="<?= h(url('categorias/')) ?>">Buscar servicios</a>
     </div>
   </section>
 
@@ -293,7 +315,7 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
     <div class="trust-banner">
       <div class="trust-banner__text">
         <p class="trust-banner__eyebrow">Confianza que crece cada mes</p>
-        <h3>Negocios de todo Uruguay ya confían en Agendarte</h3>
+        <h3>Negocios de todo Uruguay ya confían en Agendarte UY</h3>
       </div>
       <div class="trust-banner__avatars">
         <?php for ($i = 0; $i < 5; $i++):
@@ -312,10 +334,70 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
     </div>
   </section>
 
-  <section class="explore-section" id="explorar" aria-label="Explorar Agendarte">
+  <section class="benefits-section" id="beneficios" aria-label="Beneficios de Agendarte UY">
+    <div class="section-heading">
+      <p class="section-heading__eyebrow">Beneficios</p>
+      <h2 class="section-heading__title">Tu negocio, siempre disponible</h2>
+      <p class="section-heading__text">Centralizá turnos, reducí mensajes de coordinación y ofrecé una experiencia profesional a tus clientes.</p>
+    </div>
+    <ul class="benefits-grid">
+      <?php foreach (LandingContent::benefits() as $benefit): ?>
+      <li class="benefits-grid__item">
+        <i class="bx bx-check-circle" aria-hidden="true"></i>
+        <span><?= h($benefit) ?></span>
+      </li>
+      <?php endforeach; ?>
+    </ul>
+  </section>
+
+  <section class="categories-section" id="categorias" aria-label="Categorías de servicios">
+    <div class="section-heading">
+      <p class="section-heading__eyebrow">Categorías</p>
+      <h2 class="section-heading__title">Encontrá y reservá el servicio que necesitás</h2>
+      <p class="section-heading__text">Consultá disponibilidad y solicitá turnos para distintas actividades y profesionales en Uruguay.</p>
+    </div>
+    <div class="categories-grid">
+      <?php foreach (array_slice(LandingContent::categories(), 0, 8, true) as $catSlug => $cat): ?>
+      <a class="category-card" href="<?= h(url('categorias/' . rawurlencode($catSlug) . '/')) ?>">
+        <span class="category-card__title"><?= h($cat['title']) ?></span>
+      </a>
+      <?php endforeach; ?>
+    </div>
+    <p class="categories-section__more">
+      <a href="<?= h(url('categorias/')) ?>">Ver todas las categorías</a>
+      ·
+      <a href="<?= h(url('ubicaciones/')) ?>">Buscar por ciudad</a>
+    </p>
+  </section>
+
+  <section class="about-section" id="nosotros" aria-label="Quiénes somos">
+    <div class="about-section__inner">
+      <p class="section-heading__eyebrow">Quiénes somos</p>
+      <h2 class="section-heading__title">Una nueva forma de gestionar tu tiempo</h2>
+      <p>En Agendarte UY creemos que reservar un servicio debería ser sencillo, rápido y accesible. Conectamos clientes y prestadores de servicios con una experiencia moderna, confiable y eficiente.</p>
+      <button type="button" class="hero__secondary" id="btnSobreNosotrosInline">Leer más</button>
+    </div>
+  </section>
+
+  <section class="faq-section" id="faq" aria-label="Preguntas frecuentes">
+    <div class="section-heading">
+      <p class="section-heading__eyebrow">FAQ</p>
+      <h2 class="section-heading__title">Preguntas frecuentes</h2>
+    </div>
+    <div class="faq-list">
+      <?php foreach (LandingContent::faq() as $i => $item): ?>
+      <details class="faq-item"<?= $i === 0 ? ' open' : '' ?>>
+        <summary><?= h($item['q']) ?></summary>
+        <p><?= h($item['a']) ?></p>
+      </details>
+      <?php endforeach; ?>
+    </div>
+  </section>
+
+  <section class="explore-section" id="explorar" aria-label="Explorar Agendarte UY">
     <div class="section-heading">
       <p class="section-heading__eyebrow">Explorá</p>
-      <h2 class="section-heading__title">Todo lo que ofrece Agendarte</h2>
+      <h2 class="section-heading__title">Todo lo que ofrece Agendarte UY</h2>
     </div>
     <nav class="container" aria-label="Secciones de Agendarte">
       <div class="category" id="btnRubrosDisponibles" role="button" tabindex="0" aria-controls="modal-rubros" aria-haspopup="dialog">
@@ -336,7 +418,7 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
       <div class="category" id="btnBeneficios" role="button" tabindex="0" aria-controls="modal-beneficios" aria-haspopup="dialog">
         <span class="category__icon"><i class="bx bx-gift" aria-hidden="true"></i></span>
         <p>Beneficios</p>
-        <span class="category__hint">Puntos y recompensas por usar Agendarte</span>
+        <span class="category__hint">Ventajas para tu negocio y tus clientes</span>
       </div>
       <div class="category" id="btnBuscarServicios" role="button" tabindex="0" aria-controls="modal-buscar" aria-haspopup="dialog">
         <span class="category__icon"><i class="bx bx-search" aria-hidden="true"></i></span>
@@ -351,20 +433,27 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
     </nav>
   </section>
 
-  <section class="final-cta" aria-label="Comenzar con Agendarte">
-    <h2 class="final-cta__title">Empezá a agendar clientes hoy</h2>
-    <p class="final-cta__text"><?= $freeTrial ?> días de prueba gratis. Sin tarjeta, sin compromiso.</p>
-    <button type="button" class="plan-btn final-cta__btn" data-rubro-id="" data-rubro-nombre="">Crear mi cuenta gratis</button>
+  <section class="final-cta" aria-label="Registrar negocio en Agendarte UY">
+    <h2 class="final-cta__title">Registrá tu negocio en Agendarte UY</h2>
+    <p class="final-cta__text">Comenzá a recibir reservas online. <?= $freeTrial ?> días de prueba gratis, sin tarjeta.</p>
+    <p class="final-cta__brand-line"><?= h(LandingContent::TAGLINE) ?></p>
+    <button type="button" class="plan-btn final-cta__btn" data-rubro-id="" data-rubro-nombre="">Registrar mi negocio</button>
   </section>
 </main>
 
 <footer class="site-footer">
   <div class="site-footer__inner">
     <div class="site-footer__brand">
-      <img src="src/media/logo/logo.png" alt="" width="28" height="28" loading="lazy" decoding="async">
-      <span>Agendarte</span>
+      <img src="<?= h(url('src/media/logo/logo-icon.png')) ?>" alt="" width="28" height="28" loading="lazy" decoding="async">
+      <span>Agendarte <span class="brand-uy">UY</span></span>
     </div>
-    <p class="site-footer__tagline">Reservas online para negocios de Uruguay.</p>
+    <p class="site-footer__tagline"><?= h(LandingContent::TAGLINE) ?></p>
+    <nav class="site-footer__links" aria-label="Enlaces SEO">
+      <a href="<?= h(url('categorias/')) ?>">Categorías</a>
+      <a href="<?= h(url('ubicaciones/')) ?>">Ubicaciones</a>
+      <a href="#faq">FAQ</a>
+      <a href="<?= h(url('sitemap.php')) ?>">Sitemap</a>
+    </nav>
     <div class="site-footer__social">
       <a href="https://instagram.com/agendarte.uy" aria-label="Instagram" target="_blank" rel="noopener"><i class="bx bxl-instagram" aria-hidden="true"></i></a>
       <a href="https://wa.me/59892365135" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="bx bxl-whatsapp" aria-hidden="true"></i></a>
@@ -483,6 +572,14 @@ window.__AGENDUY_CONFIG__ = {
   };
   window.addEventListener('load', hideLoader, { once: true });
   setTimeout(hideLoader, 8000);
+})();
+
+(function () {
+  var inlineAbout = document.getElementById('btnSobreNosotrosInline');
+  var mainAbout = document.getElementById('btnSobreNosotros');
+  if (inlineAbout && mainAbout) {
+    inlineAbout.addEventListener('click', function () { mainAbout.click(); });
+  }
 })();
 </script>
 </body>

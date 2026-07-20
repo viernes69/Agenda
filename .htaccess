@@ -6,6 +6,13 @@ ServerSignature Off
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Sitemap y páginas SEO
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
+    RewriteRule ^categorias/([a-z0-9-]+)/?$ categorias/index.php?c=$1 [L,QSA]
+    RewriteRule ^categorias/?$ categorias/index.php [L,QSA]
+    RewriteRule ^ubicaciones/([a-z0-9-]+)/?$ ubicaciones/index.php?l=$1 [L,QSA]
+    RewriteRule ^ubicaciones/?$ ubicaciones/index.php [L,QSA]
+
     # Si la URL es un archivo real (CSS, JS, imágenes), servirlo tal cual
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]

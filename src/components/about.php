@@ -6,23 +6,21 @@ header('Content-Type: text/html; charset=UTF-8');
 <div class="about-modal" role="document" aria-live="polite">
   <header class="about-modal__header">
     <span class="about-modal__eyebrow">Quiénes somos</span>
-    <h3 class="about-modal__title" id="modal-about-title">Sobre Nosotros</h3>
+    <h3 class="about-modal__title" id="modal-about-title">Una nueva forma de gestionar tu tiempo</h3>
     <button type="button" class="about-modal__close" aria-label="Cerrar">&times;</button>
   </header>
   <div class="about-modal__body">
     <p>
-      Somos APPSUY, una empresa de desarrollo de software duraznense con más de 5 años en el rubro y experiencia,
-      dedicada a la gestión, mantenimiento y facturación en empresas de pequeño, mediano y gran porte en el rubro informático.
+      En <strong>Agendarte UY</strong> creemos que reservar un servicio debería ser sencillo, rápido y accesible.
     </p>
-    <p class="about-modal__intro">Algunos de nuestros clientes potenciales son:</p>
-    <ul class="about-modal__list">
-      <li>Heladería Valencia</li>
-      <li>Delicias Express</li>
-      <li>Supermercado Giordano</li>
-      <li>Vapea YA!</li>
-      <li>Santa PUB Durazno</li>
-      <li>Mono Durazno</li>
-      <li>La BarberiaUY</li>
-    </ul>
+    <p>
+      Creamos una plataforma digital que ayuda a las personas a encontrar horarios disponibles y permite que
+      profesionales y negocios administren sus reservas de manera organizada.
+    </p>
+    <p>
+      Nuestro objetivo es transformar la gestión de turnos en Uruguay, conectando clientes y prestadores de servicios
+      mediante una experiencia moderna, confiable y eficiente.
+    </p>
+    <p class="about-modal__tagline"><strong>Agendarte UY</strong> — Tu tiempo, tus servicios, tu agenda.</p>
   </div>
 </div>

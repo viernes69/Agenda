@@ -34,7 +34,14 @@
 
   function attachInnerHandlers(root) {
     root.querySelector('.benefits-modal__close')?.addEventListener('click', closeModal);
-    root.querySelector('.benefits-modal__cta')?.addEventListener('click', closeModal);
+    root.querySelector('.benefits-modal__cta')?.addEventListener('click', function () {
+      closeModal();
+      if (typeof window.openRegisterModal === 'function') {
+        window.openRegisterModal({});
+      } else {
+        document.querySelector('.plan-btn, [href="#rubros"]')?.click();
+      }
+    });
   }
 
   function openModal(html) {

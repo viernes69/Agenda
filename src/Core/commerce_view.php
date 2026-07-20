@@ -650,8 +650,8 @@ if (!function_exists('agenduy_render_commerce')) {
                         <a href="tel:<?= htmlspecialchars($telefono, ENT_QUOTES, 'UTF-8') ?>" aria-label="Teléfono"><i class="bx bx-phone" style="font-size:1.5rem"></i></a>
                     <?php endif; ?>
                 </div>
-                <div class="footer__small">© <?= date('Y') ?> <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> · Powered by Agenduy</div>
-                <div class="footer__legal">Gestionado con <a href="<?= htmlspecialchars(url(''), ENT_QUOTES, 'UTF-8') ?>">Agenduy</a> · Sistema de reservas online</div>
+                <div class="footer__small">© <?= date('Y') ?> <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> · Powered by Agendarte UY</div>
+                <div class="footer__legal">Gestionado con <a href="<?= htmlspecialchars(url(''), ENT_QUOTES, 'UTF-8') ?>">Agendarte UY</a> · Sistema de reservas online</div>
             </div>
         </footer>
 
