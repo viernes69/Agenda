@@ -61,17 +61,7 @@ if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
 
 function tenantCommerceId(): ?int
 {
-    $slug = basename(dirname(__DIR__, 4));
-    if ($slug === '' || $slug === 'template') {
-        return null;
-    }
-    try {
-        $db = \Agenduy\Core\Database::getInstance();
-        $row = $db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s', [':s' => $slug]);
-        return $row ? (int)$row['id_commerce'] : null;
-    } catch (Throwable $e) {
-        return null;
-    }
+    return \Agenduy\Core\CommercePanel::commerceIdForTenantRoot(dirname(__DIR__, 4));
 }
 
 function assetUploadDir(string $kind): string
@@ -356,7 +346,7 @@ if ($action === 'create') {
         $data['Psw'] = password_hash((string)$data['Psw'], PASSWORD_DEFAULT);
     }
     try {
-        $tenantSlug = basename(dirname(__DIR__, 4));
+        $tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 4));
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan)) {
             $maxProfessionals = MembershipPlan::maxProfessionals($plan);

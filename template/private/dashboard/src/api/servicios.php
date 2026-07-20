@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 4) . '/src/API/Autoload.php';
 $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
@@ -56,22 +57,9 @@ function assetStoredPath(string $kind, string $filename): string
     return 'src/img/' . $legacyKind . '/' . $filename;
 }
 
-/**
- * Resuelve el id_commerce del tenant actual a partir de la carpeta.
- */
 function tenantCommerceId(): ?int
 {
-    $slug = basename(dirname(__DIR__, 4));
-    if ($slug === '' || $slug === 'template') {
-        return null;
-    }
-    try {
-        $db = Database::getInstance();
-        $row = $db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s', [':s' => $slug]);
-        return $row ? (int)$row['id_commerce'] : null;
-    } catch (Throwable $e) {
-        return null;
-    }
+    return CommercePanel::commerceIdForTenantRoot(dirname(__DIR__, 4));
 }
 
 /**
@@ -275,7 +263,7 @@ function deleteServiceImage(string $relativePath): void
     }
     $clean = str_replace(['..', '\\'], ['', '/'], $relativePath);
     $commerceId = tenantCommerceId();
-    $slug = basename(dirname(__DIR__, 4));
+    $slug = CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 4));
     if ($commerceId !== null && $commerceId > 0 && CommerceStorage::isCentralPath($clean)) {
         $full = CommerceStorage::absolutePath($commerceId, $slug, $clean);
         if ($full !== null) {
@@ -338,7 +326,7 @@ if (!empty($errors)) {
 
 if ($action === 'create') {
     try {
-        $tenantSlug = basename(dirname(__DIR__, 4));
+        $tenantSlug = CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 4));
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan)) {
             $maxServices = MembershipPlan::maxServices($plan);

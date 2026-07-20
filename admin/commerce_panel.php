@@ -68,7 +68,7 @@ if (!defined('AGENDUY_COMMERCE_PANEL_EMBED')) {
     define('AGENDUY_COMMERCE_PANEL_EMBED', true);
 }
 if (!defined('AGENDUY_PANEL_BASE_HREF')) {
-    define('AGENDUY_PANEL_BASE_HREF', rtrim(url('template/private/dashboard/admin/'), '/') . '/');
+    define('AGENDUY_PANEL_BASE_HREF', rtrim(CommercePanel::centralUrl($slug), '/') . '/');
 }
 
 require $templateIndex;

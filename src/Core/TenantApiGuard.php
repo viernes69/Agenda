@@ -15,8 +15,8 @@ final class TenantApiGuard
     {
         Auth::start();
 
-        $slug = basename(rtrim(str_replace('\\', '/', $tenantRoot), '/'));
-        if ($slug === '' || $slug === 'template') {
+        $slug = CommercePanel::bootstrapStaffContext($tenantRoot);
+        if ($slug === '' || CommercePanel::isTemplateHost($slug)) {
             self::deny(403, 'Acceso denegado.');
         }
 

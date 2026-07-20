@@ -13,6 +13,12 @@ require_once $projectRoot . '/src/Core/bootstrap.php';
 Auth::start();
 require_once __DIR__ . '/Autoload.php';
 
+function adminConfigTenantSlug(): string
+{
+    global $tenantRoot;
+    return \Agenduy\Core\CommercePanel::resolveEffectiveSlug((string)$tenantRoot);
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 $raw = (string)file_get_contents('php://input');
@@ -28,14 +34,14 @@ try {
 
     if ($action === 'config_get') {
         requireConfigKey($key);
-        respond(['ok' => true, 'data' => readConfig($key, basename($tenantRoot))]);
+        respond(['ok' => true, 'data' => readConfig($key, adminConfigTenantSlug())]);
     }
 
     if ($action === 'config_update') {
         requireConfigKey($key);
         $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
-        if ($tenantSlug === '') {
-            $tenantSlug = basename((string)$tenantRoot);
+        if ($tenantSlug === '' || \Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)) {
+            $tenantSlug = adminConfigTenantSlug();
         }
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan) && !MembershipPlan::allowsConfigKey($plan, $key)) {
@@ -54,12 +60,12 @@ try {
                     }
                 }
             }
-            $commerceRow = commerceBySlug(basename($tenantRoot));
+            $commerceRow = commerceBySlug(adminConfigTenantSlug());
             $logoSrc = handleLogoUpload((int)$commerceRow['id_commerce']);
             if ($logoSrc !== null) {
                 $payload['logo_src'] = $logoSrc;
             }
-            $updated = updateCommerceConfig(basename($tenantRoot), $payload);
+            $updated = updateCommerceConfig(adminConfigTenantSlug(), $payload);
         } else {
             $updated = AutoloadDB::updateConfigSection($key, $payload);
         }
@@ -68,15 +74,15 @@ try {
 
     if ($action === 'apply_theme') {
         $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
-        if ($tenantSlug === '') {
-            $tenantSlug = basename((string)$tenantRoot);
+        if ($tenantSlug === '' || \Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)) {
+            $tenantSlug = adminConfigTenantSlug();
         }
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
         if (is_array($plan) && MembershipPlan::isBasicSettingsOnly($plan)) {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
         }
         $themes = applyThemeFiles($tenantRoot, $projectRoot);
-        $updated = updateCommerceConfig(basename($tenantRoot), ['temas' => $themes]);
+        $updated = updateCommerceConfig(adminConfigTenantSlug(), ['temas' => $themes]);
         respond(['ok' => true, 'data' => $updated, 'applied' => $themes]);
     }
 
@@ -120,8 +126,11 @@ function assertAdminRequest(): void
         );
         $ownedSlug = trim((string)($commerce['slug'] ?? ''));
         $tenantSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
-        if ($tenantSlug === '') {
-            $tenantSlug = basename((string)$tenantRoot);
+        if ($tenantSlug === '' || \Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)) {
+            $tenantSlug = $ownedSlug;
+        }
+        if ($ownedSlug !== '') {
+            \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceId, $ownedSlug);
         }
         if ($ownedSlug === '' || !hash_equals($ownedSlug, $tenantSlug)) {
             throw new UnexpectedValueException('No autorizado para este comercio.');

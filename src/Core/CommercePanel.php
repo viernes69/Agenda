@@ -241,4 +241,97 @@ final class CommercePanel
     {
         return strtolower(trim($tenantFolderName)) === 'template';
     }
+
+    /**
+     * Slug efectivo cuando el código corre bajo /template/ (panel central compartido).
+     */
+    public static function resolveEffectiveSlug(string $tenantRootFromPath): string
+    {
+        $pathSlug = basename(rtrim(str_replace('\\', '/', $tenantRootFromPath), '/'));
+        if ($pathSlug !== '' && !self::isTemplateHost($pathSlug)) {
+            return $pathSlug;
+        }
+
+        $central = self::centralSessionSlug();
+        if ($central !== '') {
+            return $central;
+        }
+
+        Auth::start();
+        if (Auth::check() && Auth::role() === Auth::ROLE_LOCAL) {
+            $commerceId = (int)Auth::commerceId();
+            if ($commerceId > 0) {
+                $row = Database::getInstance()->fetchOne(
+                    'SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1',
+                    [':id' => $commerceId]
+                );
+                $slug = trim((string)($row['slug'] ?? ''));
+                if ($slug !== '') {
+                    return $slug;
+                }
+            }
+        }
+
+        return $pathSlug;
+    }
+
+    /**
+     * Prepara sesión central y database.php local para APIs servidas desde /template/.
+     *
+     * @return string Slug efectivo (vacío si no se pudo resolver)
+     */
+    public static function bootstrapStaffContext(string $tenantRootFromPath): string
+    {
+        $slug = self::resolveEffectiveSlug($tenantRootFromPath);
+        if ($slug === '' || self::isTemplateHost($slug)) {
+            return '';
+        }
+
+        Auth::start();
+        if (Auth::check() && Auth::role() === Auth::ROLE_LOCAL) {
+            $commerceId = (int)Auth::commerceId();
+            if ($commerceId > 0) {
+                self::bootstrapCentralAccess($commerceId, $slug);
+                return $slug;
+            }
+        }
+
+        if (self::centralSessionSlug() === '') {
+            self::activateCentralSession($slug);
+        }
+
+        $row = Database::getInstance()->fetchOne(
+            'SELECT id_commerce FROM commerces WHERE slug = :s LIMIT 1',
+            [':s' => $slug]
+        );
+        $commerceId = $row ? (int)$row['id_commerce'] : 0;
+        if ($commerceId > 0) {
+            self::ensureLocalDatabase($commerceId, $slug);
+        }
+
+        return $slug;
+    }
+
+    public static function commerceIdForTenantRoot(string $tenantRootFromPath): ?int
+    {
+        Auth::start();
+        if (Auth::check() && Auth::role() === Auth::ROLE_LOCAL) {
+            $id = (int)Auth::commerceId();
+            if ($id > 0) {
+                return $id;
+            }
+        }
+
+        $slug = self::resolveEffectiveSlug($tenantRootFromPath);
+        if ($slug === '' || self::isTemplateHost($slug)) {
+            return null;
+        }
+
+        $row = Database::getInstance()->fetchOne(
+            'SELECT id_commerce FROM commerces WHERE slug = :s LIMIT 1',
+            [':s' => $slug]
+        );
+
+        return $row ? (int)$row['id_commerce'] : null;
+    }
 }
