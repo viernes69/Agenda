@@ -57,23 +57,17 @@
     }).then(function (result) {
       var data = result.data || {};
       if (result.ok && data.ok && data.redirect) {
+        if (data.registered) {
+          showLoginMsg(data.message || 'Cuenta creada. Redirigiendo...', false);
+        }
         window.location.href = data.redirect;
         return;
       }
       if (data.needs_register) {
-        var profile = data.profile || {};
-        var regModal = document.getElementById('modal-registro');
-        var modalOpen = regModal && !regModal.classList.contains('hidden');
-        if (modalOpen) {
-          document.dispatchEvent(new CustomEvent('agendarte:google-register', {
-            detail: { token: token, profile: profile },
-          }));
-          return;
-        }
-        showLoginMsg('No hay cuenta con ese Google. Abrí el registro para crear tu negocio.', true);
+        showLoginMsg('No se pudo crear la cuenta automáticamente. Usá el registro manual.', true);
         if (typeof window.openRegisterModal === 'function') {
           window.openRegisterModal({
-            googleProfile: profile,
+            googleProfile: data.profile || {},
             googleIdToken: token,
           });
         }
@@ -104,7 +98,7 @@
       type: 'standard',
       theme: 'outline',
       size: 'large',
-      text: context === 'register' ? 'signup_with' : 'signin_with',
+      text: context === 'register' ? 'signup_with' : 'continue_with',
       width: Math.min(container.offsetWidth || 260, 320),
       locale: 'es',
     });

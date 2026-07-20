@@ -11,6 +11,8 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\CommerceRegistrar;
+use Agenduy\Core\Database;
 use Agenduy\Core\GoogleAuth;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -58,6 +60,42 @@ try {
 }
 
 $result = Auth::loginWithGoogle($profile, $_SERVER['REMOTE_ADDR'] ?? null);
+if (!$result['ok'] && !empty($result['needs_register'])) {
+    try {
+        $reg = CommerceRegistrar::registerWithGoogleProfile($profile);
+        $user = Database::getInstance()->fetchOne(
+            'SELECT * FROM users WHERE email = :e AND activo = 1 LIMIT 1',
+            [':e' => strtolower((string)$profile['email'])]
+        );
+        if (!$user) {
+            throw new RuntimeException('No se pudo crear la cuenta.');
+        }
+        $login = Auth::establishSessionFromRow($user, $_SERVER['REMOTE_ADDR'] ?? null, 'google_register');
+        $redirect = Auth::dashboardUrl($login['user'] ?? []) ?? (string)($reg['redirect'] ?? url('/'));
+        echo json_encode([
+            'ok'         => true,
+            'registered' => true,
+            'slug'       => $reg['slug'] ?? '',
+            'user'       => $login['user'] ?? [],
+            'redirect'   => $redirect,
+            'message'    => 'Cuenta creada. Completá los datos de tu negocio en el panel.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        exit;
+    } catch (Throwable $e) {
+        error_log('[google_auth] auto register: ' . $e->getMessage());
+        http_response_code(422);
+        $msg = trim($e->getMessage());
+        echo json_encode([
+            'ok' => false,
+            'error' => $msg !== '' ? $msg : 'No se pudo crear la cuenta con Google. Intentá el registro manual.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
 if (!$result['ok']) {
     $status = !empty($result['needs_register']) ? 404 : 401;
     http_response_code($status);
