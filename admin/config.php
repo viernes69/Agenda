@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     CSRF::checkRequest('config_admin');
     $action = $_POST['action'] ?? '';
     if ($action === 'save_provider') {
+        try {
         $provider = (string)($_POST['provider'] ?? '');
         $isEnabled = !empty($_POST['is_enabled']) ? 1 : 0;
         $notes = trim((string)($_POST['notes'] ?? ''));
@@ -70,6 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         Auth::audit('save_provider_config', 'payment_provider', null, null, ['provider' => $provider]);
         $flash = ['type' => 'ok', 'msg' => 'Configuración guardada.'];
+        } catch (Throwable $e) {
+            error_log('[admin/config.php] save_provider ' . ($provider ?? '') . ': ' . $e->getMessage());
+            $flash = ['type' => 'error', 'msg' => 'No se pudo guardar la configuración. Recargá la página e intentá de nuevo.'];
+        }
     }
 }
 
@@ -215,7 +220,7 @@ require __DIR__ . '/partials/header.php';
                 <div class="field col-2">
                     <label>Google Client ID (OAuth 2.0)</label>
                     <input type="text" name="client_id" value="<?= htmlspecialchars($cfg['client_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="123456789.apps.googleusercontent.com">
-                    <span class="hint">Creá credenciales en Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Autorizá <?= htmlspecialchars((string)(Database::getInstance()->config()['app']['url_base'] ?? ''), ENT_QUOTES, 'UTF-8') ?> y localhost.</span>
+                    <span class="hint">Creá credenciales en Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Autorizá <?= htmlspecialchars(function_exists('url_base') ? url_base() : (string)(Database::getInstance()->config()['app']['url_base'] ?? ''), ENT_QUOTES, 'UTF-8') ?> y localhost.</span>
                 </div>
                 <div class="field">
                     <label>Client Secret (opcional)</label>

@@ -360,7 +360,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires  ON sessions(expires_at);
 CREATE TABLE IF NOT EXISTS payment_provider_config (
     id_config     INTEGER PRIMARY KEY AUTOINCREMENT,
     provider      TEXT    NOT NULL UNIQUE
-                  CHECK (provider IN ('mercadopago','paypal','transfer','smtp','ultramsg','dlocal')),
+                  CHECK (provider IN ('mercadopago','paypal','transfer','smtp','ultramsg','dlocal','google_oauth')),
     is_enabled    INTEGER NOT NULL DEFAULT 0,
     config_json   TEXT    NOT NULL DEFAULT '{}',
     notes         TEXT    DEFAULT '',

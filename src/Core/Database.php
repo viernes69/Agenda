@@ -113,6 +113,7 @@ final class Database
         $this->seedMembershipPlanDefaults();
         $this->retireLegacySeedMembership();
         $this->ensureDlocalEnums();
+        $this->ensurePaymentProviderGoogleOauth();
         $this->ensureOAuthAuth();
     }
 
@@ -156,8 +157,9 @@ final class Database
      */
     private function ensureDlocalEnums(): void
     {
-        $this->ensureCheckContainsDlocal(
+        $this->ensureCheckContains(
             'subscriptions',
+            'dlocal',
             "CREATE TABLE IF NOT EXISTS subscriptions_new (
                 id_subscription    INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_commerce        INTEGER NOT NULL,
@@ -192,8 +194,9 @@ final class Database
              FROM subscriptions"
         );
 
-        $this->ensureCheckContainsDlocal(
+        $this->ensureCheckContains(
             'payment_provider_config',
+            'dlocal',
             "CREATE TABLE IF NOT EXISTS payment_provider_config_new (
                 id_config     INTEGER PRIMARY KEY AUTOINCREMENT,
                 provider      TEXT    NOT NULL UNIQUE
@@ -212,8 +215,9 @@ final class Database
              FROM payment_provider_config"
         );
 
-        $this->ensureCheckContainsDlocal(
+        $this->ensureCheckContains(
             'api_keys',
+            'dlocal',
             "CREATE TABLE IF NOT EXISTS api_keys_new (
                 id_key        INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_commerce   INTEGER DEFAULT NULL,
@@ -240,10 +244,37 @@ final class Database
     }
 
     /**
-     * Si la definicion de la tabla no contiene 'dlocal' en su CHECK, la recrea
+     * Permite guardar provider google_oauth en payment_provider_config.
+     */
+    private function ensurePaymentProviderGoogleOauth(): void
+    {
+        $this->ensureCheckContains(
+            'payment_provider_config',
+            'google_oauth',
+            "CREATE TABLE IF NOT EXISTS payment_provider_config_new (
+                id_config     INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider      TEXT    NOT NULL UNIQUE
+                              CHECK (provider IN ('mercadopago','paypal','transfer','smtp','ultramsg','dlocal','google_oauth')),
+                is_enabled    INTEGER NOT NULL DEFAULT 0,
+                config_json   TEXT    NOT NULL DEFAULT '{}',
+                notes         TEXT    DEFAULT '',
+                updated_by    INTEGER,
+                updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+            )",
+            "INSERT INTO payment_provider_config_new
+                (id_config, provider, is_enabled, config_json, notes, updated_by, updated_at)
+             SELECT
+                id_config, provider, is_enabled,
+                COALESCE(config_json, '{}'), COALESCE(notes, ''), updated_by, updated_at
+             FROM payment_provider_config"
+        );
+    }
+
+    /**
+     * Si la definicion de la tabla no contiene $needle en su CHECK, la recrea
      * copiando los datos con un INSERT selectivo que sanea NULLs.
      */
-    private function ensureCheckContainsDlocal(string $table, string $createNewSql, string $copySql): void
+    private function ensureCheckContains(string $table, string $needle, string $createNewSql, string $copySql): void
     {
         $sql = $this->pdo->query(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name=" . $this->pdo->quote($table)
@@ -251,7 +282,7 @@ final class Database
         if (!is_string($sql) || $sql === '') {
             return;
         }
-        if (strpos($sql, "'dlocal'") !== false) {
+        if (strpos($sql, "'" . $needle . "'") !== false) {
             return;
         }
         $this->pdo->beginTransaction();
@@ -272,7 +303,7 @@ final class Database
             $this->pdo->commit();
         } catch (Throwable $e) {
             $this->pdo->rollBack();
-            error_log('[Database::ensureCheckContainsDlocal] ' . $table . ': ' . $e->getMessage());
+            error_log('[Database::ensureCheckContains] ' . $table . '/' . $needle . ': ' . $e->getMessage());
         }
     }
 
