@@ -854,6 +854,11 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartOrderUrl = <?= json_encode($cartOrderApi, JSON_UNESCAPED_SLASHES) ?>;
             let lastBooking = null;
             let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            function syncCsrfToken(token) {
+                csrfToken = String(token || '');
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta) meta.setAttribute('content', csrfToken);
+            }
             let orderSubmitInFlight = false;
 
             function formatMoney(n) {
@@ -1008,6 +1013,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 let { res, json } = await postOnce();
                 if (json && json.error === 'csrf_retry' && json.csrf) {
                     csrfToken = String(json.csrf);
+                    syncCsrfToken(json.csrf);
                     body._csrf = csrfToken;
                     ({ res, json } = await postOnce());
                 }
@@ -1713,7 +1719,7 @@ if (!function_exists('agenduy_render_commerce')) {
 
             async function sendBooking() {
                 const data = new FormData(form);
-                data.append('_csrf', csrfToken);
+                data.set('_csrf', csrfToken);
                 // Timeout duro: el botón nunca queda en "Enviando..." indefinidamente.
                 const ctrl = new AbortController();
                 const timer = setTimeout(() => ctrl.abort(), 15000);
@@ -1721,6 +1727,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     const res = await fetch('<?= $apiBase ?>', {
                         method: 'POST',
                         body: data,
+                        credentials: 'same-origin',
                         signal: ctrl.signal
                     });
                     let json = null;
@@ -1756,7 +1763,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     // Token vencido o sesión nueva: el servidor manda uno fresco
                     // (HTTP 428) y reintentamos sin que el usuario vea el error.
                     if (json && json.error === 'csrf_retry' && json.csrf) {
-                        csrfToken = String(json.csrf);
+                        syncCsrfToken(json.csrf);
                         json = await sendBooking();
                     }
                     if (!json.ok) {

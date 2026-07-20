@@ -107,7 +107,10 @@ final class CSRF
     private static function currentSessionId(): string
     {
         if (session_status() === PHP_SESSION_NONE) {
-            return 'cli-' . md5(php_sapi_name() . '|' . getmypid());
+            if (PHP_SAPI === 'cli') {
+                return 'cli-' . md5(php_sapi_name() . '|' . getmypid());
+            }
+            Auth::start();
         }
         return session_id() ?: 'no-session';
     }
