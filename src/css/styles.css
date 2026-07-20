@@ -334,6 +334,66 @@ body.modal-open{ overflow:hidden; }
 .site-login-form__btn:hover{ background: var(--primary-strong); }
 .site-login-form__msg{ font-size:.82rem; margin:4px 0 0; min-height:18px; color: var(--text-muted); }
 .site-login-form__msg.is-error{ color: var(--danger); }
+.site-login-form__msg.is-success{ color: var(--success, #059669); }
+.site-login-tabs{ display:flex; gap:6px; margin-bottom:12px; }
+.site-login-tabs__btn{
+  flex:1;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:7px 8px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size:.78rem;
+  font-weight:600;
+  cursor:pointer;
+}
+.site-login-tabs__btn.is-active{
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.site-login-form__hint{ font-size:.82rem; color: var(--text-muted); margin:0 0 4px; line-height:1.4; }
+.site-login-divider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:12px 0 10px;
+  color: var(--text-muted);
+  font-size:.78rem;
+}
+.site-login-divider::before,
+.site-login-divider::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background: var(--border);
+}
+.site-login-google{ display:flex; justify-content:center; min-height:44px; }
+.reg-google-wrap{ margin-bottom:14px; }
+.reg-google-wrap__label{ font-size:.85rem; color: var(--text-muted); margin:0 0 8px; }
+#reg-google-btn{ display:flex; justify-content:center; min-height:44px; }
+.reg-field--optional span small{ color: var(--text-muted); font-weight:400; }
+.client-auth-btn{
+  border:1px solid var(--border, #e2e8f0);
+  background:transparent;
+  color:inherit;
+  border-radius:999px;
+  padding:.45rem .85rem;
+  font-size:.82rem;
+  font-weight:600;
+  cursor:pointer;
+}
+.client-auth-panel{
+  margin-top:1rem;
+  padding:1rem;
+  border:1px solid var(--border, #e2e8f0);
+  border-radius:12px;
+  background: var(--surface-2, #f8fafc);
+}
+.client-auth-panel[hidden]{ display:none !important; }
+.client-auth-panel__msg{ font-size:.85rem; margin:.5rem 0 0; color: var(--text-muted, #64748b); }
+.client-auth-panel__msg.is-error{ color:#dc2626; }
+.client-auth-panel__msg.is-success{ color:#059669; }
 @media (max-width: 720px){
   .site-header__inner{ flex-wrap:wrap; gap:10px; }
   .site-header__actions{ width:100%; justify-content:flex-end; }

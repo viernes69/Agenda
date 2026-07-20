@@ -103,6 +103,9 @@
   let servicesData = [];
   let serviceAutoId = 1;
   let currentRubroName = '';
+  let googleIdToken = '';
+
+  const regGoogleWrap = modal.querySelector('#reg-google-wrap');
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (match) => ({
@@ -249,6 +252,25 @@
     if (index === SERVICE_STEP) {
       return validateServicesStep();
     }
+    if (index === 0 && !googleIdToken) {
+      const passInput = form.querySelector('[name="owner_password"]');
+      const passVal = passInput ? String(passInput.value || '') : '';
+      if (passVal.length < 8) {
+        if (passInput) {
+          passInput.setCustomValidity('La contraseña debe tener al menos 8 caracteres.');
+          passInput.reportValidity();
+          passInput.setCustomValidity('');
+        }
+        return false;
+      }
+      const cedulaInput = form.querySelector('[name="owner_cedula"]');
+      if (cedulaInput && !String(cedulaInput.value || '').trim()) {
+        cedulaInput.setCustomValidity('Completa tu cédula.');
+        cedulaInput.reportValidity();
+        cedulaInput.setCustomValidity('');
+        return false;
+      }
+    }
     const panel = stepPanels[index];
     if (!panel) return true;
     const inputs = panel.querySelectorAll('input, select, textarea');
@@ -327,6 +349,7 @@
         email: (formData.get('owner_email') || '').toString().trim(),
         cedula: (formData.get('owner_cedula') || '').toString().trim(),
         password: (formData.get('owner_password') || '').toString(),
+        google_id_token: googleIdToken || '',
       },
       negocio: {
         rubroId: rubroId ? String(rubroId) : '',
@@ -508,6 +531,14 @@
 
   function resetForm() {
     form.reset();
+    googleIdToken = '';
+    if (window.AgendarteGoogleAuth && typeof window.AgendarteGoogleAuth.clearToken === 'function') {
+      window.AgendarteGoogleAuth.clearToken();
+    }
+    const passInput = form.querySelector('[name="owner_password"]');
+    const cedulaInput = form.querySelector('[name="owner_cedula"]');
+    if (passInput) passInput.setAttribute('required', 'required');
+    if (cedulaInput) cedulaInput.setAttribute('required', 'required');
     if (logoInput) logoInput.value = '';
     timezoneReady = false;
     servicesData = [];
@@ -778,12 +809,27 @@
     clearStatus();
     setStep(0);
 
+    if (payload.googleIdToken) {
+      googleIdToken = String(payload.googleIdToken);
+      if (window.AgendarteGoogleAuth) {
+        window.AgendarteGoogleAuth.setToken(googleIdToken);
+        if (payload.googleProfile) {
+          window.AgendarteGoogleAuth.applyProfileToRegisterForm(payload.googleProfile);
+        }
+      }
+    }
+
+    if (regGoogleWrap) {
+      regGoogleWrap.hidden = !(config.googleClientId);
+    }
+
     if (isOpen) return;
     isOpen = true;
     restoreFocusEl = document.activeElement;
     modal.classList.remove('hidden');
     body.classList.add('modal-open');
     document.addEventListener('keydown', onKeydown);
+    document.dispatchEvent(new CustomEvent('agendarte:register-opened'));
     window.requestAnimationFrame(() => {
       const firstInput = stepPanels[0]?.querySelector('input, select, textarea');
       if (firstInput && typeof firstInput.focus === 'function') {
@@ -837,6 +883,9 @@
   resetHoursForm();
   renderServicesList();
   syncPhoneField();
+  if (regGoogleWrap) {
+    regGoogleWrap.hidden = !(config.googleClientId);
+  }
 
   const api = window.AgenduyRegister || {};
   api.open = openModal;
@@ -877,6 +926,7 @@
     });
   };
   window.AgenduyRegister = api;
+  window.openRegisterModal = openModal;
   if (typeof api.bindCategoryButtons === "function") {
     api.bindCategoryButtons();
   }
@@ -888,6 +938,17 @@
 
   document.addEventListener('agenduy:close-register', () => {
     closeModal();
+  });
+
+  document.addEventListener('agendarte:google-register', (event) => {
+    const detail = event && event.detail ? event.detail : {};
+    if (detail.token) {
+      googleIdToken = String(detail.token);
+    }
+    if (window.AgendarteGoogleAuth && detail.profile) {
+      window.AgendarteGoogleAuth.applyProfileToRegisterForm(detail.profile);
+    }
+    setStatus('Datos de Google cargados. Completá el registro de tu negocio.', 'success');
   });
 
   document.addEventListener('click', onTriggerClick);

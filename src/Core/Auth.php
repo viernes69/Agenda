@@ -47,8 +47,7 @@ final class Auth
 
         $email = strtolower(trim($email));
         $row = $db->fetchOne(
-            'SELECT id_user, role, id_commerce, nombre, apellido, email, password_hash, activo, failed_attempts, locked_until
-             FROM users WHERE email = :e LIMIT 1',
+            'SELECT * FROM users WHERE email = :e LIMIT 1',
             [':e' => $email]
         );
         if (!$row) {
@@ -75,7 +74,62 @@ final class Auth
             return ['ok' => false, 'error' => 'Credenciales inválidas.'];
         }
 
-        // Password válido: resetear intentos
+        return self::establishSessionFromRow($row, $ip);
+    }
+
+    /**
+     * Inicia sesión con Google (usuarios existentes).
+     *
+     * @param array<string,mixed> $googleProfile Resultado de GoogleAuth::verifyIdToken()
+     */
+    public static function loginWithGoogle(array $googleProfile, ?string $ip = null): array
+    {
+        $email = strtolower(trim((string)($googleProfile['email'] ?? '')));
+        $googleId = trim((string)($googleProfile['sub'] ?? ''));
+        if ($email === '' || $googleId === '') {
+            return ['ok' => false, 'error' => 'Perfil de Google incompleto.'];
+        }
+
+        $db = Database::getInstance();
+        $row = $db->fetchOne(
+            'SELECT * FROM users WHERE google_id = :g OR email = :e LIMIT 1',
+            [':g' => $googleId, ':e' => $email]
+        );
+        if (!$row) {
+            return [
+                'ok' => false,
+                'needs_register' => true,
+                'profile' => [
+                    'email' => $email,
+                    'nombre' => (string)($googleProfile['given_name'] ?? ''),
+                    'apellido' => (string)($googleProfile['family_name'] ?? ''),
+                    'google_id' => $googleId,
+                ],
+                'error' => 'No hay cuenta con ese Google. Registrate primero.',
+            ];
+        }
+        if ((int)$row['activo'] !== 1) {
+            return ['ok' => false, 'error' => 'Cuenta deshabilitada.'];
+        }
+
+        if (trim((string)($row['google_id'] ?? '')) === '') {
+            $db->update('users', [
+                'google_id'     => $googleId,
+                'auth_provider' => 'google',
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ], 'id_user = :id', [':id' => (int)$row['id_user']]);
+            $row['google_id'] = $googleId;
+        }
+
+        return self::establishSessionFromRow($row, $ip, 'google_login');
+    }
+
+    /**
+     * @param array<string,mixed> $row Fila completa de users
+     */
+    public static function establishSessionFromRow(array $row, ?string $ip = null, string $auditAction = 'login'): array
+    {
+        $db = Database::getInstance();
         $db->update('users', [
             'failed_attempts' => 0,
             'locked_until'    => null,
@@ -84,7 +138,6 @@ final class Auth
         ], 'id_user = :id', [':id' => $row['id_user']]);
 
         self::start();
-        // Invalidar el id anterior al elevar privilegios (fijación de sesión).
         session_regenerate_id(true);
         $_SESSION['user'] = [
             'id'           => (int)$row['id_user'],
@@ -96,13 +149,12 @@ final class Auth
             'login_at'     => time(),
         ];
         if ((string)$row['role'] === self::ROLE_LOCAL) {
-            // Compatibilidad con el dashboard tenant legacy (session_guard / Config).
             $_SESSION['user']['Rol'] = 'Admin';
             $_SESSION['user']['ID_Barber'] = (int)$row['id_user'];
             $_SESSION['user']['Nombre'] = (string)$row['nombre'];
             $_SESSION['user']['Apellido'] = (string)$row['apellido'];
         }
-        self::audit('login', 'user', (int)$row['id_user'], $ip);
+        self::audit($auditAction, 'user', (int)$row['id_user'], $ip);
         return ['ok' => true, 'user' => $_SESSION['user']];
     }
 

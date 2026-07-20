@@ -44,13 +44,17 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
         <input type="hidden" name="plan_nombre" value="<?= htmlspecialchars($planDestacado['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
 
         <section class="reg-step" data-step-panel="0" aria-labelledby="reg-step-1-title">
-          <h4 id="reg-step-1-title">Datos del Dueño del Negocio</h4>
+          <h4 id="reg-step-1-title">Datos del Due&ntilde;o del Negocio</h4>
+          <div class="reg-google-wrap" id="reg-google-wrap" hidden>
+            <p class="reg-google-wrap__label">Registrate m&aacute;s r&aacute;pido con Google</p>
+            <div id="reg-google-btn"></div>
+          </div>
           <div class="reg-grid">
             <label class="reg-field"><span>Nombre</span><input type="text" name="owner_name" required></label>
             <label class="reg-field"><span>Apellido</span><input type="text" name="owner_lastname" required></label>
             <label class="reg-field"><span>Correo electr&oacute;nico</span><input type="email" name="owner_email" required></label>
-            <label class="reg-field"><span>C&eacute;dula</span><input type="text" name="owner_cedula" required></label>
-            <label class="reg-field"><span>Contrase&ntilde;a</span><input type="password" name="owner_password" minlength="8" required></label>
+            <label class="reg-field"><span>C&eacute;dula <small>(opcional con Google)</small></span><input type="text" name="owner_cedula" required></label>
+            <label class="reg-field"><span>Contrase&ntilde;a <small>(opcional con Google)</small></span><input type="password" name="owner_password" minlength="8" required></label>
           </div>
         </section>
 

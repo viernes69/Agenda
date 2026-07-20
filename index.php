@@ -16,6 +16,7 @@ $config = require __DIR__ . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
 use Agenduy\Core\Database;
+use Agenduy\Core\GoogleAuth;
 
 // ¿Hay un slug de comercio en la URL?
 $slug = current_slug();
@@ -53,6 +54,7 @@ $cfgRow = $db->fetchOne("SELECT * FROM payment_provider_config WHERE provider = 
 $mpConfig = $cfgRow ? json_decode((string)$cfgRow['config_json'], true) : [];
 $mpPublicKey = (string)($mpConfig['public_key'] ?? '');
 $freeTrial = (int)($planDestacado['trial_dias'] ?? 30);
+$googleClientId = GoogleAuth::isEnabled() ? GoogleAuth::clientId() : '';
 
 $clientAvatars = [];
 $clientDir = __DIR__ . '/src/img/clients';
@@ -98,6 +100,7 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
   <script src="src/js/theme.js" defer></script>
   <?php endif; ?>
   <script src="src/js/site-login.js" defer></script>
+  <script src="src/js/auth-google.js" defer></script>
   <script src="src/js/cursos-modal.js" defer></script>
   <script src="src/js/beneficios-modal.js" defer></script>
   <script src="src/js/about-modal.js" defer></script>
@@ -173,7 +176,11 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
             <i class="bx bx-chevron-down site-header__login-caret" aria-hidden="true"></i>
           </button>
           <div class="site-login-dropdown" id="site-login-dropdown" role="dialog" aria-label="Iniciar sesion" hidden>
-            <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" novalidate>
+            <div class="site-login-tabs" role="tablist">
+              <button type="button" class="site-login-tabs__btn is-active" data-login-tab="password" role="tab" aria-selected="true">Contrasena</button>
+              <button type="button" class="site-login-tabs__btn" data-login-tab="magic" role="tab" aria-selected="false">Link por email</button>
+            </div>
+            <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" data-login-panel="password" novalidate>
               <input type="hidden" name="_csrf" value="<?= h(\Agenduy\Core\CSRF::generate('admin_login')) ?>">
               <label class="site-login-form__field">
                 <span>Email</span>
@@ -184,8 +191,20 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
                 <input type="password" name="password" required autocomplete="current-password" placeholder="********">
               </label>
               <button type="submit" class="site-login-form__btn">Ingresar</button>
-              <p class="site-login-form__msg" id="site-login-msg" role="status" aria-live="polite"></p>
             </form>
+            <form class="site-login-form" id="site-login-magic-form" data-login-panel="magic" hidden novalidate>
+              <p class="site-login-form__hint">Te enviamos un link seguro a tu correo. Sin contrasena.</p>
+              <label class="site-login-form__field">
+                <span>Email</span>
+                <input type="email" name="email" required autocomplete="email" placeholder="tu@email.com">
+              </label>
+              <button type="submit" class="site-login-form__btn">Enviame el link</button>
+            </form>
+            <?php if ($googleClientId !== ''): ?>
+            <div class="site-login-divider"><span>o</span></div>
+            <div id="site-login-google" class="site-login-google"></div>
+            <?php endif; ?>
+            <p class="site-login-form__msg" id="site-login-msg" role="status" aria-live="polite"></p>
           </div>
         </div>
       </nav>
@@ -437,6 +456,7 @@ window.__AGENDUY_CONFIG__ = {
         freeTrialDays: <?= $freeTrial ?>
     },
     apiBase: <?= json_encode(url('admin/api')) ?>,
+    googleClientId: <?= json_encode($googleClientId) ?>,
     csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '',
     env: <?= json_encode(agenduy_env()) ?>,
     urlBase: <?= json_encode(url_base()) ?>

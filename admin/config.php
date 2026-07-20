@@ -37,9 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'transfer'    => ['banco','titular','cuenta','moneda','instrucciones'],
             'smtp'        => ['host','port','encryption','username','password','from_email','from_name'],
             'ultramsg'    => ['instance_id','token'],
+            'google_oauth'=> ['client_id','client_secret'],
         ];
         // Campos sensibles: si vienen vacíos, se conserva el valor guardado
-        $secretFields = ['password','token'];
+        $secretFields = ['password','token','client_secret','secret'];
         $list = $fields[$provider] ?? [];
         foreach ($list as $f) {
             if (!isset($_POST[$f])) continue;
@@ -76,7 +77,7 @@ $providers = $db->fetchAll('SELECT * FROM payment_provider_config ORDER BY provi
 
 // Asegurar que smtp y ultramsg aparezcan aunque aún no tengan fila guardada
 $known = array_column($providers, 'provider');
-foreach (['smtp', 'ultramsg'] as $extra) {
+foreach (['smtp', 'ultramsg', 'google_oauth'] as $extra) {
     if (!in_array($extra, $known, true)) {
         $providers[] = ['provider' => $extra, 'is_enabled' => 0, 'config_json' => '{}', 'notes' => ''];
     }
@@ -209,6 +210,17 @@ require __DIR__ . '/partials/header.php';
                     <label>Token</label>
                     <input type="password" name="token" value="" placeholder="<?= ($cfg['token'] ?? '') !== '' ? '•••••••• (dejar vacío para conservar)' : '' ?>" autocomplete="new-password">
                     <span class="hint">Se obtiene en el panel de UltraMsg (docs.ultramsg.com).</span>
+                </div>
+            <?php elseif ($p['provider'] === 'google_oauth'): ?>
+                <div class="field col-2">
+                    <label>Google Client ID (OAuth 2.0)</label>
+                    <input type="text" name="client_id" value="<?= htmlspecialchars($cfg['client_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="123456789.apps.googleusercontent.com">
+                    <span class="hint">Creá credenciales en Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Autorizá <?= htmlspecialchars((string)(Database::getInstance()->config()['app']['url_base'] ?? ''), ENT_QUOTES, 'UTF-8') ?> y localhost.</span>
+                </div>
+                <div class="field">
+                    <label>Client Secret (opcional)</label>
+                    <input type="password" name="client_secret" value="" placeholder="<?= ($cfg['client_secret'] ?? '') !== '' ? '•••••••• (dejar vacío para conservar)' : '' ?>" autocomplete="new-password">
+                    <span class="hint">No es necesario para el botón "Continuar con Google" (GIS). Solo si integrás flujos server-side.</span>
                 </div>
             <?php endif; ?>
             <div class="field">

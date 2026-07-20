@@ -113,6 +113,40 @@ final class Database
         $this->seedMembershipPlanDefaults();
         $this->retireLegacySeedMembership();
         $this->ensureDlocalEnums();
+        $this->ensureOAuthAuth();
+    }
+
+    private function ensureOAuthAuth(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(users)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        if (!in_array('google_id', $names, true)) {
+            $this->pdo->exec('ALTER TABLE users ADD COLUMN google_id TEXT DEFAULT NULL');
+        }
+        if (!in_array('auth_provider', $names, true)) {
+            $this->pdo->exec("ALTER TABLE users ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'password'");
+        }
+        $this->pdo->exec(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL'
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS auth_tokens (
+                id_token INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                purpose TEXT NOT NULL DEFAULT \'admin_login\',
+                id_commerce INTEGER DEFAULT NULL,
+                meta_json TEXT DEFAULT \'{}\',
+                expires_at TEXT NOT NULL,
+                used_at TEXT DEFAULT NULL,
+                ip TEXT DEFAULT \'\',
+                created_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
+                FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE CASCADE
+            )'
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_auth_tokens_email ON auth_tokens(email)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_auth_tokens_expires ON auth_tokens(expires_at)');
     }
 
     /**

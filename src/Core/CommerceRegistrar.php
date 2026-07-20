@@ -28,6 +28,21 @@ final class CommerceRegistrar
         $name = trim((string)($owner['nombre'] ?? ''));
         $last = trim((string)($owner['apellido'] ?? ''));
         $cedula = trim((string)($owner['cedula'] ?? ''));
+        $googleToken = trim((string)($owner['google_id_token'] ?? $payload['google_id_token'] ?? ''));
+        $googleProfile = null;
+        if ($googleToken !== '') {
+            if (!GoogleAuth::isEnabled()) {
+                self::assert(false, 'Registro con Google no está disponible.');
+            }
+            $googleProfile = GoogleAuth::verifyIdToken($googleToken);
+            $email = (string)$googleProfile['email'];
+            if ($name === '') {
+                $name = trim((string)($googleProfile['given_name'] ?? ''));
+            }
+            if ($last === '') {
+                $last = trim((string)($googleProfile['family_name'] ?? ''));
+            }
+        }
         $bizName = trim((string)($business['nombre'] ?? ''));
         $pais = strtoupper(trim((string)($business['pais'] ?? 'UY')));
         $ciudad = trim((string)($business['ciudad'] ?? ''));
@@ -37,8 +52,15 @@ final class CommerceRegistrar
         $tz = trim((string)($schedule['timezone'] ?? 'America/Montevideo'));
 
         self::assert($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL), 'Email inválido.');
-        self::assert(strlen($pass) >= 8, 'La contraseña debe tener al menos 8 caracteres.');
-        self::assert($name !== '' && $last !== '' && $cedula !== '', 'Completa los datos del dueño.');
+        if ($googleProfile === null) {
+            self::assert(strlen($pass) >= 8, 'La contraseña debe tener al menos 8 caracteres.');
+        } else {
+            $pass = bin2hex(random_bytes(16));
+        }
+        self::assert($name !== '' && $last !== '', 'Completa nombre y apellido.');
+        if ($cedula === '') {
+            $cedula = 'GOOGLE-' . substr((string)($googleProfile['sub'] ?? bin2hex(random_bytes(4))), 0, 12);
+        }
         self::assert($bizName !== '' && $ciudad !== '' && $calle !== '' && $tel !== '', 'Completa los datos del negocio.');
         self::assert($rubroId > 0, 'Selecciona un rubro válido.');
         self::assert(count($services) > 0, 'Agrega al menos un servicio.');
@@ -82,7 +104,7 @@ final class CommerceRegistrar
             $db->transaction(function () use (
                 &$idCommerce, &$idUser, $db, $slug, $rubroId, $planId, $bizName, $rut, $email, $tel,
                 $pais, $ciudad, $calle, $tz, $trialEnd, $trialDays, $name, $last, $cedula, $pass,
-                $services, $schedule, $membership
+                $services, $schedule, $membership, $googleProfile
             ) {
                 $idCommerce = (int)$db->insert('commerces', [
                     'slug'             => $slug,
@@ -113,6 +135,8 @@ final class CommerceRegistrar
                     'telefono'      => $tel,
                     'whatsapp'      => $tel,
                     'password_hash' => password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]),
+                    'google_id'     => $googleProfile ? (string)$googleProfile['sub'] : null,
+                    'auth_provider' => $googleProfile ? 'google' : 'password',
                     'activo'        => 1,
                 ]);
 
