@@ -55,6 +55,12 @@ if (!function_exists('agenduy_render_commerce')) {
 
         Auth::start();
         $commerceIdEarly = (int)$commerce['id_commerce'];
+        $isCommerceOwner = Auth::check()
+            && Auth::role() === Auth::ROLE_LOCAL
+            && (int)Auth::commerceId() === $commerceIdEarly;
+        $ownerDashboardUrl = $isCommerceOwner
+            ? url($slug . '/private/dashboard/admin/index.php')
+            : null;
         $clientSession = $_SESSION['client'] ?? null;
         $clientLoggedIn = is_array($clientSession)
             && (int)($clientSession['id_commerce'] ?? 0) === $commerceIdEarly
@@ -321,9 +327,15 @@ if (!function_exists('agenduy_render_commerce')) {
                     <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Cambiar tema">
                         <i class="bx bx-moon" id="theme-icon"></i>
                     </button>
+                    <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
+                    <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="bx bx-grid-alt"></i> Mi perfil
+                    </a>
+                    <?php else: ?>
                     <button class="client-auth-btn" type="button" id="client-auth-toggle" aria-expanded="false">
                         <i class="bx bx-user"></i> Mis reservas
                     </button>
+                    <?php endif; ?>
                     <a href="#reservar" class="btn btn--primary">Reservar</a>
                     <button class="menu-btn" type="button" id="menu-btn" aria-label="Menú">
                         <i class="bx bx-menu"></i>
@@ -576,6 +588,14 @@ if (!function_exists('agenduy_render_commerce')) {
 
         <section id="mis-reservas" class="alt">
             <div class="wrap">
+                <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
+                <span class="eyebrow">Panel del negocio</span>
+                <h2 class="section-title">Mi perfil</h2>
+                <p class="section-sub">Estás logueado como administrador de este comercio. Gestioná reservas, servicios y configuración desde tu panel.</p>
+                <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
+                    <i class="bx bx-grid-alt"></i> Ir a mi perfil
+                </a>
+                <?php else: ?>
                 <span class="eyebrow">Tu cuenta</span>
                 <h2 class="section-title">Mis reservas</h2>
                 <?php if ($clientLoggedIn): ?>
@@ -618,6 +638,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     </form>
                     <p class="client-auth-panel__msg" id="client-magic-msg" role="status"></p>
                 </div>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
         </section>
@@ -699,6 +720,7 @@ if (!function_exists('agenduy_render_commerce')) {
                                     <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456">
                                 </div>
                             </div>
+                            <p class="hint" id="booking-lookup-hint" hidden role="status"></p>
                             <div class="field">
                                 <label for="booking-notes">Notas (opcional)</label>
                                 <textarea id="booking-notes" name="notas" rows="2"></textarea>
@@ -1193,6 +1215,16 @@ if (!function_exists('agenduy_render_commerce')) {
             const dateInput = document.getElementById('booking-date');
             const timeSelect = document.getElementById('booking-time');
             const timeHint = document.getElementById('booking-time-hint');
+            const bookingNameInput = document.getElementById('booking-name');
+            const bookingEmailInput = document.getElementById('booking-email');
+            const bookingPhoneInput = document.getElementById('booking-phone');
+            const bookingLookupHint = document.getElementById('booking-lookup-hint');
+            const clientLookupUrl = <?= json_encode(url('src/API/client_lookup.php'), JSON_UNESCAPED_SLASHES) ?>;
+            const bookingGuestKey = 'agenduy-booking-guest-' + commerceSlug;
+            const clientLoggedInEmail = <?= json_encode($clientLoggedIn ? $clientEmail : '', JSON_UNESCAPED_UNICODE) ?>;
+            let lookupTimer = null;
+            let lookupInFlight = false;
+            let lastLookupKey = '';
             const availabilityUrl = <?= json_encode($availabilityApi, JSON_UNESCAPED_SLASHES) ?>;
             const maxDaysAhead = <?= (int)$maxDiasAdelante ?>;
             const stepForm = document.getElementById('booking-step-form');
@@ -1443,6 +1475,122 @@ if (!function_exists('agenduy_render_commerce')) {
                 });
             }
 
+            function loadSavedGuest() {
+                try {
+                    const raw = localStorage.getItem(bookingGuestKey);
+                    const parsed = raw ? JSON.parse(raw) : null;
+                    if (!parsed || typeof parsed !== 'object') return null;
+                    return parsed;
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function saveGuest(data) {
+                if (!data) return;
+                const payload = {
+                    nombre: String(data.nombre || '').trim(),
+                    email: String(data.email || '').trim(),
+                    telefono: String(data.telefono || '').trim(),
+                };
+                if (!payload.nombre && !payload.email && !payload.telefono) return;
+                localStorage.setItem(bookingGuestKey, JSON.stringify(payload));
+            }
+
+            function setLookupHint(text, isError) {
+                if (!bookingLookupHint) return;
+                const value = String(text || '').trim();
+                if (!value) {
+                    bookingLookupHint.hidden = true;
+                    bookingLookupHint.textContent = '';
+                    bookingLookupHint.className = 'hint';
+                    return;
+                }
+                bookingLookupHint.textContent = value;
+                bookingLookupHint.hidden = false;
+                bookingLookupHint.className = isError ? 'hint hint--error' : 'hint hint--ok';
+            }
+
+            function applyGuestFields(data, source) {
+                if (!data) return;
+                const fillIfEmpty = (el, value) => {
+                    if (!el || !value) return;
+                    if (source === 'lookup' || !String(el.value || '').trim()) {
+                        el.value = value;
+                    }
+                };
+                fillIfEmpty(bookingNameInput, String(data.nombre || '').trim());
+                fillIfEmpty(bookingEmailInput, String(data.email || '').trim());
+                fillIfEmpty(bookingPhoneInput, String(data.telefono || '').trim());
+                if (source === 'lookup' && String(data.nombre || '').trim()) {
+                    setLookupHint('Datos completados automáticamente.', false);
+                }
+            }
+
+            async function lookupClient() {
+                const email = String(bookingEmailInput?.value || '').trim();
+                const telefono = String(bookingPhoneInput?.value || '').trim();
+                const phoneDigits = telefono.replace(/\D/g, '');
+                const emailOk = email.includes('@') && email.length > 5;
+                if (!emailOk && phoneDigits.length < 8) {
+                    setLookupHint('');
+                    return;
+                }
+
+                const key = email.toLowerCase() + '|' + phoneDigits;
+                if (key === lastLookupKey || lookupInFlight) return;
+                lastLookupKey = key;
+                lookupInFlight = true;
+
+                try {
+                    const res = await fetch(clientLookupUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            slug: commerceSlug,
+                            email: emailOk ? email : '',
+                            telefono,
+                            _csrf: csrfToken,
+                        }),
+                    });
+                    const json = await res.json();
+                    if (json && json.found) {
+                        applyGuestFields(json, 'lookup');
+                        saveGuest(json);
+                    }
+                } catch (_) {
+                    // Silencioso: el usuario puede seguir completando manualmente.
+                } finally {
+                    lookupInFlight = false;
+                }
+            }
+
+            function scheduleClientLookup() {
+                clearTimeout(lookupTimer);
+                lookupTimer = setTimeout(() => lookupClient(), 450);
+            }
+
+            function prefillBookingGuest() {
+                applyGuestFields(loadSavedGuest(), 'local');
+                if (clientLoggedInEmail && bookingEmailInput) {
+                    bookingEmailInput.value = clientLoggedInEmail;
+                    lastLookupKey = '';
+                    lookupClient();
+                }
+            }
+
+            if (bookingEmailInput) {
+                bookingEmailInput.addEventListener('input', scheduleClientLookup);
+                bookingEmailInput.addEventListener('blur', lookupClient);
+            }
+            if (bookingPhoneInput) {
+                bookingPhoneInput.addEventListener('input', scheduleClientLookup);
+                bookingPhoneInput.addEventListener('blur', lookupClient);
+            }
+
             function showUpsellStep(booking) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
@@ -1479,9 +1627,15 @@ if (!function_exists('agenduy_render_commerce')) {
                 setTimeHint('');
                 showBookingFormStep();
                 lastBooking = null;
+                lastLookupKey = '';
+                setLookupHint('');
+                prefillBookingGuest();
                 modal.classList.add('is-open');
                 loadSlots();
-                setTimeout(() => document.getElementById('booking-name').focus(), 200);
+                const focusEl = (bookingEmailInput && bookingEmailInput.value)
+                    ? bookingEmailInput
+                    : bookingNameInput;
+                setTimeout(() => focusEl?.focus(), 200);
             }
             function closeModal() {
                 modal.classList.remove('is-open');
@@ -1588,10 +1742,11 @@ if (!function_exists('agenduy_render_commerce')) {
                         servicio: svcNameInput.value || '',
                         fecha: dateInput.value || '',
                         hora: timeSelect.value || '',
-                        nombre: (document.getElementById('booking-name') || {}).value || '',
-                        email: (document.getElementById('booking-email') || {}).value || '',
-                        telefono: (document.getElementById('booking-phone') || {}).value || ''
+                        nombre: (bookingNameInput || {}).value || '',
+                        email: (bookingEmailInput || {}).value || '',
+                        telefono: (bookingPhoneInput || {}).value || ''
                     };
+                    saveGuest(booking);
                     showUpsellStep(booking);
                 } catch (err) {
                     const msg = (err && err.name === 'AbortError')

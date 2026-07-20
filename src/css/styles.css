@@ -384,7 +384,20 @@ body.modal-open{ overflow:hidden; }
   font-size:.82rem;
   font-weight:600;
   cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
 }
+.client-auth-btn--profile{
+  border-color: var(--brand, #7c3aed);
+  color: var(--brand, #7c3aed);
+}
+.client-auth-btn--profile:hover{
+  background: color-mix(in srgb, var(--brand, #7c3aed) 10%, transparent);
+}
+.hint--ok{ color:#059669; }
+.hint--error{ color:#dc2626; }
 .client-auth-panel{
   margin-top:1rem;
   padding:1rem;
