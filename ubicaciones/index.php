@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
-use Agenduy\Core\Database;
 use Agenduy\Core\LandingContent;
 
 function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
@@ -24,17 +23,13 @@ $pageDescription = $isHub
     ? 'Turnos y agendas online para servicios en distintas ciudades de Uruguay.'
     : (string)($location['description'] ?? LandingContent::SITE_DESCRIPTION);
 
-$db = Database::getInstance();
 $commerces = [];
 if (!$isHub) {
-    $city = (string)($location['title'] ?? '');
-    $commerces = $db->fetchAll(
-        "SELECT slug, nombre, ciudad FROM commerces
-         WHERE status IN ('trial','active') AND lower(ciudad) LIKE lower(:city)
-         ORDER BY nombre COLLATE NOCASE ASC LIMIT 24",
-        [':city' => '%' . $city . '%']
-    );
+    $commerces = LandingContent::commercesForLocation($slug);
 }
+
+$stylesPath = dirname(__DIR__) . '/src/css/styles.css';
+$stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -44,46 +39,90 @@ if (!$isHub) {
   <title><?= h($pageTitle) ?></title>
   <meta name="description" content="<?= h($pageDescription) ?>">
   <link rel="canonical" href="<?= h($isHub ? $siteUrl . '/ubicaciones/' : $siteUrl . '/ubicaciones/' . rawurlencode($slug) . '/') ?>">
-  <link rel="stylesheet" href="<?= h(url('src/css/styles.css')) ?>">
+  <meta property="og:title" content="<?= h($pageTitle) ?>">
+  <meta property="og:description" content="<?= h($pageDescription) ?>">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="<?= h($siteUrl . '/src/media/logo/og-image.png') ?>">
+  <link rel="icon" type="image/png" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
+  <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
+  <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
 </head>
 <body>
 <header class="site-header">
   <div class="site-header__inner">
     <a class="site-header__brand" href="<?= h(url('')) ?>">
-      <img src="<?= h(url('src/media/logo/logo-horizontal.png')) ?>" alt="Agendarte UY" class="brand-logo brand-logo--horizontal" width="168" height="44">
+      <img src="<?= h(url('src/media/logo/logo-horizontal.png')) ?>" alt="Agendarte UY" class="brand-logo brand-logo--horizontal" width="168" height="44" decoding="async">
     </a>
+    <nav class="site-header__actions">
+      <a class="btn-primary btn-primary--sm" href="<?= h(url('')) ?>#rubros">Registrar mi negocio</a>
+    </nav>
   </div>
 </header>
 
 <main class="landing seo-page">
   <section class="seo-page__hero">
     <?php if ($isHub): ?>
-      <h1>Reservas online por ubicación</h1>
-      <p>Encontrá servicios con agenda en distintas ciudades de Uruguay.</p>
-      <ul class="seo-location-list">
-        <?php foreach ($locations as $locSlug => $loc): ?>
-        <li><a href="<?= h(url('ubicaciones/' . rawurlencode($locSlug) . '/')) ?>"><?= h($loc['title']) ?></a></li>
-        <?php endforeach; ?>
-      </ul>
+      <p class="section-heading__eyebrow">Ubicaciones</p>
+      <h1>Reservas online por ciudad</h1>
+      <p>Encontrá servicios con agenda en distintas ciudades de Uruguay y reservá turnos en pocos clics.</p>
     <?php else: ?>
+      <p class="section-heading__eyebrow">Ciudad</p>
       <h1>Reservas online en <?= h($location['title']) ?></h1>
       <p><?= h($location['description']) ?></p>
-      <?php if (empty($commerces)): ?>
-        <p class="seo-page__empty">Pronto habrá más negocios en esta zona. <a href="<?= h(url('')) ?>#rubros">Registrá el tuyo</a>.</p>
-      <?php else: ?>
-        <ul class="seo-commerce-list">
-          <?php foreach ($commerces as $c): ?>
-          <li><a href="<?= h(url((string)$c['slug'])) ?>"><strong><?= h($c['nombre']) ?></strong></a></li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
-      <p class="seo-page__back"><a href="<?= h(url('categorias/')) ?>">Ver categorías</a></p>
     <?php endif; ?>
   </section>
+
+  <?php if ($isHub): ?>
+  <section class="categories-grid-section" aria-label="Ciudades disponibles">
+    <div class="categories-grid">
+      <?php foreach ($locations as $locSlug => $loc): ?>
+      <a class="category-card category-card--location" href="<?= h(url('ubicaciones/' . rawurlencode($locSlug) . '/')) ?>">
+        <span class="category-card__icon" aria-hidden="true"><i class="bx bx-map"></i></span>
+        <span class="category-card__title"><?= h($loc['title']) ?></span>
+        <span class="category-card__hint"><?= h($loc['description']) ?></span>
+      </a>
+      <?php endforeach; ?>
+    </div>
+    <p class="categories-section__more">
+      <a href="<?= h(url('categorias/')) ?>">Ver todas las categorías</a>
+    </p>
+  </section>
+  <?php else: ?>
+  <section class="seo-page__list" aria-label="Negocios en esta ciudad">
+    <h2>Negocios disponibles</h2>
+    <?php if (empty($commerces)): ?>
+      <p class="seo-page__empty">Todavía no hay comercios publicados en esta ciudad. <a href="<?= h(url('')) ?>#rubros">Registrá el tuyo</a>.</p>
+    <?php else: ?>
+      <ul class="seo-commerce-list">
+        <?php foreach ($commerces as $c): ?>
+        <li>
+          <a href="<?= h(url((string)$c['slug'])) ?>">
+            <strong><?= h($c['nombre']) ?></strong>
+            <?php if (!empty($c['rubro_nombre'])): ?>
+              <span><?= h($c['rubro_nombre']) ?><?php if (!empty($c['ciudad'])): ?> · <?= h($c['ciudad']) ?><?php endif; ?></span>
+            <?php elseif (!empty($c['ciudad'])): ?>
+              <span><?= h($c['ciudad']) ?></span>
+            <?php endif; ?>
+          </a>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+    <p class="seo-page__back">
+      <a href="<?= h(url('ubicaciones/')) ?>">&larr; Ver todas las ciudades</a>
+      ·
+      <a href="<?= h(url('categorias/')) ?>">Ver categorías</a>
+    </p>
+  </section>
+  <?php endif; ?>
 </main>
 
 <footer class="site-footer">
   <div class="site-footer__inner">
+    <div class="site-footer__brand">
+      <img src="<?= h(url('src/media/logo/logo-icon.png')) ?>" alt="" width="28" height="28" loading="lazy">
+      <span>Agendarte <span class="brand-uy">UY</span></span>
+    </div>
     <p class="site-footer__tagline"><?= h(LandingContent::TAGLINE) ?></p>
   </div>
 </footer>

@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
-use Agenduy\Core\Database;
 use Agenduy\Core\LandingContent;
 
 function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
@@ -17,6 +16,8 @@ $isHub = ($slug === '' || !isset($categories[$slug]));
 $category = $isHub ? null : $categories[$slug];
 
 $siteUrl = rtrim(url(''), '/');
+$stylesPath = dirname(__DIR__) . '/src/css/styles.css';
+$stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
 $pageTitle = $isHub
     ? 'Categorías de servicios con reserva online · Agendarte UY'
     : ($category['title'] ?? '') . ' · Reservas online Uruguay · Agendarte UY';
@@ -24,20 +25,9 @@ $pageDescription = $isHub
     ? 'Encontrá y reservá turnos online por categoría: belleza, salud, deporte, educación y más servicios en Uruguay.'
     : (string)($category['description'] ?? LandingContent::SITE_DESCRIPTION);
 
-$db = Database::getInstance();
 $commerces = [];
 if (!$isHub) {
-    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $slug) . '%';
-    $commerces = $db->fetchAll(
-        "SELECT c.slug, c.nombre, c.ciudad, r.nombre AS rubro_nombre
-         FROM commerces c
-         LEFT JOIN rubros r ON r.id_rubro = c.id_rubro
-         WHERE c.status IN ('trial','active')
-           AND (lower(r.nombre) LIKE lower(:q) OR lower(r.tipo) LIKE lower(:q) OR lower(c.nombre) LIKE lower(:q))
-         ORDER BY c.nombre COLLATE NOCASE ASC
-         LIMIT 24",
-        [':q' => $like]
-    );
+    $commerces = LandingContent::commercesForCategory($slug);
 }
 ?>
 <!DOCTYPE html>
@@ -56,7 +46,7 @@ if (!$isHub) {
   <meta property="og:type" content="website">
   <meta property="og:image" content="<?= h($siteUrl . '/src/media/logo/og-image.png') ?>">
   <link rel="icon" type="image/png" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
-  <link rel="stylesheet" href="<?= h(url('src/css/styles.css')) ?>">
+  <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
 </head>
 <body>
@@ -114,7 +104,11 @@ if (!$isHub) {
         <?php endforeach; ?>
       </ul>
     <?php endif; ?>
-    <p class="seo-page__back"><a href="<?= h(url('categorias/')) ?>">&larr; Ver todas las categorías</a></p>
+    <p class="seo-page__back">
+      <a href="<?= h(url('categorias/')) ?>">&larr; Ver todas las categorías</a>
+      ·
+      <a href="<?= h(url('ubicaciones/')) ?>">Buscar por ciudad</a>
+    </p>
   </section>
   <?php endif; ?>
 </main>

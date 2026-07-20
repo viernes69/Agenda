@@ -368,7 +368,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
     </div>
     <p class="categories-section__more">
       <a href="<?= h(url('categorias/')) ?>">Ver todas las categorías</a>
-      ·
+      <span class="categories-section__sep" aria-hidden="true">·</span>
       <a href="<?= h(url('ubicaciones/')) ?>">Buscar por ciudad</a>
     </p>
   </section>

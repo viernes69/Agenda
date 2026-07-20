@@ -201,6 +201,96 @@ final class LandingContent
         return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
     }
 
+    /** @return list<string> */
+    public static function categorySearchTerms(string $slug): array
+    {
+        $categories = self::categories();
+        if (!isset($categories[$slug])) {
+            return [$slug];
+        }
+
+        $cat = $categories[$slug];
+        $terms = [$slug];
+        foreach ($cat['keywords'] ?? [] as $keyword) {
+            $terms[] = (string)$keyword;
+        }
+
+        $titleWords = preg_split('/\s+/u', strtolower((string)($cat['title'] ?? ''))) ?: [];
+        foreach ($titleWords as $word) {
+            $word = trim($word, '.,;:!?');
+            if (mb_strlen($word) >= 4) {
+                $terms[] = $word;
+            }
+        }
+
+        $unique = [];
+        foreach ($terms as $term) {
+            $term = strtolower(trim($term));
+            if ($term === '' || mb_strlen($term) < 3) {
+                continue;
+            }
+            $unique[$term] = true;
+        }
+
+        return array_keys($unique);
+    }
+
+    /** @return list<array<string,mixed>> */
+    public static function commercesForCategory(string $slug, int $limit = 24): array
+    {
+        $terms = self::categorySearchTerms($slug);
+        if ($terms === []) {
+            return [];
+        }
+
+        $conditions = [];
+        $params = [];
+        foreach ($terms as $i => $term) {
+            $key = ':t' . $i;
+            $params[$key] = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+            $conditions[] = "(lower(r.nombre) LIKE lower({$key})
+                OR lower(r.tipo) LIKE lower({$key})
+                OR lower(r.descripcion) LIKE lower({$key})
+                OR lower(c.nombre) LIKE lower({$key})
+                OR lower(c.ciudad) LIKE lower({$key}))";
+        }
+
+        $sql = 'SELECT c.slug, c.nombre, c.ciudad, r.nombre AS rubro_nombre
+                FROM commerces c
+                LEFT JOIN rubros r ON r.id_rubro = c.id_rubro
+                WHERE c.status IN (\'trial\',\'active\')
+                  AND (' . implode(' OR ', $conditions) . ')
+                ORDER BY c.nombre COLLATE NOCASE ASC
+                LIMIT ' . max(1, min($limit, 50));
+
+        return Database::getInstance()->fetchAll($sql, $params);
+    }
+
+    /** @return list<array<string,mixed>> */
+    public static function commercesForLocation(string $slug, int $limit = 24): array
+    {
+        $locations = self::locations();
+        if (!isset($locations[$slug])) {
+            return [];
+        }
+
+        $city = (string)($locations[$slug]['title'] ?? '');
+        if ($city === '') {
+            return [];
+        }
+
+        return Database::getInstance()->fetchAll(
+            "SELECT c.slug, c.nombre, c.ciudad, r.nombre AS rubro_nombre
+             FROM commerces c
+             LEFT JOIN rubros r ON r.id_rubro = c.id_rubro
+             WHERE c.status IN ('trial','active')
+               AND lower(c.ciudad) LIKE lower(:city)
+             ORDER BY c.nombre COLLATE NOCASE ASC
+             LIMIT " . max(1, min($limit, 50)),
+            [':city' => '%' . $city . '%']
+        );
+    }
+
     public static function jsonLdFaq(): string
     {
         $entities = [];

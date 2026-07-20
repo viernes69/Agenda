@@ -2611,6 +2611,36 @@ body.modal-open{ overflow:hidden; }
   margin-top: 1.25rem;
   color: var(--text-muted);
 }
+.categories-section__more a,
+.seo-page__back a{
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.categories-section__more a:hover,
+.seo-page__back a:hover{
+  text-decoration: underline;
+}
+.categories-grid-section{
+  padding: 0 1.25rem 2.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.category-card--location{
+  position: relative;
+  padding-top: 2.4rem;
+}
+.category-card__icon{
+  position: absolute;
+  top: .85rem;
+  left: 1rem;
+  color: var(--primary);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.seo-page__back{
+  margin-top: 1.5rem;
+}
 .about-section__inner{
   max-width: 760px;
   margin: 0 auto;

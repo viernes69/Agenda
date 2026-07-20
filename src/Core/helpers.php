@@ -46,6 +46,7 @@ if (!function_exists('agenduy_request')) {
         // Base path: directorio de la app (contiene index.php + carpeta admin/)
         $scriptFile = str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
         $basePath = '';
+        $appRootFound = false;
 
         $docRoot = rtrim(str_replace('\\', '/', (string)($_SERVER['DOCUMENT_ROOT'] ?? '')), '/');
         if ($scriptFile !== '' && $docRoot !== '' && str_starts_with($scriptFile, $docRoot)) {
@@ -57,6 +58,7 @@ if (!function_exists('agenduy_request')) {
                     $rel = substr($dir, strlen($docRoot));
                     $rel = trim(str_replace('\\', '/', $rel), '/');
                     $basePath = $rel === '' ? '' : '/' . $rel;
+                    $appRootFound = true;
                     break;
                 }
                 if ($dir === $docRoot) {
@@ -72,11 +74,11 @@ if (!function_exists('agenduy_request')) {
 
         // Fallback legacy: primer segmento del script (subdirectorio tipo /agenduy.uy/)
         $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
-        if ($basePath === '' && $scriptName !== '') {
+        if (!$appRootFound && $basePath === '' && $scriptName !== '') {
             $relative = ltrim(str_replace('\\', '/', dirname($scriptName)), '/');
             if ($relative !== '' && $relative !== '.') {
                 $parts = explode('/', $relative);
-                $internalDirs = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api'];
+                $internalDirs = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api', 'categorias', 'ubicaciones'];
                 while ($parts !== []) {
                     $last = strtolower((string)end($parts));
                     if (in_array($last, $internalDirs, true)) {
