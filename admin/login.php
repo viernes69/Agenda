@@ -10,7 +10,6 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 
 Auth::start();
-$error = '';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     if (Auth::check()) {
@@ -24,27 +23,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: ' . url('/'));
     exit;
 }
-    CSRF::checkRequest('admin_login');
-    $email    = trim((string)($_POST['email'] ?? ''));
-    $password = (string)($_POST['password'] ?? '');
 
-    if ($email === '' || $password === '') {
-        header('Location: ' . url('/?login_error=1'));
-        exit;
-    }
+CSRF::checkRequest('admin_login');
+$email    = trim((string)($_POST['email'] ?? ''));
+$password = (string)($_POST['password'] ?? '');
 
-    $result = Auth::login($email, $password, $_SERVER['REMOTE_ADDR'] ?? null);
-    if ($result['ok']) {
-        $destination = Auth::dashboardUrl($result['user']);
-        if ($destination === null) {
-            Auth::logout();
-            header('Location: ' . url('/?login_error=1'));
-            exit;
-        }
-        header('Location: ' . $destination, true, 303);
-        exit;
-    }
-
+if ($email === '' || $password === '') {
     header('Location: ' . url('/?login_error=1'));
     exit;
 }
+
+$result = Auth::login($email, $password, $_SERVER['REMOTE_ADDR'] ?? null);
+if ($result['ok']) {
+    $destination = Auth::dashboardUrl($result['user']);
+    if ($destination === null) {
+        Auth::logout();
+        header('Location: ' . url('/?login_error=1'));
+        exit;
+    }
+    header('Location: ' . $destination, true, 303);
+    exit;
+}
+
+header('Location: ' . url('/?login_error=1'));
+exit;
