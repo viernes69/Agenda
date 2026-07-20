@@ -16,11 +16,29 @@ if (empty($_SESSION['admin_config_csrf']) || !is_string($_SESSION['admin_config_
   $_SESSION['admin_config_csrf'] = bin2hex(random_bytes(32));
 }
 $centralPanelSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+$templateHost = \Agenduy\Core\CommercePanel::isTemplateHost(basename(dirname(__DIR__, 3)));
 if ($centralPanelSlug !== '') {
   $tenantSlug = $centralPanelSlug;
   $commerceIdForPanel = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
   if ($commerceIdForPanel > 0) {
-    \Agenduy\Core\CommercePanel::defineLocalDatabasePath($commerceIdForPanel);
+    \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $tenantSlug);
+  }
+} elseif ($templateHost) {
+  $commerceIdForPanel = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+  if ($commerceIdForPanel > 0) {
+    $commerceRow = \Agenduy\Core\Database::getInstance()->fetchOne(
+      'SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1',
+      [':id' => $commerceIdForPanel]
+    );
+    $ownedSlugRow = trim((string)($commerceRow['slug'] ?? ''));
+    if ($ownedSlugRow !== '') {
+      $tenantSlug = $ownedSlugRow;
+      \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $ownedSlugRow);
+    } else {
+      $tenantSlug = 'template';
+    }
+  } else {
+    $tenantSlug = 'template';
   }
 } else {
   $tenantSlug = basename(dirname(__DIR__, 3));

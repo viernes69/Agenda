@@ -8,7 +8,6 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
-use Agenduy\Core\CentralCommerceData;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 
@@ -44,43 +43,12 @@ if (CommercePanel::hasLegacyPanel($slug)) {
     exit;
 }
 
-if (!CommercePanel::localDatabaseExists($idCommerce)) {
-    $owner = $db->fetchOne(
-        'SELECT * FROM users WHERE id_commerce = :c AND role = :r ORDER BY id_user ASC LIMIT 1',
-        [':c' => $idCommerce, ':r' => Auth::ROLE_LOCAL]
-    );
-    $services = $db->fetchAll(
-        'SELECT nombre, duracion_min AS duracion, precio FROM services WHERE id_commerce = :c ORDER BY id_service ASC',
-        [':c' => $idCommerce]
-    );
-    $schedule = \Agenduy\Core\CommerceSettings::get(
-        $idCommerce,
-        'horarios',
-        \Agenduy\Core\CommerceSettings::defaultsForSection('horarios')
-    );
-    CentralCommerceData::provision(
-        $idCommerce,
-        (int)($owner['id_user'] ?? Auth::id() ?? 0),
-        [
-            'nombre' => (string)($owner['nombre'] ?? ''),
-            'apellido' => (string)($owner['apellido'] ?? ''),
-            'cedula' => (string)($owner['cedula'] ?? ''),
-            'email' => (string)($owner['email'] ?? $commerce['email'] ?? ''),
-        ],
-        [
-            'nombre' => (string)$commerce['nombre'],
-            'rut' => (string)($commerce['rut_ruc'] ?? ''),
-            'pais' => (string)($commerce['pais'] ?? 'UY'),
-            'ciudad' => (string)($commerce['ciudad'] ?? ''),
-            'calle' => (string)($commerce['calle'] ?? ''),
-            'telefono' => (string)($commerce['telefono'] ?? ''),
-        ],
-        $schedule,
-        $services,
-        (int)($commerce['id_rubro'] ?? 0)
-    );
-}
+CommercePanel::bootstrapCentralAccess($idCommerce, $slug);
 
-CommercePanel::activateCentralSession($slug);
-header('Location: ' . url(CommercePanel::CENTRAL_TEMPLATE_PATH));
+$target = url(CommercePanel::CENTRAL_TEMPLATE_PATH);
+$hash = trim((string)($_GET['section'] ?? ''));
+if ($hash !== '') {
+    $target .= '#' . rawurlencode(ltrim($hash, '#'));
+}
+header('Location: ' . $target);
 exit;

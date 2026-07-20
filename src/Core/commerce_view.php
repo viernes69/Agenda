@@ -590,7 +590,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
                     <i class="bx bx-grid-alt"></i> Ir al panel
                 </a>
-                <a href="<?= htmlspecialchars($ownerDashboardUrl . '#config', ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">
+                <a href="<?= htmlspecialchars(CommercePanel::centralUrl($slug) . '&section=config', ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">
                     <i class="bx bx-cog"></i> Configuración
                 </a>
                 </div>

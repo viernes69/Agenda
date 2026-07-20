@@ -1,0 +1,11 @@
+# Panel admin compartido — normalizar rutas (Linux es case-sensitive)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /template/private/dashboard/admin/
+
+    # Admin/index -> index.php (mayúsculas y sin extensión)
+    RewriteRule ^(?i)index/?$ index.php [L,QSA]
+    RewriteRule ^(?i)index\.php$ - [L]
+</IfModule>
+
+DirectoryIndex index.php

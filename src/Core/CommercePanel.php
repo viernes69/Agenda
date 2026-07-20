@@ -102,4 +102,78 @@ final class CommercePanel
             define('AGENDUY_LOCAL_DB_PATH', self::localDatabasePath($idCommerce));
         }
     }
+
+    /**
+     * Prepara database.php central si falta (evita pantalla en blanco en AutoloadDB).
+     */
+    public static function ensureLocalDatabase(int $idCommerce, string $slug): void
+    {
+        if ($idCommerce <= 0 || $slug === '') {
+            return;
+        }
+        self::defineLocalDatabasePath($idCommerce);
+        if (self::localDatabaseExists($idCommerce)) {
+            return;
+        }
+
+        $db = Database::getInstance();
+        $commerce = $db->fetchOne('SELECT * FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
+        if (!$commerce) {
+            return;
+        }
+
+        $owner = $db->fetchOne(
+            'SELECT * FROM users WHERE id_commerce = :c AND role = :r ORDER BY id_user ASC LIMIT 1',
+            [':c' => $idCommerce, ':r' => Auth::ROLE_LOCAL]
+        );
+        $services = $db->fetchAll(
+            'SELECT nombre, duracion_min AS duracion, precio FROM services WHERE id_commerce = :c ORDER BY id_service ASC',
+            [':c' => $idCommerce]
+        );
+        $schedule = CommerceSettings::get(
+            $idCommerce,
+            'horarios',
+            CommerceSettings::defaultsForSection('horarios')
+        );
+
+        CentralCommerceData::provision(
+            $idCommerce,
+            (int)($owner['id_user'] ?? 0),
+            [
+                'nombre' => (string)($owner['nombre'] ?? ''),
+                'apellido' => (string)($owner['apellido'] ?? ''),
+                'cedula' => (string)($owner['cedula'] ?? ''),
+                'email' => (string)($owner['email'] ?? $commerce['email'] ?? ''),
+            ],
+            [
+                'nombre' => (string)$commerce['nombre'],
+                'rut' => (string)($commerce['rut_ruc'] ?? ''),
+                'pais' => (string)($commerce['pais'] ?? 'UY'),
+                'ciudad' => (string)($commerce['ciudad'] ?? ''),
+                'calle' => (string)($commerce['calle'] ?? ''),
+                'telefono' => (string)($commerce['telefono'] ?? ''),
+            ],
+            $schedule,
+            $services,
+            (int)($commerce['id_rubro'] ?? 0)
+        );
+    }
+
+    /**
+     * Bootstrap del panel compartido en /template/private/dashboard/admin/.
+     */
+    public static function bootstrapCentralAccess(int $idCommerce, string $ownedSlug): void
+    {
+        $ownedSlug = trim($ownedSlug, '/');
+        if ($idCommerce <= 0 || $ownedSlug === '') {
+            return;
+        }
+        self::activateCentralSession($ownedSlug);
+        self::ensureLocalDatabase($idCommerce, $ownedSlug);
+    }
+
+    public static function isTemplateHost(string $tenantFolderName): bool
+    {
+        return strtolower(trim($tenantFolderName)) === 'template';
+    }
 }
