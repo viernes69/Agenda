@@ -27,11 +27,17 @@ $active = $activeSection ?? '';
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="csrf-token" content="<?= htmlspecialchars(\Agenduy\Core\CSRF::generate('api', Auth::id()), ENT_QUOTES, 'UTF-8') ?>">
 <link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::cssUrl(), ENT_QUOTES, 'UTF-8') ?>">
+<link rel="icon" type="image/png" href="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+<meta name="theme-color" content="#7c3aed">
 </head>
 <body>
 <header class="topbar">
     <div class="topbar__brand">
-        <a href="index.php"><strong>Agendarte</strong> <span>Admin</span></a>
+        <a href="index.php">
+            <img src="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::iconUrl(), ENT_QUOTES, 'UTF-8') ?>" alt="" class="topbar__brand-logo" width="34" height="34">
+            <span class="topbar__brand-text"><strong>Agendarte</strong> <span class="brand-uy">UY</span> Admin</span>
+        </a>
     </div>
     <nav class="topbar__nav" aria-label="Secciones">
         <a href="index.php"        class="<?= $active === 'overview' ? 'is-active' : '' ?>">Resumen</a>

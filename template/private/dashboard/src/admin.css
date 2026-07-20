@@ -6,8 +6,8 @@
   --muted: #9aa4b2;
   --text: #e6e8eb;
   --title: #f8fafc;
-  --accent: #3b82f6;
-  --accent-600: #2563eb;
+  --accent: #7c3aed;
+  --accent-600: #6d28d9;
   --border: #222736;
   --success: #22c55e;
   --success-dark: #16a34a;
@@ -32,8 +32,8 @@ body {
   --muted: #9aa4b2;
   --text: #e6e8eb;
   --title: #f8fafc;
-  --accent: #3b82f6;
-  --accent-600: #2563eb;
+  --accent: #7c3aed;
+  --accent-600: #6d28d9;
   --border: #222736;
   --surface: rgba(15, 19, 29, 0.94);
   --surface-strong: rgba(12, 16, 24, 0.98);
@@ -45,7 +45,7 @@ body {
   grid-template-columns: 1fr;
   min-height: 100vh;
   background:
-    radial-gradient(circle at -15% -20%, rgba(59, 130, 246, 0.16), transparent 45%),
+    radial-gradient(circle at -15% -20%, rgba(124, 58, 237, 0.16), transparent 45%),
     linear-gradient(160deg, rgba(8, 11, 18, 0.98) 0%, rgba(9, 12, 20, 0.99) 46%, rgba(7, 9, 15, 1) 100%);
   color: var(--text);
   color-scheme: dark;
@@ -1520,8 +1520,8 @@ body {
 .flatpickr-day.startRange,
 .flatpickr-day.endRange,
 .flatpickr-day.selected:hover {
-  background: #0ea5e9;
-  border-color: #0ea5e9;
+  background: #7c3aed;
+  border-color: #7c3aed;
   color: #fff;
 }
 
@@ -2487,8 +2487,8 @@ body {
 .admin-service-edit:hover,
 .admin-product-edit:hover {
   transform: translateY(-1px);
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #7c3aed;
+  border-color: #7c3aed;
   color: #fff;
 }
 
@@ -3013,8 +3013,8 @@ body {
 
 .admin-barber-edit:hover {
   transform: translateY(-1px);
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #7c3aed;
+  border-color: #7c3aed;
   color: #fff;
 }
 

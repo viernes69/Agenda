@@ -61,6 +61,9 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 <title>Configurá tu negocio · Agendarte</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::cssUrl(), ENT_QUOTES, 'UTF-8') ?>">
+<link rel="icon" type="image/png" href="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+<meta name="theme-color" content="#7c3aed">
 <style>
 .setup-wrap { max-width: 640px; margin: 2rem auto; padding: 0 1rem 3rem; }
 .setup-card {
@@ -104,6 +107,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 </head>
 <body>
 <div class="setup-wrap">
+    <?= \Agenduy\Core\AdminBrand::platformBrandHeaderHtml('Configuración inicial') ?>
     <div class="setup-card">
         <h1>Hola, <?= htmlspecialchars($userName, ENT_QUOTES, 'UTF-8') ?></h1>
         <p class="lead">Completá los datos de tu negocio para activar tu página pública y recibir reservas.</p>

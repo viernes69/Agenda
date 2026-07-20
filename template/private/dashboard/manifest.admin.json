@@ -1,21 +1,14 @@
 {
-  "name": "Agenda Privada",
-  "short_name": "Agenda Pro",
-  "description": "Panel para gestionar reservas, pedidos y pagos en tiempo real.",
-  "start_url": "/agenda/template/private/dashboard/admin/index.php",
+  "name": "Agendarte UY · Panel",
+  "short_name": "Agendarte",
+  "description": "Panel para gestionar reservas, clientes y servicios.",
   "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#0ea5e9",
+  "background_color": "#0f1115",
+  "theme_color": "#7c3aed",
   "icons": [
     {
-      "src": "/agenda/src/media/logo/logo.png",
+      "src": "../../src/media/logo/logo-icon.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/agenda/src/media/logo/logo.png",
-      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

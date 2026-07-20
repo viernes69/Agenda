@@ -1,0 +1,122 @@
+/**
+ * Agendarte UY — Marca en paneles admin (tenant + central)
+ */
+:root {
+  --accent: #7c3aed;
+  --accent-600: #6d28d9;
+  --primary: #7c3aed;
+  --brand-navy: #1e1b4b;
+  --brand-violet: #7c3aed;
+}
+
+.admin-layout {
+  background:
+    radial-gradient(circle at -15% -20%, rgba(124, 58, 237, 0.18), transparent 45%),
+    linear-gradient(160deg, rgba(8, 11, 18, 0.98) 0%, rgba(9, 12, 20, 0.99) 46%, rgba(7, 9, 15, 1) 100%);
+}
+
+.admin-brand {
+  gap: 0.55rem;
+}
+
+.admin-brand__platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--title, #f8fafc);
+}
+
+.admin-brand__platform:hover {
+  text-decoration: none;
+  opacity: 0.92;
+}
+
+.admin-brand__icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.admin-brand__name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.admin-brand__tenant {
+  padding-left: 0.15rem;
+}
+
+.brand-uy {
+  color: var(--brand-violet);
+  font-weight: 600;
+}
+
+.admin-link.is-active,
+.admin-bottomnav__item.is-active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: #f5f3ff;
+}
+
+.btn-primary,
+.admin-share-link__btn,
+.modal__footer .btn-primary {
+  background: linear-gradient(120deg, #7c3aed, #6366f1);
+  border-color: transparent;
+}
+
+.btn-primary:hover,
+.admin-share-link__btn:hover {
+  background: linear-gradient(120deg, #6d28d9, #5b21b6);
+}
+
+.admin-plan-banner--trial {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.topbar__brand a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.topbar__brand-logo {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.topbar__brand-text strong {
+  color: #f8fafc;
+}
+
+.topbar__brand-text .brand-uy {
+  color: var(--brand-violet);
+  font-weight: 600;
+}
+
+.platform-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.platform-brand-header img {
+  width: 42px;
+  height: 42px;
+}
+
+.platform-brand-header h1,
+.platform-brand-header .platform-brand-header__title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.setup-wrap .brand-uy {
+  color: var(--brand-violet);
+}

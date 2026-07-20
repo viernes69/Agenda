@@ -43,5 +43,6 @@ if (is_file($vendorAutoload)) {
 }
 
 \Agenduy\Core\CommerceSetup::guardDashboardAccess();
+\Agenduy\Core\AdminBrand::injectDashboardBranding();
 
 return $config;

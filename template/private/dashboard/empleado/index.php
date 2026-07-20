@@ -821,23 +821,24 @@ $summaryCards = [
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0ea5e9">
-  <title>Panel del Negocio</title>
-  <link rel="manifest" href="../manifest.admin.json">
+  <meta name="theme-color" content="#7c3aed">
+  <title>Panel · Agendarte UY</title>
+  <link rel="manifest" href="../manifest.admin.php">
   <link rel="stylesheet" href="../../../src/css/main.css">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
   <link rel="stylesheet" href="../src/admin.css">
+  <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="../src/reservas-ledger.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="/agenda/src/img/favicon/favicon.png">
-  <link rel="apple-touch-icon" href="/agenda/src/img/favicon/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(\Agenduy\Core\AdminBrand::faviconUrl()); ?>">
+  <link rel="apple-touch-icon" href="<?php echo e(\Agenduy\Core\AdminBrand::iconUrl()); ?>">
 </head>
 <body data-employee-role="<?php echo e($employeeRole); ?>">
   <div class="admin-layout is-collapsed">
     <aside class="admin-aside">
       <div class="admin-brand">
-        <span>Panel Administrativo</span>
-        <small class="muted"><?php echo e($infoBarberia['rubro_nombre'] ?? ($businessName !== '' ? $businessName : 'Mi negocio')); ?></small>
+        <?php echo \Agenduy\Core\AdminBrand::sidebarBrandInnerHtml(); ?>
+        <small class="muted admin-brand__tenant"><?php echo e($infoBarberia['rubro_nombre'] ?? ($businessName !== '' ? $businessName : 'Mi negocio')); ?></small>
       </div>
       <nav class="admin-nav">
         <a class="admin-link" href="#resumen">Resumen</a>
