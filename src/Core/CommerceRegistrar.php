@@ -498,7 +498,7 @@ final class CommerceRegistrar
             ];
         }
 
-        return self::register([
+        $result = self::register([
             'google_profile' => $googleProfile,
             'planId'         => $planId,
             'rubroId'        => $rubroId,
@@ -512,13 +512,15 @@ final class CommerceRegistrar
                 'nombre'   => $bizName,
                 'pais'     => 'UY',
                 'ciudad'   => 'Montevideo',
-                'calle'    => 'Completar en el panel',
-                'telefono' => '099000000',
+                'calle'    => CommerceSetup::DEFAULT_PLACEHOLDER_STREET,
+                'telefono' => CommerceSetup::DEFAULT_PLACEHOLDER_PHONE,
             ],
             'servicios' => [
                 ['nombre' => 'Consulta', 'duracion' => 30, 'precio' => 0],
             ],
             'horarios' => $schedule,
         ]);
+        CommerceSetup::markGoogleSignup((int)($result['id_commerce'] ?? 0));
+        return $result;
     }
 }

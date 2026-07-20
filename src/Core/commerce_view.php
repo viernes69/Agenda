@@ -249,7 +249,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $bookingMaxDate = $bookingMinDate->modify(sprintf('+%d days', $maxDiasAdelante));
         $bookingCalendar = Availability::calendarForRange($scheduleRaw, $bookingMinDate, $bookingMaxDate);
 
-        require_once dirname(__DIR__, 2) . '/components/dlocal/plans.php';
+        require_once dirname(__DIR__) . '/components/dlocal/plans.php';
         $dlocalPlansHtml = AgenduyDlocalPlans::render($slug);
         $hasDlocalPlans = trim($dlocalPlansHtml) !== '';
         ?>

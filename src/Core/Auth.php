@@ -174,9 +174,16 @@ final class Auth
         }
 
         $commerce = Database::getInstance()->fetchOne(
-            'SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1',
+            'SELECT * FROM commerces WHERE id_commerce = :id LIMIT 1',
             [':id' => $commerceId]
         );
+        if (!$commerce) {
+            return null;
+        }
+        if (CommerceSetup::needsOnboarding($commerce)) {
+            return \url('admin/commerce_setup.php');
+        }
+
         $slug = trim((string)($commerce['slug'] ?? ''));
         if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
             return null;

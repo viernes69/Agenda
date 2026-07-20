@@ -42,4 +42,6 @@ if (is_file($vendorAutoload)) {
     require_once $vendorAutoload;
 }
 
+\Agenduy\Core\CommerceSetup::guardDashboardAccess();
+
 return $config;
