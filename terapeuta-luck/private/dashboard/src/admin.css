@@ -2222,12 +2222,19 @@ body {
   color: var(--muted);
 }
 
-.admin-hours-slots input[type="time"] {
+.admin-hours-slots input[type="time"],
+.admin-hours-slots select.admin-hours-time-select {
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: .7rem;
   padding: .45rem .6rem;
   background: rgba(12, 17, 27, 0.85);
   color: var(--text);
+  min-width: 6.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-hours-slots select.admin-hours-time-select:disabled {
+  opacity: .45;
 }
 
 .admin-hours-break {

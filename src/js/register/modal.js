@@ -585,6 +585,33 @@
     setTimezoneValue('');
   }
 
+  function snapTimeQuarter(value, fallback = '09:00') {
+    if (typeof value !== 'string' || value.trim() === '') return fallback;
+    const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return fallback;
+    let hour = parseInt(match[1], 10);
+    let minute = parseInt(match[2], 10);
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return fallback;
+    minute = Math.round(minute / 15) * 15;
+    if (minute === 60) {
+      minute = 0;
+      hour = (hour + 1) % 24;
+    }
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  function applyTimeSelect(select, value, fallback = '09:00') {
+    if (!select) return;
+    const normalized = snapTimeQuarter(value, fallback);
+    if (normalized && !select.querySelector(`option[value="${normalized}"]`)) {
+      const option = document.createElement('option');
+      option.value = normalized;
+      option.textContent = normalized;
+      select.appendChild(option);
+    }
+    select.value = normalized || fallback;
+  }
+
   function setDayInputsState(dayEl, enabled) {
     if (!dayEl) return;
     const start = dayEl.querySelector('[data-reg-hours-start]');
@@ -596,7 +623,11 @@
       if (!input) return;
       input.disabled = !enabled;
       input.required = enabled;
-      if (!enabled) input.value = '';
+      if (enabled) {
+        if (!input.value) {
+          applyTimeSelect(input, input === start ? '09:00' : '18:00', input === start ? '09:00' : '18:00');
+        }
+      }
     });
     if (breakToggle) {
       breakToggle.disabled = !enabled;
@@ -641,10 +672,8 @@
       const toggle = dayEl.querySelector('[data-reg-hours-open]');
       if (toggle) toggle.checked = false;
       setDayInputsState(dayEl, false);
-      const start = dayEl.querySelector('[data-reg-hours-start]');
-      const end = dayEl.querySelector('[data-reg-hours-end]');
-      if (start) start.value = '';
-      if (end) end.value = '';
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-start]'), '09:00', '09:00');
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-end]'), '18:00', '18:00');
     });
     timezoneReady = true;
   }

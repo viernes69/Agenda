@@ -57,11 +57,11 @@ $days = [
             <div class="admin-hours-slots">
               <label>
                 <span>Inicio</span>
-                <input type="time" step="300" data-admin-config-hours-start>
+                <?= agenduy_time_select('data-admin-config-hours-start class="admin-hours-time-select"') ?>
               </label>
               <label>
                 <span>Fin</span>
-                <input type="time" step="300" data-admin-config-hours-end>
+                <?= agenduy_time_select('data-admin-config-hours-end class="admin-hours-time-select"') ?>
               </label>
             </div>
             <div class="admin-hours-break">
@@ -72,11 +72,11 @@ $days = [
               <div class="admin-hours-slots">
                 <label>
                   <span>Inicio descanso</span>
-                  <input type="time" step="300" data-admin-config-hours-break-start>
+                  <?= agenduy_time_select('data-admin-config-hours-break-start class="admin-hours-time-select"', true) ?>
                 </label>
                 <label>
                   <span>Fin descanso</span>
-                  <input type="time" step="300" data-admin-config-hours-break-end>
+                  <?= agenduy_time_select('data-admin-config-hours-break-end class="admin-hours-time-select"', true) ?>
                 </label>
               </div>
             </div>

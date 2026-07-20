@@ -168,8 +168,8 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
                     <span>Abierto</span>
                   </label>
                   <div class="reg-hours-slots">
-                    <label><span>Inicio</span><input type="time" step="300" data-reg-hours-start></label>
-                    <label><span>Fin</span><input type="time" step="300" data-reg-hours-end></label>
+                    <label><span>Inicio</span><?= agenduy_time_select('data-reg-hours-start class="reg-hours-time-select"') ?></label>
+                    <label><span>Fin</span><?= agenduy_time_select('data-reg-hours-end class="reg-hours-time-select"') ?></label>
                   </div>
                 </fieldset>
                 <?php endforeach; ?>

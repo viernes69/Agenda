@@ -26,6 +26,33 @@
 
     const DAY_KEYS = dayItems.map((item) => item.getAttribute('data-admin-config-hours-day') || '');
 
+    const snapTimeQuarter = (value, fallback = '09:00') => {
+      if (typeof value !== 'string' || value.trim() === '') return fallback;
+      const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return fallback;
+      let hour = parseInt(match[1], 10);
+      let minute = parseInt(match[2], 10);
+      if (Number.isNaN(hour) || Number.isNaN(minute)) return fallback;
+      minute = Math.round(minute / 15) * 15;
+      if (minute === 60) {
+        minute = 0;
+        hour = (hour + 1) % 24;
+      }
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    };
+
+    const applyTimeSelect = (select, value, fallback = '09:00') => {
+      if (!select) return;
+      const normalized = snapTimeQuarter(value, fallback);
+      if (normalized && !select.querySelector(`option[value="${normalized}"]`)) {
+        const option = document.createElement('option');
+        option.value = normalized;
+        option.textContent = normalized;
+        select.appendChild(option);
+      }
+      select.value = normalized || fallback;
+    };
+
     const clone = (obj) => {
       try {
         return JSON.parse(JSON.stringify(obj || {}));
@@ -282,8 +309,8 @@
       start.required = isOpen;
       end.required = isOpen;
       if (!isOpen) {
-        if (start.value === '') start.value = '09:00';
-        if (end.value === '') end.value = '18:00';
+        applyTimeSelect(start, '09:00', '09:00');
+        applyTimeSelect(end, '18:00', '18:00');
         if (breakToggle) {
           breakToggle.checked = false;
         }
@@ -310,13 +337,18 @@
       if (toggle) {
         toggle.checked = isOpen;
       }
-      if (start) start.value = (dayData.inicio || '09:00').slice(0, 5);
-      if (end) end.value = (dayData.fin || '18:00').slice(0, 5);
+      applyTimeSelect(start, dayData.inicio || '09:00', '09:00');
+      applyTimeSelect(end, dayData.fin || '18:00', '18:00');
       if (breakToggle && breakStart && breakEnd) {
         const hasBreak = dayData.descanso_inicio && dayData.descanso_fin;
         breakToggle.checked = Boolean(hasBreak);
-        breakStart.value = (dayData.descanso_inicio || '').slice(0, 5);
-        breakEnd.value = (dayData.descanso_fin || '').slice(0, 5);
+        if (hasBreak) {
+          applyTimeSelect(breakStart, dayData.descanso_inicio, '13:00');
+          applyTimeSelect(breakEnd, dayData.descanso_fin, '14:00');
+        } else {
+          breakStart.value = '';
+          breakEnd.value = '';
+        }
         breakStart.disabled = !hasBreak;
         breakEnd.disabled = !hasBreak;
         breakStart.required = hasBreak;
@@ -436,6 +468,12 @@
       const breakEnd = dayEl.querySelector('[data-admin-config-hours-break-end]');
       if (!toggle) return;
       toggle.addEventListener('change', () => {
+        if (toggle.checked) {
+          const start = dayEl.querySelector('[data-admin-config-hours-start]');
+          const end = dayEl.querySelector('[data-admin-config-hours-end]');
+          applyTimeSelect(start, start && start.value ? start.value : '09:00', '09:00');
+          applyTimeSelect(end, end && end.value ? end.value : '18:00', '18:00');
+        }
         setDayInputsState(dayEl, toggle.checked);
       });
       if (breakToggle && breakStart && breakEnd) {

@@ -2311,14 +2311,18 @@ body.modal-open{ overflow:hidden; }
   color: var(--text-muted);
 }
 .reg-hours-slots input[type="time"],
+.reg-hours-slots select.reg-hours-time-select,
 .reg-hours-holidays__input input[type="date"]{
   border:1px solid var(--input-border);
   border-radius:.7rem;
   padding:.45rem .6rem;
   background: var(--input-bg);
   color: var(--text);
+  min-width:6.5rem;
+  font-variant-numeric: tabular-nums;
 }
-.reg-hours-slots input[type="time"]:disabled{ opacity:.45; }
+.reg-hours-slots input[type="time"]:disabled,
+.reg-hours-slots select.reg-hours-time-select:disabled{ opacity:.45; }
 .reg-hours-break{
   display:grid;
   gap:.6rem;

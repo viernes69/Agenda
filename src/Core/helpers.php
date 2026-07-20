@@ -201,3 +201,33 @@ if (!function_exists('agenduy_env')) {
         return agenduy_request()['is_local'] ? 'development' : 'production';
     }
 }
+
+if (!function_exists('agenduy_time_quarter_options_html')) {
+    /**
+     * Opciones HH:mm cada 15 minutos (00:00–23:45), formato 24 h.
+     */
+    function agenduy_time_quarter_options_html(bool $includeEmpty = false): string
+    {
+        $html = $includeEmpty ? '<option value="">--</option>' : '';
+        for ($hour = 0; $hour < 24; $hour++) {
+            for ($minute = 0; $minute < 60; $minute += 15) {
+                $time = sprintf('%02d:%02d', $hour, $minute);
+                $html .= '<option value="' . $time . '">' . $time . '</option>';
+            }
+        }
+        return $html;
+    }
+}
+
+if (!function_exists('agenduy_time_select')) {
+    /**
+     * Select de hora en intervalos de 15 min (24 h).
+     */
+    function agenduy_time_select(string $attrs = '', bool $includeEmpty = false): string
+    {
+        $attrs = trim($attrs);
+        return '<select' . ($attrs !== '' ? ' ' . $attrs : '') . '>'
+            . agenduy_time_quarter_options_html($includeEmpty)
+            . '</select>';
+    }
+}
