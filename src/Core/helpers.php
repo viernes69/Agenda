@@ -43,27 +43,50 @@ if (!function_exists('agenduy_request')) {
             $host = $parts[0];
         }
 
-        // Base path (subdirectorio si la app no está en raíz del host)
-        // SCRIPT_NAME = /agenduy.uy/admin/login.php
-        // SCRIPT_FILENAME = C:\xampp\htdocs\agenduy.uy\admin\login.php
-        $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+        // Base path: directorio de la app (contiene index.php + carpeta admin/)
+        $scriptFile = str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
         $basePath = '';
 
-        // Detectar el subdirectorio base comparando con DOCUMENT_ROOT
-        $docRoot = str_replace('\\', '/', (string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
-        if ($docRoot !== '') {
-            $scriptFile = str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
-            if ($scriptFile !== '' && strpos($scriptFile, $docRoot) === 0) {
-                $relative = substr($scriptFile, strlen($docRoot));
-                $relative = trim($relative, '/');
-                if ($relative !== '') {
-                    $parts = explode('/', $relative);
-                    // Buscar la primera carpeta que NO sea archivo PHP
-                    foreach ($parts as $part) {
-                        if ($part === '' || strtolower(substr($part, -4)) === '.php') continue;
-                        $basePath = '/' . $part;
-                        break;
+        $docRoot = rtrim(str_replace('\\', '/', (string)($_SERVER['DOCUMENT_ROOT'] ?? '')), '/');
+        if ($scriptFile !== '' && $docRoot !== '' && str_starts_with($scriptFile, $docRoot)) {
+            $dir = dirname($scriptFile);
+            while (strlen($dir) >= strlen($docRoot)) {
+                $indexFile = $dir . '/index.php';
+                $adminDir = $dir . '/admin';
+                if (is_file($indexFile) && is_dir($adminDir)) {
+                    $rel = substr($dir, strlen($docRoot));
+                    $rel = trim(str_replace('\\', '/', $rel), '/');
+                    $basePath = $rel === '' ? '' : '/' . $rel;
+                    break;
+                }
+                if ($dir === $docRoot) {
+                    break;
+                }
+                $parent = dirname($dir);
+                if ($parent === $dir) {
+                    break;
+                }
+                $dir = $parent;
+            }
+        }
+
+        // Fallback legacy: primer segmento del script (subdirectorio tipo /agenduy.uy/)
+        $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+        if ($basePath === '' && $scriptName !== '') {
+            $relative = ltrim(str_replace('\\', '/', dirname($scriptName)), '/');
+            if ($relative !== '' && $relative !== '.') {
+                $parts = explode('/', $relative);
+                $internalDirs = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api'];
+                while ($parts !== []) {
+                    $last = strtolower((string)end($parts));
+                    if (in_array($last, $internalDirs, true)) {
+                        array_pop($parts);
+                        continue;
                     }
+                    break;
+                }
+                if ($parts !== []) {
+                    $basePath = '/' . $parts[0];
                 }
             }
         }
