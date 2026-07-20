@@ -76,6 +76,8 @@ function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
 $stylesPath = __DIR__ . '/src/css/styles.css';
 $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
+$logoIconPath = __DIR__ . '/src/media/logo/logo-icon.png';
+$logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)time();
 $siteUrl = rtrim(url(''), '/');
 $seoTitle = 'Agendarte UY | Reservas online y agenda digital en Uruguay';
 $seoDescription = LandingContent::SITE_DESCRIPTION;
@@ -154,7 +156,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 <div id="page-loader" role="status" aria-live="assertive" aria-label="Cargando contenido">
   <div class="page-loader__glow"></div>
   <div class="page-loader__card">
-    <img src="<?= h(url('src/media/logo/logo-vertical.png')) ?>"
+    <img src="<?= h(url('src/media/logo/logo-vertical.png?v=' . $logoVer)) ?>"
          alt="Agendarte UY"
          class="page-loader__logo"
          width="160"
@@ -173,10 +175,15 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
   <header class="site-header">
     <div class="site-header__inner">
       <a class="site-header__brand" href="<?= h(url_base()) ?>" aria-label="Inicio de Agendarte UY">
-        <img src="<?= h(url('src/media/logo/logo-horizontal.png')) ?>"
+        <img src="<?= h(url('src/media/logo/logo-horizontal.png?v=' . $logoVer)) ?>"
              alt="Agendarte UY — Reservas online en Uruguay"
-             class="brand-logo brand-logo--horizontal"
+             class="brand-logo brand-logo--horizontal brand-logo--on-light"
              width="168" height="44"
+             decoding="async" loading="eager">
+        <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>"
+             alt="Agendarte UY"
+             class="brand-logo brand-logo--on-dark"
+             width="40" height="40"
              decoding="async" loading="eager">
       </a>
       <nav class="site-header__actions" aria-label="Acciones principales">
@@ -447,7 +454,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 <footer class="site-footer">
   <div class="site-footer__inner">
     <div class="site-footer__brand">
-      <img src="<?= h(url('src/media/logo/logo-icon.png')) ?>" alt="" width="28" height="28" loading="lazy" decoding="async">
+      <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>" alt="" width="28" height="28" loading="lazy" decoding="async">
       <span>Agendarte <span class="brand-uy">UY</span></span>
     </div>
     <p class="site-footer__tagline"><?= h(LandingContent::TAGLINE) ?></p>

@@ -22,27 +22,36 @@ final class AdminBrand
 
     public static function iconUrl(): string
     {
-        return url('src/media/logo/logo-icon.png');
+        return self::assetUrl('src/media/logo/logo-icon.png');
     }
 
     public static function horizontalLogoUrl(): string
     {
-        return url('src/media/logo/logo-horizontal.png');
+        return self::assetUrl('src/media/logo/logo-horizontal.png');
     }
 
     public static function verticalLogoUrl(): string
     {
-        return url('src/media/logo/logo-vertical.png');
+        return self::assetUrl('src/media/logo/logo-vertical.png');
     }
 
     public static function monochromeLogoUrl(): string
     {
-        return url('src/media/logo/logo-monochrome.png');
+        return self::assetUrl('src/media/logo/logo-monochrome.png');
     }
 
     public static function faviconUrl(): string
     {
-        return url('src/img/favicon/favicon.png');
+        return self::assetUrl('src/img/favicon/favicon.png');
+    }
+
+    private static function assetUrl(string $relativePath): string
+    {
+        $root = dirname(__DIR__, 2);
+        $file = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim($relativePath, '/'));
+        $ver = is_file($file) ? (string)filemtime($file) : (string)time();
+
+        return url($relativePath . '?v=' . $ver);
     }
 
     public static function homeUrl(): string

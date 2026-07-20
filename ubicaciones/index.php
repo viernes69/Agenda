@@ -30,6 +30,8 @@ if (!$isHub) {
 
 $stylesPath = dirname(__DIR__) . '/src/css/styles.css';
 $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
+$logoIconPath = dirname(__DIR__) . '/src/media/logo/logo-icon.png';
+$logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)time();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -51,7 +53,8 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
 <header class="site-header">
   <div class="site-header__inner">
     <a class="site-header__brand" href="<?= h(url('')) ?>">
-      <img src="<?= h(url('src/media/logo/logo-horizontal.png')) ?>" alt="Agendarte UY" class="brand-logo brand-logo--horizontal" width="168" height="44" decoding="async">
+      <img src="<?= h(url('src/media/logo/logo-horizontal.png?v=' . $logoVer)) ?>" alt="Agendarte UY" class="brand-logo brand-logo--horizontal brand-logo--on-light" width="168" height="44" decoding="async">
+      <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>" alt="Agendarte UY" class="brand-logo brand-logo--on-dark" width="40" height="40" decoding="async">
     </a>
     <nav class="site-header__actions">
       <a class="btn-primary btn-primary--sm" href="<?= h(url('')) ?>#rubros">Registrar mi negocio</a>
@@ -120,7 +123,7 @@ $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)tim
 <footer class="site-footer">
   <div class="site-footer__inner">
     <div class="site-footer__brand">
-      <img src="<?= h(url('src/media/logo/logo-icon.png')) ?>" alt="" width="28" height="28" loading="lazy">
+      <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>" alt="" width="28" height="28" loading="lazy">
       <span>Agendarte <span class="brand-uy">UY</span></span>
     </div>
     <p class="site-footer__tagline"><?= h(LandingContent::TAGLINE) ?></p>

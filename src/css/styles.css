@@ -2535,6 +2535,17 @@ body.modal-open{ overflow:hidden; }
   height: 44px;
   object-fit: contain;
 }
+.brand-logo--on-dark{
+  display: none;
+  width: 40px;
+  height: 40px;
+}
+body[data-theme="dark"] .brand-logo--on-light{
+  display: none;
+}
+body[data-theme="dark"] .brand-logo--on-dark{
+  display: block;
+}
 .hero__audience{
   max-width: 680px;
   margin: 0 auto 1.25rem;
