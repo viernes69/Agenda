@@ -70,6 +70,9 @@ if (is_dir($clientDir)) {
 }
 
 function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
+
+$stylesPath = __DIR__ . '/src/css/styles.css';
+$stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -106,7 +109,17 @@ function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/css/styles.css">
+  <style>
+    /* Header critico: evita layout roto si el CSS principal tarda o esta cacheado */
+    .site-header__inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:nowrap}
+    .site-header__brand-text{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+    .site-header__actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0;padding:0}
+    .site-header__user{position:relative}
+    .site-header__login-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-radius:999px;background:#6d28d9;color:#fff;font-weight:600;cursor:pointer;-webkit-appearance:none;appearance:none}
+    .site-login-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:280px;background:#fff;border:1px solid #e4e4f0;border-radius:14px;padding:18px;z-index:120;box-shadow:0 18px 40px -12px rgba(15,23,42,.18)}
+    .site-login-dropdown[hidden]{display:none!important}
+  </style>
+  <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
   <link rel="icon" type="image/png" sizes="32x32" href="src/img/favicon/favicon.png">
   <link rel="apple-touch-icon" href="src/img/favicon/favicon.png">
