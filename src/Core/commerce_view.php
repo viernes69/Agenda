@@ -14,6 +14,7 @@ declare(strict_types=1);
 use Agenduy\Core\Availability;
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
+use Agenduy\Core\CommercePublic;
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
@@ -86,39 +87,10 @@ if (!function_exists('agenduy_render_commerce')) {
             [':c' => $commerce['id_commerce'], ':a' => 'Activo']
         );
 
-        // Catálogo local del tenant (productos + imágenes de servicios).
-        // La agenda pública usa SQLite central; el dashboard escribe en database.php del tenant.
-        $tenantDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . $slug;
-        $localDbPath = $tenantDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR . 'database.php';
-        $localProducts = [];
-        $localServiceImages = [];
-        if (is_file($localDbPath)) {
-            $localDb = @include $localDbPath;
-            if (is_array($localDb)) {
-                foreach (($localDb['servicios'] ?? []) as $idx => $srvRow) {
-                    if ($idx === 0 || !is_array($srvRow)) {
-                        continue;
-                    }
-                    $sId = (int)($srvRow['ID_Servicio'] ?? 0);
-                    $sImg = trim((string)($srvRow['Img_Link'] ?? ''));
-                    if ($sId <= 0 || $sImg === '') {
-                        continue;
-                    }
-                    $localServiceImages[$sId] = $sImg;
-                }
-                foreach (($localDb['productos'] ?? []) as $idx => $prodRow) {
-                    if ($idx === 0 || !is_array($prodRow)) {
-                        continue;
-                    }
-                    $pName = trim((string)($prodRow['Nombre'] ?? ''));
-                    $pId = $prodRow['ID_Product'] ?? null;
-                    if ($pName === '' || $pId === null || $pId === '') {
-                        continue;
-                    }
-                    $localProducts[] = $prodRow;
-                }
-            }
-        }
+        // Catálogo local: carpeta tenant legacy o storage central (sin carpetas).
+        $catalog = CommercePublic::loadLocalCatalog((int)$commerce['id_commerce'], $slug);
+        $localProducts = $catalog['products'];
+        $localServiceImages = $catalog['service_images'];
 
         foreach ($services as &$svcRow) {
             $centralImg = trim((string)($svcRow['imagen'] ?? ''));
@@ -195,6 +167,13 @@ if (!function_exists('agenduy_render_commerce')) {
         $reservasCfg = CommerceSettings::get($commerceId, 'reservas', $legacyInfo['reservas'] ?? CommerceSettings::defaultsForSection('reservas'));
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
         $showProducts = !empty($funciones['productos']) && $localProducts !== [];
+        $scheduleSummary = CommercePublic::scheduleSummary($scheduleRaw);
+        $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0));
+        $coverImageRel = CommercePublic::rubroCoverImage((int)($commerce['id_rubro'] ?? 0), (string)($commerce['rubro_nombre'] ?? ''));
+        $coverImageUrl = url($coverImageRel);
+        $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ''));
+        $cssPath = dirname(__DIR__, 2) . '/assets/css/commerce-public.css';
+        $cssVer = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
 
         $titulo = (string)($commerce['nombre'] ?? 'Agenduy');
         $slogan = (string)($commerce['slogan'] ?? '');
@@ -271,7 +250,7 @@ if (!function_exists('agenduy_render_commerce')) {
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-        <link rel="stylesheet" href="<?= htmlspecialchars(url('assets/css/commerce-public.css'), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="stylesheet" href="<?= htmlspecialchars(url('assets/css/commerce-public.css?v=' . $cssVer), ENT_QUOTES, 'UTF-8') ?>">
         <?php if ($hasDlocalPlans): ?>
         <link rel="stylesheet" href="<?= htmlspecialchars(url('public/assets/css/dlocal-plans.css'), ENT_QUOTES, 'UTF-8') ?>">
         <?php endif; ?>
@@ -319,7 +298,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     </button>
                     <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
-                        <i class="bx bx-grid-alt"></i> Mi perfil
+                        <i class="bx bx-grid-alt"></i> Panel
                     </a>
                     <?php else: ?>
                     <button class="client-auth-btn" type="button" id="client-auth-toggle" aria-expanded="false">
@@ -351,7 +330,7 @@ if (!function_exists('agenduy_render_commerce')) {
         <section class="hero">
             <div class="wrap hero__inner">
                 <div>
-                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> Reservas online 24/7</span>
+                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $rubroLabel !== '' ? htmlspecialchars($rubroLabel, ENT_QUOTES, 'UTF-8') : 'Reservas online 24/7' ?></span>
                     <h1>Reservá tu turno en <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> en segundos</h1>
                     <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Elegí tu servicio, día y horario. Sin llamadas, sin esperas.' ?></p>
                     <div class="hero__actions">
@@ -373,6 +352,31 @@ if (!function_exists('agenduy_render_commerce')) {
                         </div>
                     <?php endif; ?>
                     <div class="hero__badge"><i class="bx bx-check-circle" style="color: var(--success)"></i> Confirmación inmediata</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="steps alt" aria-label="Cómo reservar">
+            <div class="wrap">
+                <span class="eyebrow">Simple y rápido</span>
+                <h2 class="section-title">Reservá en 3 pasos</h2>
+                <p class="section-sub">Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.</p>
+                <div class="steps-grid">
+                    <article class="step-card">
+                        <span class="step-card__num">1</span>
+                        <h3>Elegí el servicio</h3>
+                        <p>Explorá nuestra carta y seleccioná lo que necesitás.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-card__num">2</span>
+                        <h3>Seleccioná día y hora</h3>
+                        <p>Disponibilidad en tiempo real según nuestros horarios.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-card__num">3</span>
+                        <h3>Confirmá tu reserva</h3>
+                        <p>Recibís confirmación por email. También avisamos al negocio.</p>
+                    </article>
                 </div>
             </div>
         </section>
@@ -494,14 +498,14 @@ if (!function_exists('agenduy_render_commerce')) {
                     <span class="eyebrow">Nosotros</span>
                     <h2 class="section-title">Sobre <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h2>
                     <p><?= $descripcion !== '' ? htmlspecialchars($descripcion, ENT_QUOTES, 'UTF-8') : 'Somos un equipo de profesionales dedicados a ofrecerte la mejor experiencia. Cada visita es una oportunidad para que te sientas atendido como te merecés.' ?></p>
-                    <ul style="list-style:none; padding:0; margin:1.5rem 0 0; display:grid; gap:.75rem">
-                        <li style="display:flex; gap:.6rem"><i class="bx bx-check-circle" style="color:var(--success); font-size:1.3rem"></i> <span>Profesionales certificados</span></li>
-                        <li style="display:flex; gap:.6rem"><i class="bx bx-check-circle" style="color:var(--success); font-size:1.3rem"></i> <span>Reservas sin llamadas</span></li>
-                        <li style="display:flex; gap:.6rem"><i class="bx bx-check-circle" style="color:var(--success); font-size:1.3rem"></i> <span>Confirmación por email y WhatsApp</span></li>
+                    <ul class="about-highlights">
+                        <?php foreach ($aboutHighlights as $highlight): ?>
+                        <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= htmlspecialchars($highlight, ENT_QUOTES, 'UTF-8') ?></span></li>
+                        <?php endforeach; ?>
                     </ul>
                 </div>
-                <div>
-                    <img src="<?= htmlspecialchars($hasLogo ? $logoUrl : url('src/media/carousel/' . ($commerce['rubro_nombre'] === 'Clínica de Estética' ? 'clinicas_estetica' : 'barberias') . '.jpg'), ENT_QUOTES, 'UTF-8') ?>" alt="" style="border-radius: var(--radius-lg); box-shadow: var(--shadow); width:100%; aspect-ratio: 1/1; object-fit: cover">
+                <div class="about__media">
+                    <img src="<?= htmlspecialchars($hasLogo ? $logoUrl : $coverImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="">
                 </div>
             </div>
         </section>
@@ -510,7 +514,7 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap">
                 <span class="eyebrow">Horarios</span>
                 <h2 class="section-title">Cuándo podés venir</h2>
-                <p class="section-sub">Atendemos de lunes a viernes en estos horarios. Sábado y domingo cerrado.</p>
+                <p class="section-sub"><?= htmlspecialchars($scheduleSummary, ENT_QUOTES, 'UTF-8') ?></p>
                 <div class="schedule">
                     <?php foreach ($horarios as $key => $label):
                         $d = $scheduleRaw[$key] ?? ['abierto' => false, 'inicio' => '', 'fin' => ''];
@@ -580,11 +584,16 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap">
                 <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                 <span class="eyebrow">Panel del negocio</span>
-                <h2 class="section-title">Mi perfil</h2>
-                <p class="section-sub">Estás logueado como administrador de este comercio. Gestioná reservas, servicios y configuración desde tu panel.</p>
+                <h2 class="section-title">Administrá tu negocio</h2>
+                <p class="section-sub">Estás logueado como dueño. Gestioná reservas, servicios, horarios y plantillas de email desde tu panel.</p>
+                <div style="display:flex; gap:.75rem; flex-wrap:wrap">
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
-                    <i class="bx bx-grid-alt"></i> Ir a mi perfil
+                    <i class="bx bx-grid-alt"></i> Ir al panel
                 </a>
+                <a href="<?= htmlspecialchars($ownerDashboardUrl . '#config', ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">
+                    <i class="bx bx-cog"></i> Configuración
+                </a>
+                </div>
                 <?php else: ?>
                 <span class="eyebrow">Tu cuenta</span>
                 <h2 class="section-title">Mis reservas</h2>

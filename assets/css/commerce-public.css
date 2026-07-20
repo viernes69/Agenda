@@ -118,6 +118,39 @@ section.alt { background: var(--bg-soft); }
   margin: .8rem 0 .6rem; font-weight: 700; letter-spacing: -.02em;
 }
 .hero p.lead { font-size: 1.05rem; color: var(--text-soft); max-width: 520px; margin: 0 0 1.5rem; }
+
+/* Pasos didácticos */
+.steps-grid {
+  display: grid; gap: 1rem; margin-top: 1.5rem;
+  grid-template-columns: 1fr;
+}
+.step-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow-sm);
+}
+.step-card__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 999px;
+  background: var(--primary-soft); color: var(--primary-2);
+  font-weight: 700; font-size: .9rem; margin-bottom: .65rem;
+}
+.step-card h3 { margin: 0 0 .35rem; font-size: 1.05rem; }
+.step-card p { margin: 0; color: var(--text-soft); font-size: .92rem; }
+
+.about-highlights {
+  list-style: none; padding: 0; margin: 1.5rem 0 0;
+  display: grid; gap: .75rem;
+}
+.about-highlights li {
+  display: flex; gap: .6rem; align-items: flex-start;
+}
+.about-highlights i { color: var(--success); font-size: 1.3rem; flex-shrink: 0; }
+.about__media img {
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+}
+
 .hero__actions { display: flex; gap: .65rem; flex-wrap: wrap; }
 .hero__stats { display: flex; gap: 1.5rem; margin-top: 1.8rem; flex-wrap: wrap; }
 .stat__num { font-size: 1.5rem; font-weight: 700; color: var(--text); }
@@ -656,6 +689,7 @@ body[data-theme="dark"] .alert--ok    { background: #0c2e23; color: #6ee7b7; bor
   .prod-grid { grid-template-columns: repeat(2, 1fr); }
   .contact-grid { grid-template-columns: 1fr 1fr; }
   .field--row { grid-template-columns: 1fr 1fr; }
+  .steps-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 900px) {
   .nav { display: flex; }
@@ -663,6 +697,7 @@ body[data-theme="dark"] .alert--ok    { background: #0c2e23; color: #6ee7b7; bor
   .hero__inner { grid-template-columns: 1.1fr .9fr; gap: 3.5rem; }
   .svc-grid { grid-template-columns: repeat(3, 1fr); }
   .prod-grid { grid-template-columns: repeat(3, 1fr); }
+  .about { grid-template-columns: 1.1fr .9fr; }
   section { padding: 5.5rem 0; }
   .hero { padding: 6rem 0 7rem; }
 }
