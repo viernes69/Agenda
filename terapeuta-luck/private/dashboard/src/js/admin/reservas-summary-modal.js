@@ -124,7 +124,9 @@
     .filter(Boolean);
 
   const allDates = Array.from(new Set(normalizedEntries.map((item) => item.date))).sort();
-  const defaultDate = allDates.length ? allDates[allDates.length - 1] : '';
+  // Empty date = periodo completo. Defaulting to the latest day hid finalized
+  // reservations on earlier dates and made cancel-rate/ingresos look empty.
+  const defaultDate = '';
 
   const barberDirectory = new Map();
   rawBarbers.forEach((barber) => {
@@ -616,8 +618,10 @@
     const parts = [];
     if (state.date) {
       parts.push('Dia ' + formatDateLabel(state.date));
+    } else if (allDates.length) {
+      parts.push('Periodo completo (' + formatDateShort(allDates[0]) + ' – ' + formatDateShort(allDates[allDates.length - 1]) + ')');
     } else {
-      parts.push('Sin fecha seleccionada');
+      parts.push('Sin reservas registradas');
     }
     if (state.barber !== 'all') {
       parts.push('Profesional: ' + getBarberLabel(state.barber));

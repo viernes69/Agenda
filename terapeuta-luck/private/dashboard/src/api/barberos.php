@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 4) . '/src/API/Autoload.php';
 $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
+use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\TenantApiGuard;
 
@@ -56,6 +57,43 @@ if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
         }
         $validScheduleDays[$normalized] = true;
     }
+}
+
+function tenantCommerceId(): ?int
+{
+    $slug = basename(dirname(__DIR__, 4));
+    if ($slug === '' || $slug === 'template') {
+        return null;
+    }
+    try {
+        $db = \Agenduy\Core\Database::getInstance();
+        $row = $db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s', [':s' => $slug]);
+        return $row ? (int)$row['id_commerce'] : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function assetUploadDir(string $kind): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::kindDir($commerceId, $kind);
+    }
+    $dir = dirname(__DIR__, 4) . '/src/img/' . $kind;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    return $dir;
+}
+
+function assetStoredPath(string $kind, string $filename): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::relativePath($commerceId, $kind, $filename);
+    }
+    return 'src/img/' . $kind . '/' . $filename;
 }
 
 /**
@@ -115,10 +153,7 @@ function handleProfileUpload(string $fieldName, array &$errors, string $existing
         return $existing;
     }
 
-    $uploadDir = dirname(__DIR__, 4) . '/src/img/barbers';
-    if (!is_dir($uploadDir)) {
-        @mkdir($uploadDir, 0775, true);
-    }
+    $uploadDir = assetUploadDir('barbers');
     try {
         $token = bin2hex(random_bytes(4));
     } catch (Throwable $e) {
@@ -131,7 +166,7 @@ function handleProfileUpload(string $fieldName, array &$errors, string $existing
         return $existing;
     }
 
-    return 'src/img/barbers/' . $unique;
+    return assetStoredPath('barbers', $unique);
 }
 
 /**

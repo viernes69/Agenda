@@ -7,6 +7,7 @@ $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\Database;
+use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\TenantApiGuard;
 
@@ -31,9 +32,28 @@ if (!in_array($action, $allowedActions, true)) {
     exit;
 }
 
-$uploadDir = dirname(__DIR__, 4) . '/src/img/services';
-if (!is_dir($uploadDir)) {
-    @mkdir($uploadDir, 0775, true);
+function assetUploadDir(string $kind): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::kindDir($commerceId, $kind);
+    }
+    $legacyKind = $kind === 'services' ? 'services' : $kind;
+    $dir = dirname(__DIR__, 4) . '/src/img/' . $legacyKind;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    return $dir;
+}
+
+function assetStoredPath(string $kind, string $filename): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::relativePath($commerceId, $kind, $filename);
+    }
+    $legacyKind = $kind === 'services' ? 'services' : $kind;
+    return 'src/img/' . $legacyKind . '/' . $filename;
 }
 
 /**
@@ -171,10 +191,7 @@ function handleServiceImage(string $fieldName, array &$errors, string $current =
         return $current;
     }
 
-    $targetDir = dirname(__DIR__, 4) . '/src/img/services';
-    if (!is_dir($targetDir)) {
-        @mkdir($targetDir, 0775, true);
-    }
+    $targetDir = assetUploadDir('services');
     try {
         $token = bin2hex(random_bytes(4));
     } catch (Throwable $e) {
@@ -188,7 +205,7 @@ function handleServiceImage(string $fieldName, array &$errors, string $current =
         return $current;
     }
 
-    return 'src/img/services/' . $filename;
+    return assetStoredPath('services', $filename);
 }
 
 /**
@@ -256,7 +273,16 @@ function deleteServiceImage(string $relativePath): void
     if ($relativePath === '') {
         return;
     }
-    $clean = str_replace(['..', '\\'], ['','/'], $relativePath);
+    $clean = str_replace(['..', '\\'], ['', '/'], $relativePath);
+    $commerceId = tenantCommerceId();
+    $slug = basename(dirname(__DIR__, 4));
+    if ($commerceId !== null && $commerceId > 0 && CommerceStorage::isCentralPath($clean)) {
+        $full = CommerceStorage::absolutePath($commerceId, $slug, $clean);
+        if ($full !== null) {
+            @unlink($full);
+        }
+        return;
+    }
     if (strpos($clean, 'src/img/services/') !== 0) {
         return;
     }

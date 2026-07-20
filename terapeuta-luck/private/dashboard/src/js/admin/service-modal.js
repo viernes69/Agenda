@@ -59,8 +59,12 @@
           }
         } catch (_) {}
         adminNotify('Servicio finalizado', 'success');
+        try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}
       } else {
-        adminNotify('No se pudo finalizar la reserva', 'error');
+        const msg = (payload && payload.error)
+          ? String(payload.error)
+          : 'No se pudo finalizar la reserva';
+        adminNotify(msg, 'error');
       }
     } catch (_) { adminNotify('No se pudo finalizar la reserva', 'error'); }
     finally { close(); }

@@ -43,7 +43,14 @@ final class MagicLink
             . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ingresar a Agendarte</a></p>'
             . '<p style="color:#64748b;font-size:.9rem">Si no pediste este acceso, ignorá este email.</p>';
 
-        Mail::send($email, $subject, $body);
+        if (!Mail::isConfigured()) {
+            error_log('[MagicLink.admin] SMTP no configurado');
+            return ['ok' => false, 'error' => 'El envío de emails no está configurado. Contactá al administrador.'];
+        }
+
+        if (!Mail::send($email, $subject, $body)) {
+            error_log('[MagicLink.admin] fallo SMTP: ' . (Mail::lastError() ?? 'desconocido'));
+        }
         return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
     }
 
@@ -86,7 +93,14 @@ final class MagicLink
             . '<p style="margin:1.2rem 0"><a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '" '
             . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ver mis reservas</a></p>';
 
-        Mail::send($email, $subject, $body, null, $idCommerce);
+        if (!Mail::isConfigured()) {
+            error_log('[MagicLink.client] SMTP no configurado');
+            return ['ok' => false, 'error' => 'El envío de emails no está configurado. Contactá al negocio.'];
+        }
+
+        if (!Mail::send($email, $subject, $body, null, $idCommerce)) {
+            error_log('[MagicLink.client] fallo SMTP: ' . (Mail::lastError() ?? 'desconocido'));
+        }
         return ['ok' => true, 'message' => 'Si tenés reservas con ese email, te enviamos un link.'];
     }
 

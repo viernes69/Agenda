@@ -181,6 +181,20 @@ if ($dateFilter !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFilter)) {
     $dateFilter = '';
 }
 
+// Distinct Fecha_Reserva values (work days) for the Fecha filter calendar.
+$availableDatesMap = [];
+foreach ($reservas as $row) {
+    if (!is_array($row)) {
+        continue;
+    }
+    $fechaRaw = trim((string)($row['Fecha_Reserva'] ?? ''));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaRaw)) {
+        $availableDatesMap[$fechaRaw] = true;
+    }
+}
+$availableDates = array_keys($availableDatesMap);
+sort($availableDates);
+
 $statusOptions = array_merge(['todos'], $statusList);
 $formatStatusLabel = static function (string $value): string {
     $value = strtolower(trim($value));
@@ -234,9 +248,10 @@ usort($prepared, static function ($a, $b) {
     $ta = isset($a['_timestamp']) ? (int)$a['_timestamp'] : PHP_INT_MAX;
     $tb = isset($b['_timestamp']) ? (int)$b['_timestamp'] : PHP_INT_MAX;
     if ($ta === $tb) {
+        // Same slot: newest registration first (higher ID).
         $ia = isset($a['ID_Reserva']) ? (int)$a['ID_Reserva'] : 0;
         $ib = isset($b['ID_Reserva']) ? (int)$b['ID_Reserva'] : 0;
-        return $ia <=> $ib;
+        return $ib <=> $ia;
     }
     return $ta <=> $tb;
 });
@@ -254,7 +269,11 @@ foreach ($prepared as $row) {
     if ($barberName === '') $barberName = 'Profesional';
     $serviceData = $mapServicios[$sid] ?? [];
     $serviceName = (string)($serviceData['Nombre'] ?? 'Servicio');
-    $servicePrice = $normalizeAmount($serviceData['Precio'] ?? 0);
+    if (isset($row['Precio']) && is_numeric($row['Precio']) && (float)$row['Precio'] > 0) {
+        $servicePrice = $normalizeAmount($row['Precio']);
+    } else {
+        $servicePrice = $normalizeAmount($serviceData['Precio'] ?? 0);
+    }
     $servicePriceLabel = $formatCurrency($servicePrice);
 
     $serviceImgRel = isset($serviceData['Img_Link']) ? trim((string)$serviceData['Img_Link']) : '';
@@ -299,6 +318,7 @@ $respond(200, [
     'label'     => $currentStatusLabel,
     'total'     => count($prepared),
     'date'      => $dateFilter,
+    'dates'     => $availableDates,
     'finalizedAmount' => $totalFinalizedAmount,
     'finalizedLabel'  => 'Total finalizado: ' . $formatCurrency($totalFinalizedAmount),
     'html'      => $rowHtml,

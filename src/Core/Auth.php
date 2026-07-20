@@ -204,11 +204,11 @@ final class Auth
             . DIRECTORY_SEPARATOR . 'dashboard'
             . DIRECTORY_SEPARATOR . 'admin'
             . DIRECTORY_SEPARATOR . 'index.php';
-        if (!is_file($tenantDashboard)) {
-            return null;
+        if (is_file($tenantDashboard)) {
+            return \url($slug . '/private/dashboard/admin/index.php');
         }
 
-        return \url($slug . '/private/dashboard/admin/index.php');
+        return CommerceRegistrar::buildCentralDashboardUrl();
     }
 
     public static function logout(): void

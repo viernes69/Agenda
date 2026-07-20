@@ -21,6 +21,20 @@ ob_start();
         <p><strong>Hora:</strong> <span data-admin-res-hora>-</span></p>
           <p><strong>Status:</strong> <span class="status-pill" data-admin-res-status>-</span><button type="button" class="pill-action" data-admin-res-retomar hidden>Retomar</button></p>
         </div>
+        <div class="admin-reserva-reprogram" data-admin-res-reprogram-wrap>
+          <p class="admin-reserva-reprogram__label">Reprogramar</p>
+          <div class="admin-reserva-reprogram__fields">
+            <label>
+              <span>Nueva fecha</span>
+              <input type="date" data-admin-res-edit-fecha>
+            </label>
+            <label>
+              <span>Nueva hora</span>
+              <input type="time" data-admin-res-edit-hora step="60">
+            </label>
+            <button type="button" class="btn btn-secondary" data-admin-res-guardar-fecha>Guardar fecha</button>
+          </div>
+        </div>
         <div class="admin-reserva-actions">
           <button type="button" class="btn btn-warning" data-admin-res-ver-cliente>Datos del cliente</button>
           <button type="button" class="btn btn-danger" data-admin-res-rechazar>Rechazar</button>
@@ -40,6 +54,34 @@ ob_start();
     padding: .45rem .9rem;
     font-size: .88rem;
     min-width: 0;
+  }
+  .admin-reserva-reprogram {
+    margin-top: 1rem;
+    padding-top: .75rem;
+    border-top: 1px solid rgba(0,0,0,.08);
+  }
+  .admin-reserva-reprogram__label {
+    margin: 0 0 .5rem;
+    font-size: .85rem;
+    font-weight: 600;
+  }
+  .admin-reserva-reprogram__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: flex-end;
+  }
+  .admin-reserva-reprogram__fields label {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    font-size: .8rem;
+  }
+  .admin-reserva-reprogram__fields input {
+    padding: .35rem .5rem;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 6px;
+    min-width: 9rem;
   }
 </style>
 <?php

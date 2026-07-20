@@ -217,15 +217,17 @@ try {
 
     $tenantSlug = basename(dirname(__DIR__, 2));
     $plan = MembershipPlan::forCommerceSlug($tenantSlug);
+    $waitlist = false;
+    $maxAppts = null;
+    $currentAppts = null;
     if (is_array($plan)) {
         $maxAppts = MembershipPlan::maxAppointmentsMonth($plan);
         if ($maxAppts !== null) {
             $currentAppts = MembershipPlan::countLocalReservasThisMonth(AutoloadDB::all('reservas'));
+            // Over monthly quota: still accept as Pendiente waitlist; Atender/Finalizar is blocked later.
             if ($currentAppts >= $maxAppts) {
-                respond(MembershipPlan::denialPayload('PLAN_LIMIT_MAX_APPOINTMENTS_MONTH', [
-                    'max_appointments_month' => $maxAppts,
-                    'current' => $currentAppts,
-                ]), 403);
+                $waitlist = true;
+                $status = 'Pendiente';
             }
         }
     }
@@ -249,7 +251,14 @@ try {
 
     sendReservationEmail($row, $_SESSION['cliente'], (int)$serviceId);
 
-    respond(['ok' => true, 'data' => $row, 'session' => $_SESSION['cliente'] ?? null]);
+    $payload = ['ok' => true, 'data' => $row, 'session' => $_SESSION['cliente'] ?? null];
+    if ($waitlist) {
+        $payload['waitlist'] = true;
+        $payload['over_plan'] = true;
+        $payload['max_appointments_month'] = $maxAppts;
+        $payload['current'] = $currentAppts;
+    }
+    respond($payload);
 } catch (Throwable $e) {
     respond(['ok' => false, 'error' => $e->getMessage()], 500);
 }

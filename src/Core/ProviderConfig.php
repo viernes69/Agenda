@@ -59,17 +59,53 @@ final class ProviderConfig
         $global = self::get('smtp');
         $cfg = Database::getInstance()->config()['mail'];
         $smtp = $global['config'];
+        $password = (string)($smtp['password'] ?? '');
+        if ($password === '') {
+            $password = MailSecrets::smtpPassword();
+        }
+        if ($password === '') {
+            $password = (string)($cfg['password'] ?? '');
+        }
         return [
             'host'       => (string)($smtp['host'] ?? $cfg['host'] ?? ''),
             'port'       => (int)($smtp['port'] ?? $cfg['port'] ?? 465),
             'encryption' => (string)($smtp['encryption'] ?? $cfg['encryption'] ?? 'ssl'),
             'username'   => (string)($smtp['username'] ?? $cfg['username'] ?? ''),
-            'password'   => (string)($smtp['password'] ?? $cfg['password'] ?? ''),
+            'password'   => $password,
             'from_email' => (string)($smtp['from_email'] ?? $cfg['from_email'] ?? ''),
             'from_name'  => (string)($smtp['from_name'] ?? $cfg['from_name'] ?? 'Agenduy'),
             'timeout'    => (int)($smtp['timeout'] ?? $cfg['timeout'] ?? 15),
-            'enabled'    => $global['is_enabled'] || ($cfg['from_email'] ?? '') !== '',
+            'enabled'    => (int)($global['is_enabled'] ?? 0) === 1 || $password !== '',
         ];
+    }
+
+    /** @return array{ok:bool, host:string, username:string, from_email:string, has_password:bool, phpmailer:bool} */
+    public static function mailDiagnostics(): array
+    {
+        $mail = self::mailConfig();
+        return [
+            'ok'           => self::mailIsConfigured($mail),
+            'host'         => $mail['host'],
+            'username'     => $mail['username'],
+            'from_email'   => $mail['from_email'],
+            'has_password' => ($mail['password'] ?? '') !== '',
+            'phpmailer'    => class_exists(\PHPMailer\PHPMailer\PHPMailer::class),
+        ];
+    }
+
+    public static function mailIsConfigured(?array $mail = null): bool
+    {
+        $mail ??= self::mailConfig();
+        if (($mail['from_email'] ?? '') === '') {
+            return false;
+        }
+        if (($mail['host'] ?? '') === '' || ($mail['username'] ?? '') === '') {
+            return false;
+        }
+        if (($mail['password'] ?? '') === '') {
+            return false;
+        }
+        return class_exists(\PHPMailer\PHPMailer\PHPMailer::class);
     }
 
     public static function ultraMsgConfig(): array

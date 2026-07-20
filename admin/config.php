@@ -10,6 +10,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
+use Agenduy\Core\ProviderConfig;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: login.php'); exit; }
@@ -88,6 +89,15 @@ foreach (['smtp', 'ultramsg', 'google_oauth'] as $extra) {
     }
 }
 
+$mailDiagnostics = ProviderConfig::mailDiagnostics();
+$mailFailures = $db->fetchAll(
+    "SELECT recipient, subject, error_message, created_at
+     FROM notifications_log
+     WHERE channel = 'email' AND status = 'failed'
+     ORDER BY id_notification DESC LIMIT 5"
+);
+$configCsrf = CSRF::generate('config_admin');
+
 $pageTitle = 'Configuración';
 $activeSection = 'config';
 require __DIR__ . '/partials/header.php';
@@ -104,6 +114,15 @@ require __DIR__ . '/partials/header.php';
 
 <?php foreach ($providers as $p):
     $cfg = json_decode((string)$p['config_json'], true) ?: [];
+    if ($p['provider'] === 'smtp') {
+        $effective = ProviderConfig::mailConfig();
+        foreach (['host','port','encryption','username','from_email','from_name'] as $smtpField) {
+            if (($cfg[$smtpField] ?? '') === '' && ($effective[$smtpField] ?? '') !== '') {
+                $cfg[$smtpField] = $effective[$smtpField];
+            }
+        }
+        $smtpHasPassword = ($cfg['password'] ?? '') !== '' || $mailDiagnostics['has_password'];
+    }
 ?>
 <article class="card">
     <h2>
@@ -174,9 +193,21 @@ require __DIR__ . '/partials/header.php';
                     <textarea name="instrucciones" placeholder="Transferí a la cuenta X y subí el comprobante."><?= htmlspecialchars($cfg['instrucciones'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
             <?php elseif ($p['provider'] === 'smtp'): ?>
+                <?php if (!$mailDiagnostics['ok']): ?>
+                <div class="field col-2">
+                    <div class="alert alert-error">
+                        SMTP incompleto: faltan datos o PHPMailer no está instalado (<code>composer install</code>).
+                        Los links por email y notificaciones no se enviarán hasta configurarlo.
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="field col-2">
+                    <div class="alert alert-ok">SMTP listo: <?= htmlspecialchars($mailDiagnostics['host'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($mailDiagnostics['from_email'], ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+                <?php endif; ?>
                 <div class="field">
                     <label>Host</label>
-                    <input type="text" name="host" value="<?= htmlspecialchars($cfg['host'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="smtp.ejemplo.com">
+                    <input type="text" name="host" value="<?= htmlspecialchars((string)($cfg['host'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="mail.appsuy.net">
                 </div>
                 <div class="field">
                     <label>Puerto</label>
@@ -196,16 +227,35 @@ require __DIR__ . '/partials/header.php';
                 </div>
                 <div class="field">
                     <label>Contraseña</label>
-                    <input type="password" name="password" value="" placeholder="<?= ($cfg['password'] ?? '') !== '' ? '•••••••• (dejar vacío para conservar)' : '' ?>" autocomplete="new-password">
+                    <input type="password" name="password" value="" placeholder="<?= !empty($smtpHasPassword) ? '•••••••• (dejar vacío para conservar)' : 'Obligatoria para enviar emails' ?>" autocomplete="new-password">
+                    <span class="hint">También podés usar <code>AGENDUY_SMTP_PASSWORD</code> o <code>Private/mail_secret.php</code> (ver mail_secret.example.php).</span>
                 </div>
                 <div class="field">
                     <label>Email remitente (From)</label>
                     <input type="email" name="from_email" value="<?= htmlspecialchars($cfg['from_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
-                <div class="field">
+                <div class="field col-2">
                     <label>Nombre remitente</label>
                     <input type="text" name="from_name" value="<?= htmlspecialchars($cfg['from_name'] ?? 'Agenduy', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
+                <div class="field col-2">
+                    <label>Probar envío</label>
+                    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center">
+                        <input type="email" id="smtp-test-email" value="<?= htmlspecialchars((string)(Auth::user()['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="tu@email.com" style="flex:1; min-width:220px">
+                        <button type="button" class="btn btn-secondary" id="smtp-test-btn">Enviar email de prueba</button>
+                    </div>
+                    <p class="hint" id="smtp-test-msg" role="status"></p>
+                </div>
+                <?php if ($mailFailures): ?>
+                <div class="field col-2">
+                    <label>Últimos fallos de email</label>
+                    <ul class="hint" style="margin:0; padding-left:1.1rem">
+                        <?php foreach ($mailFailures as $fail): ?>
+                        <li><?= htmlspecialchars($fail['created_at'] . ' → ' . $fail['recipient'] . ': ' . ($fail['error_message'] ?? ''), ENT_QUOTES, 'UTF-8') ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
             <?php elseif ($p['provider'] === 'ultramsg'): ?>
                 <div class="field">
                     <label>Instance ID</label>
@@ -232,7 +282,7 @@ require __DIR__ . '/partials/header.php';
                 <label>Estado</label>
                 <label style="display:flex; align-items:center; gap:.5rem; font-size: 1rem">
                     <input type="checkbox" name="is_enabled" value="1" <?= (int)$p['is_enabled'] === 1 ? 'checked' : '' ?>>
-                    Habilitado para clientes
+                    <?= $p['provider'] === 'smtp' ? 'SMTP habilitado' : 'Habilitado para clientes' ?>
                 </label>
             </div>
             <div class="field col-2">
@@ -246,6 +296,47 @@ require __DIR__ . '/partials/header.php';
     </form>
 </article>
 <?php endforeach; ?>
+
+<script>
+(function () {
+    var btn = document.getElementById('smtp-test-btn');
+    var emailInput = document.getElementById('smtp-test-email');
+    var msg = document.getElementById('smtp-test-msg');
+    if (!btn || !emailInput || !msg) return;
+    btn.addEventListener('click', function () {
+        var email = String(emailInput.value || '').trim();
+        if (!email) {
+            msg.textContent = 'Ingresá un email de prueba.';
+            msg.style.color = '#b91c1c';
+            return;
+        }
+        btn.disabled = true;
+        msg.textContent = 'Enviando...';
+        msg.style.color = '#475569';
+        fetch('api/test_mail.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: email, _csrf: <?= json_encode($configCsrf) ?> })
+        }).then(function (res) {
+            return res.json().catch(function () { return null; }).then(function (data) {
+                btn.disabled = false;
+                if (!res.ok || !data || !data.ok) {
+                    msg.textContent = (data && data.error) ? data.error : 'No se pudo enviar.';
+                    msg.style.color = '#b91c1c';
+                    return;
+                }
+                msg.textContent = data.message || 'Enviado.';
+                msg.style.color = '#15803d';
+            });
+        }).catch(function () {
+            btn.disabled = false;
+            msg.textContent = 'Error de conexión.';
+            msg.style.color = '#b91c1c';
+        });
+    });
+})();
+</script>
 
 <article class="card">
     <h2>Auditoría reciente</h2>

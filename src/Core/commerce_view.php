@@ -16,6 +16,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
+use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MagicLink;
 
 if (!function_exists('agenduy_render_commerce')) {
@@ -226,24 +227,12 @@ if (!function_exists('agenduy_render_commerce')) {
 
         $initial = mb_substr($titulo, 0, 1, 'UTF-8');
 
-        // El logo vive dentro de la carpeta del tenant (ej: terapeuta-luck/src/img/logo.jpg)
-        $logoFile = $logo !== '' ? $tenantDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim($logo, '/')) : '';
-        $hasLogo = $logoFile !== '' && is_file($logoFile);
-        $logoUrl = $hasLogo ? url($slug . '/' . ltrim($logo, '/')) : '';
+        $commerceId = (int)($commerce['id_commerce'] ?? 0);
+        $logoUrl = CommerceStorage::publicUrl($commerceId, $slug, $logo);
+        $hasLogo = $logoUrl !== '';
 
-        $tenantAssetUrl = static function (string $relative) use ($slug, $tenantDir): string {
-            $rel = ltrim(str_replace('\\', '/', $relative), '/');
-            if ($rel === '') {
-                return '';
-            }
-            if (preg_match('#^https?://#i', $rel)) {
-                return $rel;
-            }
-            $full = $tenantDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
-            if (!is_file($full)) {
-                return '';
-            }
-            return url($slug . '/' . $rel);
+        $tenantAssetUrl = static function (string $relative) use ($commerceId, $slug): string {
+            return CommerceStorage::publicUrl($commerceId, $slug, $relative);
         };
 
         $csrf = CSRF::generate('public_booking');

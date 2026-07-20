@@ -7,7 +7,7 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * Alta unificada: SQLite + carpeta tenant + legacy mínimo para dashboard.
+ * Alta unificada: SQLite + (opcional) carpeta tenant legacy para dashboard.
  */
 final class CommerceRegistrar
 {
@@ -94,8 +94,11 @@ final class CommerceRegistrar
 
         $rootPath = realpath(dirname(__DIR__, 2));
         self::assert($rootPath !== false, 'No se pudo resolver la ruta base.');
+        $useLegacyFolders = TenantConfig::useLegacyFolders();
         $templateDir = $rootPath . DIRECTORY_SEPARATOR . 'template';
-        self::assert(is_dir($templateDir), 'No se encontró la plantilla base.');
+        if ($useLegacyFolders) {
+            self::assert(is_dir($templateDir), 'No se encontró la plantilla base.');
+        }
 
         $baseSlug = Keys::slug($bizName);
         $slug = $baseSlug;
@@ -179,38 +182,35 @@ final class CommerceRegistrar
                 CommerceSettings::set($idCommerce, 'tema', ['publico' => 'claro', 'privado' => 'claro']);
             });
 
-            if (!self::copyDirectory($templateDir, $targetDir)) {
-                throw new RuntimeException('No se pudo copiar la carpeta de la plantilla.');
-            }
-            $createdDir = $targetDir;
+            if ($useLegacyFolders) {
+                if (!self::copyDirectory($templateDir, $targetDir)) {
+                    throw new RuntimeException('No se pudo copiar la carpeta de la plantilla.');
+                }
+                $createdDir = $targetDir;
 
-            $databasePath = $targetDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR . 'database.php';
-            $legacy = @include $databasePath;
-            if (!is_array($legacy)) {
-                throw new RuntimeException('Plantilla inválida: falta database.php');
+                $databasePath = $targetDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'db' . DIRECTORY_SEPARATOR . 'database.php';
+                $legacy = @include $databasePath;
+                if (!is_array($legacy)) {
+                    throw new RuntimeException('Plantilla inválida: falta database.php');
+                }
+
+                $website = self::buildWebsiteUrl($slug);
+                $passwordHash = password_hash($pass, PASSWORD_BCRYPT);
+                $legacy = self::customiseLegacyDatabase(
+                    $legacy,
+                    ['nombre' => $name, 'apellido' => $last, 'cedula' => $cedula, 'email' => $email, 'password_hash' => $passwordHash, 'id_admin' => $idUser],
+                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'rubro_id' => $rubroId, 'website' => $website, 'timezone' => $tz, 'id_negocio' => $idCommerce, 'telefono' => $tel],
+                    $schedule,
+                    $services,
+                    $rubroId
+                );
+                self::writeDatabase($databasePath, $legacy);
             }
 
-            $website = self::buildWebsiteUrl($slug);
-            $passwordHash = password_hash($pass, PASSWORD_BCRYPT);
-            $legacy = self::customiseLegacyDatabase(
-                $legacy,
-                ['nombre' => $name, 'apellido' => $last, 'cedula' => $cedula, 'email' => $email, 'password_hash' => $passwordHash, 'id_admin' => $idUser],
-                ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'rubro_id' => $rubroId, 'website' => $website, 'timezone' => $tz, 'id_negocio' => $idCommerce, 'telefono' => $tel],
-                $schedule,
-                $services,
-                $rubroId
-            );
-            self::writeDatabase($databasePath, $legacy);
-
-            if (session_status() !== PHP_SESSION_ACTIVE) {
-                session_start();
+            $userRow = $db->fetchOne('SELECT * FROM users WHERE id_user = :id', [':id' => $idUser]);
+            if ($userRow) {
+                Auth::establishSessionFromRow($userRow, $_SERVER['REMOTE_ADDR'] ?? null, 'register');
             }
-            $_SESSION['user'] = [
-                'ID_Barber'   => $idUser,
-                'Rol'         => 'Admin',
-                'FechaInicio' => date('Y-m-d'),
-                'HoraInicio'  => date('H:i:s'),
-            ];
 
             Mail::send(
                 $email,
@@ -317,7 +317,27 @@ final class CommerceRegistrar
 
     public static function buildRedirectUrl(string $slug): string
     {
-        return url($slug . '/private/dashboard/admin/');
+        if (TenantConfig::useLegacyFolders() && self::tenantDashboardExists($slug)) {
+            return url($slug . '/private/dashboard/admin/');
+        }
+        return url('admin/commerce_dashboard.php');
+    }
+
+    public static function buildCentralDashboardUrl(): string
+    {
+        return url('admin/commerce_dashboard.php');
+    }
+
+    private static function tenantDashboardExists(string $slug): bool
+    {
+        $root = realpath(dirname(__DIR__, 2));
+        if ($root === false || $slug === '') {
+            return false;
+        }
+        $path = $root . DIRECTORY_SEPARATOR . $slug . DIRECTORY_SEPARATOR . 'private'
+            . DIRECTORY_SEPARATOR . 'dashboard' . DIRECTORY_SEPARATOR . 'admin'
+            . DIRECTORY_SEPARATOR . 'index.php';
+        return is_file($path);
     }
 
     private static function customiseLegacyDatabase(

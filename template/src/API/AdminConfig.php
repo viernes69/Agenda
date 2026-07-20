@@ -1,6 +1,7 @@
 ﻿<?php
 
 use Agenduy\Core\CommerceSettings;
+use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\Crypto;
 use Agenduy\Core\Database;
 use Agenduy\Core\Auth;
@@ -46,7 +47,8 @@ try {
                     }
                 }
             }
-            $logoSrc = handleLogoUpload();
+            $commerceRow = commerceBySlug(basename($tenantRoot));
+            $logoSrc = handleLogoUpload((int)$commerceRow['id_commerce']);
             if ($logoSrc !== null) {
                 $payload['logo_src'] = $logoSrc;
             }
@@ -397,7 +399,7 @@ function copyTheme(string $source, string $destination): void
     }
 }
 
-function handleLogoUpload(): ?string
+function handleLogoUpload(int $idCommerce): ?string
 {
     if (!isset($_FILES['logo']) || !is_array($_FILES['logo'])) {
         return null;
@@ -411,7 +413,7 @@ function handleLogoUpload(): ?string
     }
     $maxBytes = 2 * 1024 * 1024;
     if (($file['size'] ?? 0) > $maxBytes) {
-        throw new RuntimeException('El logo supera el tama\u00f1o permitido (2MB).');
+        throw new RuntimeException('El logo supera el tamaño permitido (2MB).');
     }
     $tmpPath = $file['tmp_name'] ?? '';
     if (!$tmpPath || !is_uploaded_file($tmpPath)) {
@@ -423,11 +425,9 @@ function handleLogoUpload(): ?string
     }
     $type = $imageInfo[2] ?? 0;
 
-    $destDir = dirname(__DIR__) . '/img';
-    if (!is_dir($destDir) && !mkdir($destDir, 0755, true) && !is_dir($destDir)) {
-        throw new RuntimeException('No se pudo crear el directorio para el logo.');
-    }
+    $destDir = CommerceStorage::kindDir($idCommerce, 'logo');
     $destPath = $destDir . '/logo.jpg';
+    $storedRel = CommerceStorage::relativePath($idCommerce, 'logo', 'logo.jpg');
 
     if (!function_exists('imagecreatetruecolor')) {
         if ($type === IMAGETYPE_JPEG) {
@@ -435,7 +435,7 @@ function handleLogoUpload(): ?string
                 throw new RuntimeException('No se pudo guardar el logo.');
             }
             @chmod($destPath, 0644);
-            return 'src/img/logo.jpg';
+            return $storedRel;
         }
         throw new RuntimeException('El servidor no soporta el procesamiento del logo.');
     }
@@ -480,5 +480,5 @@ function handleLogoUpload(): ?string
     imagedestroy($canvas);
     imagedestroy($src);
 
-    return 'src/img/logo.jpg';
+    return $storedRel;
 }

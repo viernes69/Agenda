@@ -34,6 +34,7 @@ $files = [
     'private/dashboard/src/components/admin_plan_membership_modal.php',
     'private/dashboard/src/api/reservas_admin.php',
     'private/dashboard/src/api/productos.php',
+    'private/dashboard/src/api/barberos.php',
     'private/dashboard/src/api/servicios.php',
     'private/dashboard/src/js/admin/bottom-nav.js',
     'private/dashboard/src/js/admin/admin-auth-guard.js',

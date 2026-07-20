@@ -53,6 +53,11 @@ return [
         'timeout'    => 15,
     ],
 
+    'tenant' => [
+        // true = copiar template/ al registrar (legacy). false = solo SQLite + panel central.
+        'legacy_folders' => filter_var(getenv('AGENDUY_TENANT_FOLDERS') ?: 'false', FILTER_VALIDATE_BOOLEAN),
+    ],
+
     'uploads' => [
         'base_dir'     => dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'uploads',
         'receipts_dir' => 'receipts',

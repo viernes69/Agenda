@@ -11,6 +11,8 @@ use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Keys;
 use Agenduy\Core\TenantMigrator;
+use Agenduy\Core\TenantAudit;
+use Agenduy\Core\TenantConfig;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: login.php'); exit; }
@@ -184,6 +186,7 @@ if (isset($_GET['id'])) {
 $rubros      = $db->fetchAll('SELECT id_rubro, nombre FROM rubros WHERE activo = 1 ORDER BY orden ASC, nombre COLLATE NOCASE ASC');
 $memberships = $db->fetchAll('SELECT id_membership, nombre, precio, moneda FROM memberships WHERE activo=1 ORDER BY nombre');
 $tenantFolders = TenantMigrator::scanFolders(dirname(__DIR__));
+$tenantAudit = TenantAudit::run(dirname(__DIR__));
 
 $pageTitle = 'Comercios';
 $activeSection = 'commerces';
@@ -197,7 +200,37 @@ require __DIR__ . '/partials/header.php';
 <section class="page-header">
     <h1>Comercios</h1>
     <p>Gestioná los negocios registrados, su membresía, status y administradores.</p>
+    <p class="hint">Modo registro: <strong><?= TenantConfig::useLegacyFolders() ? 'carpetas legacy (template/)' : 'central sin carpetas' ?></strong>
+        — variable <code>AGENDUY_TENANT_FOLDERS</code></p>
 </section>
+
+<article class="card">
+    <h2>Auditoría multi-tenant</h2>
+    <p class="muted">Generado: <?= htmlspecialchars((string)($tenantAudit['generated_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+        · Template: <?= (int)($tenantAudit['template_files'] ?? 0) ?> archivos</p>
+    <ul class="hint" style="margin:0 0 1rem; padding-left:1.1rem">
+        <?php foreach ($tenantAudit['recommendations'] ?? [] as $tip): ?>
+            <li><?= htmlspecialchars((string)$tip, ENT_QUOTES, 'UTF-8') ?></li>
+        <?php endforeach; ?>
+    </ul>
+    <?php if (!empty($tenantAudit['storage'])): ?>
+    <div class="table-wrap">
+    <table class="table">
+        <thead><tr><th>Comercio</th><th>Assets central</th><th>Carpeta legacy</th></tr></thead>
+        <tbody>
+        <?php foreach ($tenantAudit['storage'] as $st): ?>
+            <tr>
+                <td><code class="code"><?= htmlspecialchars((string)$st['slug'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td><?= !empty($st['has_central']) ? 'Sí' : 'No' ?></td>
+                <td><?= !empty($st['has_legacy_folder']) ? 'Sí' : 'No' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
+    <?php endif; ?>
+    <p class="hint">CLI: <code>php bin/audit-tenants.php</code> · Migrar imágenes: <code>php bin/migrate-commerce-assets.php --all</code></p>
+</article>
 
 <?php if ($tenantFolders !== []): ?>
 <article class="card">

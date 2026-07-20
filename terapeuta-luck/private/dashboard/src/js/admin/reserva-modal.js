@@ -127,6 +127,16 @@
       modal.setAttribute('data-admin-res-cliente-id', String(r.ID_Cliente || ''));
       modal.setAttribute('data-admin-res-fecha', String(data.fecha||''));
       modal.setAttribute('data-admin-res-hora', String(data.hora||''));
+      const fechaInput = el('[data-admin-res-edit-fecha]');
+      const horaInput = el('[data-admin-res-edit-hora]');
+      if (fechaInput) fechaInput.value = (data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)) ? data.fecha : '';
+      if (horaInput) horaInput.value = (data.hora && data.hora !== '-') ? String(data.hora).slice(0, 5) : '';
+      const reprogramWrap = el('[data-admin-res-reprogram-wrap]');
+      if (reprogramWrap) {
+        const statusLower = String(data.status || '').trim().toLowerCase();
+        const locked = ['cancelado', 'finalizado', 'rechazado'].includes(statusLower);
+        reprogramWrap.hidden = locked;
+      }
       fill(data);
       open();
     } catch (_) {
@@ -137,7 +147,7 @@
   });
 
   const actionUpdate = async (status) => {
-    const id = modal.getAttribute('data-admin-reserva-id'); if (!id) return;
+    const id = modal.getAttribute('data-admin-reserva-id'); if (!id) return false;
     try {
       const res = await fetch(apiBase, {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -151,11 +161,79 @@
           if (pill) { pill.textContent = status; pill.className = 'status-pill st-' + status.toLowerCase(); }
         }
         close();
-      } else {
-        adminNotify('No se pudo actualizar la reserva', 'error');
+        try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}
+        return true;
       }
-    } catch (_) { adminNotify('No se pudo actualizar la reserva', 'error'); }
+      const msg = (payload && payload.error)
+        ? String(payload.error)
+        : 'No se pudo actualizar la reserva';
+      adminNotify(msg, 'error');
+      return false;
+    } catch (_) {
+      adminNotify('No se pudo actualizar la reserva', 'error');
+      return false;
+    }
   };
+
+  const actionUpdateSchedule = async () => {
+    const id = modal.getAttribute('data-admin-reserva-id');
+    if (!id) return;
+    const fechaInput = el('[data-admin-res-edit-fecha]');
+    const horaInput = el('[data-admin-res-edit-hora]');
+    const fecha = fechaInput ? String(fechaInput.value || '').trim() : '';
+    let hora = horaInput ? String(horaInput.value || '').trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      adminNotify('Fecha inválida', 'error');
+      return;
+    }
+    if (!/^\d{2}:\d{2}$/.test(hora)) {
+      adminNotify('Hora inválida', 'error');
+      return;
+    }
+    hora = hora + ':00';
+    const ok = await adminConfirm({
+      title: 'Reprogramar reserva',
+      message: '¿Confirmas cambiar la fecha/hora de esta reserva?',
+      confirmText: 'Guardar',
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(apiBase, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          action: 'update',
+          table: 'reservas',
+          id,
+          data: JSON.stringify({ Fecha_Reserva: fecha, Hora_Reserva: hora }),
+        }),
+      });
+      const payload = await res.json();
+      if (res.ok && payload && payload.ok) {
+        modal.setAttribute('data-admin-res-fecha', fecha);
+        modal.setAttribute('data-admin-res-hora', hora.slice(0, 5));
+        setText('[data-admin-res-fecha]', fecha);
+        setText('[data-admin-res-hora]', hora.slice(0, 5));
+        const row = document.querySelector(`[data-admin-res-row-id="${id}"]`);
+        if (row) {
+          row.setAttribute('data-admin-reserva-fecha', fecha);
+          row.setAttribute('data-admin-reserva-hora', hora.slice(0, 5));
+          const cells = row.querySelectorAll('td');
+          if (cells[4]) cells[4].textContent = fecha;
+          if (cells[5]) cells[5].textContent = hora.slice(0, 5);
+        }
+        adminNotify('Reserva reprogramada', 'success');
+      } else {
+        adminNotify('No se pudo reprogramar', 'error');
+      }
+    } catch (_) {
+      adminNotify('No se pudo reprogramar', 'error');
+    }
+  };
+
+  el('[data-admin-res-guardar-fecha]')?.addEventListener('click', () => {
+    actionUpdateSchedule();
+  });
 
   const btnRech = el('[data-admin-res-rechazar]');
   const btnAten = el('[data-admin-res-atender]');
@@ -195,8 +273,12 @@
       });
     }
     if (!proceed) return;
-    try { await actionUpdate('Aprobado'); } catch (_) {}
-    try { window.openServiceFlow && window.openServiceFlow(modal.getAttribute('data-admin-reserva-id')); } catch (_) {}
+    try { btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
+    const okUpdate = await actionUpdate('Aprobado');
+    try { btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
+    if (okUpdate) {
+      try { window.openServiceFlow && window.openServiceFlow(modal.getAttribute('data-admin-reserva-id')); } catch (_) {}
+    }
   });
 
   // Retomar desde modal de reserva (si Aprobado)

@@ -258,6 +258,18 @@ if ($dateFilter !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFilter)) {
   $dateFilter = '';
 }
 
+$reservaDatesMap = [];
+foreach ($reservas as $r) {
+  if (!is_array($r)) continue;
+  $fechaRaw = trim((string)($r['Fecha_Reserva'] ?? ''));
+  if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaRaw)) {
+    $reservaDatesMap[$fechaRaw] = true;
+  }
+}
+$reservaDates = array_keys($reservaDatesMap);
+sort($reservaDates);
+$reservaDatesJson = json_encode(array_values($reservaDates), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
 $statusOptions = array_merge(['todos'], $statusList);
 $formatStatusLabel = static function($value) {
   $value = strtolower(trim((string)$value));
@@ -313,9 +325,10 @@ usort($ultimas, function($a, $b) {
   $ta = isset($a['_timestamp']) ? (int)$a['_timestamp'] : PHP_INT_MAX;
   $tb = isset($b['_timestamp']) ? (int)$b['_timestamp'] : PHP_INT_MAX;
   if ($ta === $tb) {
+    // Same slot: newest registration first (higher ID).
     $ia = isset($a['ID_Reserva']) ? (int)$a['ID_Reserva'] : 0;
     $ib = isset($b['ID_Reserva']) ? (int)$b['ID_Reserva'] : 0;
-    return $ia <=> $ib;
+    return $ib <=> $ia;
   }
   return $ta <=> $tb;
 });
@@ -594,17 +607,23 @@ $cartStatusLabelsResolved = [];
 foreach ($cartStatusOptions as $statusKey) {
   $cartStatusLabelsResolved[$statusKey] = $cartStatusLabels[$statusKey] ?? $formatStatusLabel($statusKey);
 }
+$cartPendingCount = (int)($cartStatusCounts['pendiente'] ?? 0);
 $cartDefaultStatus = 'pendiente';
-if (($cartStatusCounts[$cartDefaultStatus] ?? 0) === 0) {
-  foreach ($cartStatusOptions as $candidateStatus) {
-    if (($cartStatusCounts[$candidateStatus] ?? 0) > 0) {
-      $cartDefaultStatus = $candidateStatus;
-      break;
+if ($cartPendingCount === 0) {
+  if (($cartStatusCounts['finalizado'] ?? 0) > 0) {
+    $cartDefaultStatus = 'finalizado';
+  } else {
+    foreach ($cartStatusOptions as $candidateStatus) {
+      if (($cartStatusCounts[$candidateStatus] ?? 0) > 0) {
+        $cartDefaultStatus = $candidateStatus;
+        break;
+      }
     }
   }
 }
 $cartActiveStatus = $cartDefaultStatus;
-$cartActiveStatusCount = $cartStatusCounts[$cartActiveStatus] ?? 0;
+// Cart icon badge always reflects actionable (pending) orders.
+$cartActiveStatusCount = $cartPendingCount;
 $hasAnyCartOrders = $cartTotalOrders > 0;
 
 $productSummaryList = [];
@@ -676,7 +695,12 @@ foreach ($reservas as $reserva) {
   $statusRaw = strtolower(trim((string)($reserva['Status'] ?? '')));
   if ($statusRaw === '') { $statusRaw = 'pendiente'; }
   $sid = isset($reserva['ID_Servicio']) ? (string)(int)$reserva['ID_Servicio'] : '';
-  $precio = $sid !== '' && isset($servicePriceMap[$sid]) ? (float)$servicePriceMap[$sid] : 0.0;
+  $precio = 0.0;
+  if (isset($reserva['Precio']) && is_numeric($reserva['Precio']) && (float)$reserva['Precio'] > 0) {
+    $precio = (float)$reserva['Precio'];
+  } elseif ($sid !== '' && isset($servicePriceMap[$sid])) {
+    $precio = (float)$servicePriceMap[$sid];
+  }
   $barberIdRaw = $reserva['ID_Barber'] ?? null;
   $barberId = ($barberIdRaw !== null && $barberIdRaw !== '' && is_numeric($barberIdRaw)) ? (int)$barberIdRaw : null;
   $barberKey = $barberId !== null ? (string)$barberId : 'unassigned';
@@ -774,25 +798,27 @@ $summaryCards = [
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0ea5e9">
+  <meta name="theme-color" content="#7c3aed">
   <meta name="csrf-token" content="<?php echo e($_SESSION['admin_config_csrf']); ?>">
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
-  <title>Panel del Negocio</title>
-  <link rel="manifest" href="../manifest.admin.json">
+  <title>Panel · Agendarte UY</title>
+  <link rel="manifest" href="../manifest.admin.php">
   <link rel="stylesheet" href="../../../src/css/main.css">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
   <link rel="stylesheet" href="../src/admin.css">
+  <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="../src/reservas-ledger.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="/agenda/src/img/favicon/favicon.png">
-  <link rel="apple-touch-icon" href="/agenda/src/img/favicon/favicon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(\Agenduy\Core\AdminBrand::faviconUrl()); ?>">
+  <link rel="apple-touch-icon" href="<?php echo e(\Agenduy\Core\AdminBrand::iconUrl()); ?>">
 </head>
 <body>
   <div class="admin-layout is-collapsed">
     <aside class="admin-aside">
       <div class="admin-brand">
-        <span>Panel Administrativo</span>
-        <small class="muted"><?php echo e($infoBarberia['rubro_nombre'] ?? ($businessName !== '' ? $businessName : 'Mi negocio')); ?></small>
+        <?php echo \Agenduy\Core\AdminBrand::sidebarBrandInnerHtml(); ?>
+        <small class="muted admin-brand__tenant"><?php echo e($infoBarberia['rubro_nombre'] ?? ($businessName !== '' ? $businessName : 'Mi negocio')); ?></small>
       </div>
       <nav class="admin-nav">
         <a class="admin-link" href="#resumen">Resumen</a>
@@ -1039,13 +1065,26 @@ $summaryCards = [
           <div class="admin-reservas-filter">
             <label for="admin-reserva-date" class="admin-reservas-filter__label">Fecha</label>
             <input
-              type="date"
+              type="text"
               id="admin-reserva-date"
               class="admin-reservas-filter__input"
               data-admin-reserva-date
+              data-admin-reserva-dates="<?php echo e($reservaDatesJson); ?>"
               data-admin-reserva-date-default="<?php echo e($dateFilter); ?>"
               value="<?php echo e($dateFilter); ?>"
+              placeholder="Todas"
+              autocomplete="off"
+              inputmode="none"
+              readonly
             >
+            <button
+              type="button"
+              class="admin-reservas-filter__clear"
+              data-admin-reserva-date-clear
+              title="Ver todas las fechas"
+              aria-label="Limpiar fecha"
+              <?php echo $dateFilter === '' ? 'hidden' : ''; ?>
+            >&times;</button>
           </div>
           <span class="admin-section-count" data-admin-reserva-count>Total (<?php echo e($currentStatusLabel); ?>): <?php echo (int)$renderedCount; ?></span>
           <span class="admin-section-total" data-admin-reserva-amount><?php echo e($finalizedAmountLabel); ?></span>
@@ -1074,7 +1113,11 @@ $summaryCards = [
                 $bn = trim(($barberosMap[$bid]['Nombre'] ?? 'Profesional') . ' ' . ($barberosMap[$bid]['Apellido'] ?? ''));
                 $serviceData = $serviciosMap[$sid] ?? [];
                 $sn = ($serviceData['Nombre'] ?? 'Servicio');
-                $servicePrice = $normalizeAmount($serviceData['Precio'] ?? 0);
+                if (isset($r['Precio']) && is_numeric($r['Precio']) && (float)$r['Precio'] > 0) {
+                  $servicePrice = $normalizeAmount($r['Precio']);
+                } else {
+                  $servicePrice = $normalizeAmount($serviceData['Precio'] ?? 0);
+                }
                 $servicePriceLabel = $formatCurrency($servicePrice);
                 $serviceImgRel = isset($serviceData['Img_Link']) ? trim((string)$serviceData['Img_Link']) : '';
                 $serviceImgRel = str_replace('\\', '/', $serviceImgRel);
@@ -1843,6 +1886,8 @@ $summaryCards = [
     window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="../src/js/admin/core.js"></script>
   <script src="../src/js/admin/admin-orders.js"></script>
   <script src="../src/js/admin/plan-trial-modal.js"></script>

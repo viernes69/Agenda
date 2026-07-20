@@ -8,6 +8,18 @@ use RuntimeException;
 
 final class Mail
 {
+    private static ?string $lastError = null;
+
+    public static function lastError(): ?string
+    {
+        return self::$lastError;
+    }
+
+    public static function isConfigured(): bool
+    {
+        return ProviderConfig::mailIsConfigured();
+    }
+
     public static function send(
         string $to,
         string $subject,
@@ -16,12 +28,32 @@ final class Mail
         ?int $idCommerce = null,
         array $attachments = []
     ): bool {
+        self::$lastError = null;
         $mailCfg = ProviderConfig::mailConfig();
         $fromEmail = $mailCfg['from_email'];
         $fromName = $mailCfg['from_name'];
 
         if ($fromEmail === '') {
-            self::log($to, $subject, 'failed', 'SMTP no configurado', $idCommerce);
+            self::$lastError = 'Falta el email remitente (From).';
+            self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
+            return false;
+        }
+
+        if (!class_exists(PHPMailer::class)) {
+            self::$lastError = 'PHPMailer no instalado. Ejecutá composer install en el servidor.';
+            self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
+            return false;
+        }
+
+        if ($mailCfg['host'] === '' || $mailCfg['username'] === '') {
+            self::$lastError = 'SMTP incompleto: host o usuario vacío.';
+            self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
+            return false;
+        }
+
+        if (($mailCfg['password'] ?? '') === '') {
+            self::$lastError = 'Falta la contraseña SMTP. Configurala en Admin → SMTP, AGENDUY_SMTP_PASSWORD o Private/mail_secret.php';
+            self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
             return false;
         }
 
@@ -40,7 +72,17 @@ final class Mail
                     $mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
                 } elseif ($enc === 'tls') {
                     $mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                } else {
+                    $mailer->SMTPSecure = '';
+                    $mailer->SMTPAutoTLS = false;
                 }
+                $mailer->SMTPOptions = [
+                    'ssl' => [
+                        'verify_peer'       => true,
+                        'verify_peer_name'  => true,
+                        'allow_self_signed' => false,
+                    ],
+                ];
                 $mailer->CharSet = 'UTF-8';
                 $mailer->setFrom($fromEmail, $fromName);
                 $mailer->addAddress($to);
@@ -60,16 +102,15 @@ final class Mail
                 self::log($to, $subject, 'sent', null, $idCommerce);
                 return true;
             } catch (\Throwable $e) {
-                self::log($to, $subject, 'failed', $e->getMessage(), $idCommerce);
+                self::$lastError = $e->getMessage();
+                self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
                 return false;
             }
         }
 
-        $fromHeader = sprintf("From: %s <%s>\r\n", $fromName, $fromEmail);
-        $headers = $fromHeader . "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n";
-        $sent = @mail($to, $subject, $html, $headers);
-        self::log($to, $subject, $sent ? 'sent' : 'failed', $sent ? null : 'mail() returned false', $idCommerce);
-        return $sent;
+        self::$lastError = 'No se pudo inicializar el envío SMTP.';
+        self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
+        return false;
     }
 
     public static function log(string $to, string $subject, string $status, ?string $error, ?int $idCommerce = null): void

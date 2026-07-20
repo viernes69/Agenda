@@ -76,6 +76,37 @@ class AutoloadDB {
         }
     }
 
+    /**
+     * Si la reserva local tiene ID_Appointment, refleja Status/fecha/hora en SQLite.
+     *
+     * @param array<string,mixed> $row
+     */
+    private static function afterReservaUpdateHook(array $row): void {
+        $appointmentId = $row['ID_Appointment'] ?? null;
+        if ($appointmentId === null || $appointmentId === '' || !is_numeric($appointmentId)) {
+            return;
+        }
+        try {
+            $projectRoot = dirname(__DIR__, 3);
+            $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+            if (!is_file($bootstrap)) {
+                return;
+            }
+            require_once $bootstrap;
+            if (!class_exists(\Agenduy\Core\TenantLocalDb::class)) {
+                return;
+            }
+            $slug = basename(dirname(__DIR__, 2));
+            if ($slug === '' || $slug === 'template') {
+                // En template no hay comercio real; el tenant copia este archivo.
+                // Igual intentamos con el slug del path (terap, etc.).
+            }
+            \Agenduy\Core\TenantLocalDb::pushReservaToCentral($slug, $row);
+        } catch (\Throwable $e) {
+            error_log('[AutoloadDB] push reserva→central: ' . $e->getMessage());
+        }
+    }
+
     public static function updateById(string $table, $id, array $data): ?array {
         // Read first without exclusive lock
         $db = self::readShared();
@@ -106,6 +137,9 @@ class AutoloadDB {
                       self::applyCartCompletionPoints($db, $previousRow, $updated);
                   }
                   self::writeDb($fh, $db);
+                  if ($table === 'reservas') {
+                      self::afterReservaUpdateHook($updated);
+                  }
               }
               return $updated;
           } finally {
@@ -605,6 +639,61 @@ class AutoloadDB {
             return null;
         }
     }
+
+    /**
+     * Block Atender/Finalizar when monthly paid appointment quota is exhausted.
+     * Cancelar / Reprogramar / Ver stay allowed.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>|null denial payload when blocked
+     */
+    public static function checkAppointmentProcessPlanLimit($id, array $data): ?array
+    {
+        if (!isset($data['Status'])) {
+            return null;
+        }
+        $newStatus = (string)$data['Status'];
+        $tenantSlug = basename(dirname(__DIR__, 2));
+        if ($tenantSlug === '' || $tenantSlug === 'template') {
+            return null;
+        }
+        $projectRoot = dirname(__DIR__, 3);
+        $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+        if (!is_file($bootstrap)) {
+            return null;
+        }
+        require_once $bootstrap;
+        if (!class_exists(\Agenduy\Core\MembershipPlan::class)) {
+            return null;
+        }
+        if (!\Agenduy\Core\MembershipPlan::isConsumingAppointmentStatus($newStatus)) {
+            return null;
+        }
+        try {
+            $plan = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
+            $existing = self::find('reservas', $id);
+            $reservas = self::all('reservas');
+            if (!\Agenduy\Core\MembershipPlan::wouldExceedAppointmentsMonthOnProcess(
+                is_array($plan) ? $plan : null,
+                $reservas,
+                is_array($existing) ? $existing : null,
+                $newStatus
+            )) {
+                return null;
+            }
+            $maxAppts = is_array($plan)
+                ? \Agenduy\Core\MembershipPlan::maxAppointmentsMonth($plan)
+                : null;
+            $fecha = trim((string)($existing['Fecha_Reserva'] ?? ''));
+            $monthPrefix = (preg_match('/^\d{4}-\d{2}/', $fecha) === 1) ? substr($fecha, 0, 7) : date('Y-m');
+            return \Agenduy\Core\MembershipPlan::appointmentsMonthProcessDeniedPayload([
+                'max_appointments_month' => $maxAppts,
+                'current' => \Agenduy\Core\MembershipPlan::countLocalReservasConsumedThisMonth($reservas, $monthPrefix),
+            ]);
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
 }
 
 // Basic HTTP layer to use as a simple API
@@ -669,6 +758,14 @@ if (php_sapi_name() !== 'cli' && realpath(__FILE__) === realpath($_SERVER['SCRIP
                         $data = $tmp;
                     } else {
                         $data = [];
+                    }
+                }
+                if ($table === 'reservas' && is_array($data)) {
+                    $processDenied = AutoloadDB::checkAppointmentProcessPlanLimit($id, $data);
+                    if ($processDenied !== null) {
+                        http_response_code(403);
+                        echo json_encode($processDenied);
+                        break;
                     }
                 }
                 $row = AutoloadDB::updateById($table, $id, is_array($data) ? $data : []);

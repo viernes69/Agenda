@@ -21,6 +21,8 @@
 **/src/db/database.lock
 **/logs/*
 !**/logs/.gitkeep
+/src/media/commerce/**
+!/src/media/commerce/.gitkeep
 
 # OS / IDE
 .DS_Store

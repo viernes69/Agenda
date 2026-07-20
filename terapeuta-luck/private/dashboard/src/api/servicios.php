@@ -7,6 +7,7 @@ $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\Database;
+use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\TenantApiGuard;
 
@@ -31,9 +32,28 @@ if (!in_array($action, $allowedActions, true)) {
     exit;
 }
 
-$uploadDir = dirname(__DIR__, 4) . '/src/img/services';
-if (!is_dir($uploadDir)) {
-    @mkdir($uploadDir, 0775, true);
+function assetUploadDir(string $kind): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::kindDir($commerceId, $kind);
+    }
+    $legacyKind = $kind === 'services' ? 'services' : $kind;
+    $dir = dirname(__DIR__, 4) . '/src/img/' . $legacyKind;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    return $dir;
+}
+
+function assetStoredPath(string $kind, string $filename): string
+{
+    $commerceId = tenantCommerceId();
+    if ($commerceId !== null && $commerceId > 0) {
+        return CommerceStorage::relativePath($commerceId, $kind, $filename);
+    }
+    $legacyKind = $kind === 'services' ? 'services' : $kind;
+    return 'src/img/' . $legacyKind . '/' . $filename;
 }
 
 /**
@@ -56,11 +76,16 @@ function tenantCommerceId(): ?int
 
 /**
  * Sincroniza un servicio local con la tabla central `services` (tienda pública).
+ * Clave: ID_Servicio local → services.id_local (no el nombre; permite nombres duplicados).
  */
 function syncServiceToCentral(array $localRow, ?array $previous = null): void
 {
     $commerceId = tenantCommerceId();
     if ($commerceId === null || $commerceId <= 0) {
+        return;
+    }
+    $idLocal = (int)($localRow['ID_Servicio'] ?? 0);
+    if ($idLocal <= 0) {
         return;
     }
     try {
@@ -70,6 +95,7 @@ function syncServiceToCentral(array $localRow, ?array $previous = null): void
             return;
         }
         $payload = [
+            'id_local' => $idLocal,
             'nombre' => $nombre,
             'duracion_min' => max(15, (int)($localRow['Duracion'] ?? 30)),
             'precio' => (float)($localRow['Precio'] ?? 0),
@@ -77,11 +103,23 @@ function syncServiceToCentral(array $localRow, ?array $previous = null): void
             'imagen' => trim((string)($localRow['Img_Link'] ?? '')),
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-        $prevName = trim((string)($previous['Nombre'] ?? $nombre));
         $existing = $db->fetchOne(
-            'SELECT id_service FROM services WHERE id_commerce = :c AND lower(nombre) = lower(:n) LIMIT 1',
-            [':c' => $commerceId, ':n' => $prevName !== '' ? $prevName : $nombre]
+            'SELECT id_service FROM services WHERE id_commerce = :c AND id_local = :lid LIMIT 1',
+            [':c' => $commerceId, ':lid' => $idLocal]
         );
+        // Legacy: claim one orphan central row (id_local NULL) with same name once.
+        if (!$existing) {
+            $prevName = trim((string)($previous['Nombre'] ?? $nombre));
+            $orphan = $db->fetchOne(
+                'SELECT id_service FROM services
+                 WHERE id_commerce = :c AND id_local IS NULL AND lower(nombre) = lower(:n)
+                 LIMIT 1',
+                [':c' => $commerceId, ':n' => $prevName !== '' ? $prevName : $nombre]
+            );
+            if ($orphan) {
+                $existing = $orphan;
+            }
+        }
         if ($existing) {
             $db->update('services', $payload, 'id_service = :id AND id_commerce = :c', [
                 ':id' => (int)$existing['id_service'],
@@ -100,7 +138,7 @@ function syncServiceToCentral(array $localRow, ?array $previous = null): void
 }
 
 /**
- * Elimina el servicio espejado en la tabla central.
+ * Elimina el servicio espejado en la tabla central (por id_local, no por nombre).
  */
 function deleteServiceFromCentral(array $localRow): void
 {
@@ -108,16 +146,16 @@ function deleteServiceFromCentral(array $localRow): void
     if ($commerceId === null || $commerceId <= 0) {
         return;
     }
-    $nombre = trim((string)($localRow['Nombre'] ?? ''));
-    if ($nombre === '') {
+    $idLocal = (int)($localRow['ID_Servicio'] ?? 0);
+    if ($idLocal <= 0) {
         return;
     }
     try {
         $db = Database::getInstance();
         $db->delete(
             'services',
-            'id_commerce = :c AND lower(nombre) = lower(:n)',
-            [':c' => $commerceId, ':n' => $nombre]
+            'id_commerce = :c AND id_local = :lid',
+            [':c' => $commerceId, ':lid' => $idLocal]
         );
     } catch (Throwable $e) {
         // ignore
@@ -153,10 +191,7 @@ function handleServiceImage(string $fieldName, array &$errors, string $current =
         return $current;
     }
 
-    $targetDir = dirname(__DIR__, 4) . '/src/img/services';
-    if (!is_dir($targetDir)) {
-        @mkdir($targetDir, 0775, true);
-    }
+    $targetDir = assetUploadDir('services');
     try {
         $token = bin2hex(random_bytes(4));
     } catch (Throwable $e) {
@@ -170,7 +205,7 @@ function handleServiceImage(string $fieldName, array &$errors, string $current =
         return $current;
     }
 
-    return 'src/img/services/' . $filename;
+    return assetStoredPath('services', $filename);
 }
 
 /**
@@ -238,7 +273,16 @@ function deleteServiceImage(string $relativePath): void
     if ($relativePath === '') {
         return;
     }
-    $clean = str_replace(['..', '\\'], ['','/'], $relativePath);
+    $clean = str_replace(['..', '\\'], ['', '/'], $relativePath);
+    $commerceId = tenantCommerceId();
+    $slug = basename(dirname(__DIR__, 4));
+    if ($commerceId !== null && $commerceId > 0 && CommerceStorage::isCentralPath($clean)) {
+        $full = CommerceStorage::absolutePath($commerceId, $slug, $clean);
+        if ($full !== null) {
+            @unlink($full);
+        }
+        return;
+    }
     if (strpos($clean, 'src/img/services/') !== 0) {
         return;
     }

@@ -16,7 +16,7 @@ ob_start();
       <section class="reservas-ledger__filters" aria-label="Filtros del panel">
         <div class="reservas-ledger__filters-group">
           <label class="reservas-ledger__field">
-            <span>D&iacute;a</span>
+            <span>D&iacute;a (vac&iacute;o = todos)</span>
             <input type="date" data-ledger-date>
           </label>
           <label class="reservas-ledger__field">
