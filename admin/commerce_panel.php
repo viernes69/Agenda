@@ -51,6 +51,25 @@ if (CommercePanel::hasLegacyPanel($slug)) {
 
 CommercePanel::bootstrapCentralAccess($idCommerce, $slug);
 
-$target = CommercePanel::centralDashboardUrl($section, $query);
-header('Location: ' . $target);
+$canonical = CommercePanel::dashboardUrlForSlug($slug, $section, $query);
+$reqPath = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?') ?: '';
+if (stripos($reqPath, '/admin/commerce_panel.php') !== false) {
+    header('Location: ' . $canonical, true, 302);
+    exit;
+}
+
+$templateIndex = dirname(__DIR__) . '/template/private/dashboard/admin/index.php';
+if (!is_file($templateIndex)) {
+    header('Location: ' . CommercePanel::centralDashboardUrl($section, $query), true, 302);
+    exit;
+}
+
+if (!defined('AGENDUY_COMMERCE_PANEL_EMBED')) {
+    define('AGENDUY_COMMERCE_PANEL_EMBED', true);
+}
+if (!defined('AGENDUY_PANEL_BASE_HREF')) {
+    define('AGENDUY_PANEL_BASE_HREF', rtrim(url('template/private/dashboard/admin/'), '/') . '/');
+}
+
+require $templateIndex;
 exit;

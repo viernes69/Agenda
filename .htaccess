@@ -26,6 +26,16 @@ ServerSignature Off
     RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/index\.php$ admin/commerce_panel.php?slug=$1 [L,QSA]
     RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/?$ admin/commerce_panel.php?slug=$1 [L,QSA]
 
+    # Assets/API del panel central bajo URL del comercio (si no hay carpeta tenant legacy)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/(.*)$ template/private/dashboard/$2 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/index\.php [NC]
+    RewriteRule ^([a-z0-9][a-z0-9-]*)/src/(.*)$ template/src/$2 [L]
+
     # Acceso directo al template compartido (normalizar Admin/index)
     RewriteRule ^template/private/dashboard/(?i)admin/index/?$ template/private/dashboard/admin/index.php [L,QSA]
 

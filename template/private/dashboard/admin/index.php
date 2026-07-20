@@ -44,6 +44,25 @@ if ($centralPanelSlug !== '') {
   $tenantSlug = basename(dirname(__DIR__, 3));
 }
 
+// URL canónica: evitar /template/private/dashboard/admin/ en el navegador (acceso directo al archivo)
+if (
+    $templateHost
+    && $tenantSlug !== ''
+    && $tenantSlug !== 'template'
+    && !defined('AGENDUY_COMMERCE_PANEL_EMBED')
+) {
+  $reqPath = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?') ?: '';
+  if (stripos($reqPath, '/template/private/dashboard/admin') !== false) {
+    $section = \Agenduy\Core\CommercePanel::normalizeDashboardSection((string)($_GET['section'] ?? 'resumen'));
+    $redirectQuery = [];
+    if (!empty($_GET['setup'])) {
+      $redirectQuery['setup'] = 'ok';
+    }
+    header('Location: ' . \Agenduy\Core\CommercePanel::dashboardUrlForSlug($tenantSlug, $section, $redirectQuery), true, 302);
+    exit;
+  }
+}
+
 function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
 function admin_normalize_public_list($value, string $primaryKey): array {
@@ -829,6 +848,9 @@ $summaryCards = [
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?php if (defined('AGENDUY_PANEL_BASE_HREF') && AGENDUY_PANEL_BASE_HREF !== ''): ?>
+  <base href="<?php echo e(AGENDUY_PANEL_BASE_HREF); ?>">
+  <?php endif; ?>
   <meta name="theme-color" content="#7c3aed">
   <meta name="csrf-token" content="<?php echo e($_SESSION['admin_config_csrf']); ?>">
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">

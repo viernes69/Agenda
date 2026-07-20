@@ -225,8 +225,14 @@ if (!function_exists('agenduy_render_commerce')) {
         $bookingCalendar = Availability::calendarForRange($scheduleRaw, $bookingMinDate, $bookingMaxDate);
 
         require_once dirname(__DIR__) . '/components/dlocal/plans.php';
-        $dlocalPlansHtml = AgenduyDlocalPlans::render($slug);
-        $hasDlocalPlans = trim($dlocalPlansHtml) !== '';
+        $dlocalPlansHtml = '';
+        $hasDlocalPlans = false;
+        try {
+            $dlocalPlansHtml = AgenduyDlocalPlans::render($slug);
+            $hasDlocalPlans = trim($dlocalPlansHtml) !== '';
+        } catch (\Throwable $e) {
+            error_log('[commerce_view.dlocal] ' . $e->getMessage());
+        }
         ?>
         <!doctype html>
         <html lang="es">
@@ -594,7 +600,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
                     <i class="bx bx-grid-alt"></i> Ir al panel
                 </a>
-                <a href="<?= htmlspecialchars(CommercePanel::centralUrl($slug) . '&section=config', ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">
+                <a href="<?= htmlspecialchars(CommercePanel::dashboardUrlForSlug($slug, 'config'), ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">
                     <i class="bx bx-cog"></i> Configuración
                 </a>
                 </div>

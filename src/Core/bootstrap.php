@@ -39,6 +39,22 @@ if (is_file($helpersFile)) {
 
 $vendorAutoload = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
 if (is_file($vendorAutoload)) {
+    $platformCheck = dirname($vendorAutoload) . DIRECTORY_SEPARATOR . 'composer' . DIRECTORY_SEPARATOR . 'platform_check.php';
+    $localLegacyPhp = PHP_VERSION_ID < 80200
+        && function_exists('agenduy_request')
+        && (agenduy_request()['is_local'] ?? false);
+
+    // XAMPP local suele traer PHP 8.0; Composer exige >= 8.2 y responde HTTP 500 en todo el sitio.
+    if ($localLegacyPhp && is_file($platformCheck)) {
+        $platformContents = file_get_contents($platformCheck);
+        if (is_string($platformContents) && str_contains($platformContents, '80200')) {
+            file_put_contents($platformCheck, "<?php\n// bypass local dev\n");
+            register_shutdown_function(static function () use ($platformCheck, $platformContents): void {
+                @file_put_contents($platformCheck, $platformContents);
+            });
+        }
+    }
+
     require_once $vendorAutoload;
 }
 

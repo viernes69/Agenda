@@ -20,8 +20,14 @@
     }
 
     function getAdminCsrf() {
-        var input = document.querySelector('#site-login-form input[name="_csrf"]');
-        return input ? String(input.value || '') : '';
+        var selectors = ['#site-login-magic-form input[name="_csrf"]', '#site-login-form input[name="_csrf"]'];
+        for (var i = 0; i < selectors.length; i++) {
+            var input = document.querySelector(selectors[i]);
+            if (input && input.value) {
+                return String(input.value);
+            }
+        }
+        return '';
     }
 
     function showMsg(text, isError) {
@@ -111,7 +117,11 @@
 
                 fetch(apiBase + '/magic_link.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     credentials: 'include',
                     body: JSON.stringify({ email: email, _csrf: getAdminCsrf() }),
                 }).then(function (res) {

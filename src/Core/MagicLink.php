@@ -51,6 +51,10 @@ final class MagicLink
 
         if (!Mail::send($email, $subject, $body)) {
             error_log('[MagicLink.admin] fallo SMTP: ' . (Mail::lastError() ?? 'desconocido'));
+            return [
+                'ok' => false,
+                'error' => 'No se pudo enviar el email. Intentá de nuevo más tarde.',
+            ];
         }
         return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
     }

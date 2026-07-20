@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
 
 if (defined('PRIVATE_SESSION_GUARD_LOADED')) {

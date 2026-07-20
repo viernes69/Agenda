@@ -36,7 +36,7 @@ final class CommercePanel
     public static function centralUrl(?string $slug = null): string
     {
         if ($slug !== null && $slug !== '') {
-            return \url('admin/commerce_panel.php?slug=' . rawurlencode($slug));
+            return \url($slug . '/private/dashboard/admin/');
         }
         return \url('admin/commerce_panel.php');
     }
@@ -108,8 +108,8 @@ final class CommercePanel
             return $url . '#' . $section;
         }
 
-        $params = array_merge(['slug' => $slug, 'section' => $section], $query);
-        return self::appendQuery(self::centralUrl($slug), $params);
+        $url = self::appendQuery(self::centralUrl($slug), $query);
+        return $url . '#' . $section;
     }
 
     /**
@@ -197,27 +197,31 @@ final class CommercePanel
             CommerceSettings::defaultsForSection('horarios')
         );
 
-        CentralCommerceData::provision(
-            $idCommerce,
-            (int)($owner['id_user'] ?? 0),
-            [
-                'nombre' => (string)($owner['nombre'] ?? ''),
-                'apellido' => (string)($owner['apellido'] ?? ''),
-                'cedula' => (string)($owner['cedula'] ?? ''),
-                'email' => (string)($owner['email'] ?? $commerce['email'] ?? ''),
-            ],
-            [
-                'nombre' => (string)$commerce['nombre'],
-                'rut' => (string)($commerce['rut_ruc'] ?? ''),
-                'pais' => (string)($commerce['pais'] ?? 'UY'),
-                'ciudad' => (string)($commerce['ciudad'] ?? ''),
-                'calle' => (string)($commerce['calle'] ?? ''),
-                'telefono' => (string)($commerce['telefono'] ?? ''),
-            ],
-            $schedule,
-            $services,
-            (int)($commerce['id_rubro'] ?? 0)
-        );
+        try {
+            CentralCommerceData::provision(
+                $idCommerce,
+                (int)($owner['id_user'] ?? 0),
+                [
+                    'nombre' => (string)($owner['nombre'] ?? ''),
+                    'apellido' => (string)($owner['apellido'] ?? ''),
+                    'cedula' => (string)($owner['cedula'] ?? ''),
+                    'email' => (string)($owner['email'] ?? $commerce['email'] ?? ''),
+                ],
+                [
+                    'nombre' => (string)$commerce['nombre'],
+                    'rut' => (string)($commerce['rut_ruc'] ?? ''),
+                    'pais' => (string)($commerce['pais'] ?? 'UY'),
+                    'ciudad' => (string)($commerce['ciudad'] ?? ''),
+                    'calle' => (string)($commerce['calle'] ?? ''),
+                    'telefono' => (string)($commerce['telefono'] ?? ''),
+                ],
+                $schedule,
+                $services,
+                (int)($commerce['id_rubro'] ?? 0)
+            );
+        } catch (\Throwable $e) {
+            error_log('[CommercePanel.ensureLocalDatabase] ' . $e->getMessage());
+        }
     }
 
     /**

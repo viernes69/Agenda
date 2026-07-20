@@ -205,7 +205,9 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
             <i class="bx bx-user-circle" aria-hidden="true"></i>
             <span class="site-header__login-label">Perfil</span>
           </a>
-          <?php else: ?>
+          <?php else:
+            $adminLoginCsrf = \Agenduy\Core\CSRF::generate('admin_login');
+          ?>
           <button type="button" class="site-header__login-btn" id="site-login-toggle" aria-expanded="false" aria-haspopup="dialog" aria-controls="site-login-dropdown">
             <i class="bx bx-user-circle" aria-hidden="true"></i>
             <span class="site-header__login-label">Iniciar sesion</span>
@@ -217,7 +219,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
               <button type="button" class="site-login-tabs__btn" data-login-tab="magic" role="tab" aria-selected="false">Link por email</button>
             </div>
             <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" data-login-panel="password" novalidate>
-              <input type="hidden" name="_csrf" value="<?= h(\Agenduy\Core\CSRF::generate('admin_login')) ?>">
+              <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
               <label class="site-login-form__field">
                 <span>Email</span>
                 <input type="email" name="email" required autocomplete="username" placeholder="tu@email.com">
@@ -229,6 +231,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
               <button type="submit" class="site-login-form__btn">Ingresar</button>
             </form>
             <form class="site-login-form" id="site-login-magic-form" data-login-panel="magic" hidden novalidate>
+              <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
               <p class="site-login-form__hint">Te enviamos un link seguro a tu correo. Sin contrasena.</p>
               <label class="site-login-form__field">
                 <span>Email</span>
