@@ -5,8 +5,9 @@ date_default_timezone_set('America/Montevideo');
 
 $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
-\Agenduy\Core\Auth::start();
 require_once dirname(__DIR__, 4) . '/src/API/Autoload.php';
+
+use Agenduy\Core\TenantApiGuard;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -15,6 +16,11 @@ $respond = static function (int $code, array $payload): void {
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 };
+
+$tenantStaff = TenantApiGuard::requireStaff(dirname(__DIR__, 4));
+$activeSession = $tenantStaff['session'];
+$employeeRole = $tenantStaff['role'];
+$isFunc = $employeeRole === 'func';
 
 $escape = static function ($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -73,18 +79,6 @@ foreach ($servicios as $s) {
     if ($sid !== '') $mapServicios[$sid] = $s;
 }
 
-$activeSession = null;
-if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
-    $activeSession = $_SESSION['user'];
-} elseif (isset($_SESSION['barbero']) && is_array($_SESSION['barbero'])) {
-    $activeSession = $_SESSION['barbero'];
-}
-$employeeRoleRaw = is_array($activeSession) ? ($activeSession['Rol'] ?? $activeSession['rol'] ?? '') : '';
-$employeeRole = strtolower(trim((string)$employeeRoleRaw));
-if (!in_array($employeeRole, ['admin', 'func'], true)) {
-    $employeeRole = 'admin';
-}
-$isFunc = $employeeRole === 'func';
 $sessionBarberId = 0;
 if (is_array($activeSession)) {
     $idRaw = $activeSession['ID_Barber'] ?? $activeSession['id_barber'] ?? null;

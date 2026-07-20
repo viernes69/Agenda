@@ -115,6 +115,21 @@ final class Database
         $this->ensureDlocalEnums();
         $this->ensurePaymentProviderGoogleOauth();
         $this->ensureOAuthAuth();
+        $this->ensureRateLimitsTable();
+    }
+
+    private function ensureRateLimitsTable(): void
+    {
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS rate_limits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bucket TEXT NOT NULL UNIQUE,
+                hits INTEGER NOT NULL DEFAULT 1,
+                window_start INTEGER NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+            )'
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start)');
     }
 
     private function ensureOAuthAuth(): void

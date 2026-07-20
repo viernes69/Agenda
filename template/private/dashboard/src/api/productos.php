@@ -7,8 +7,11 @@ $projectRoot = dirname(__DIR__, 5);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\TenantApiGuard;
 
 header('Content-Type: application/json; charset=utf-8');
+
+$tenantStaff = TenantApiGuard::requireStaff(dirname(__DIR__, 4));
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

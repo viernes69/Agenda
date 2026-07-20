@@ -12,6 +12,8 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\MagicLink;
+use Agenduy\Core\RateLimiter;
+use Agenduy\Core\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -22,6 +24,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     echo json_encode(['ok' => false, 'error' => 'Método no permitido']);
     exit;
 }
+
+RateLimiter::enforce('admin_magic_ip', Security::clientIp(), 3600, 15);
 
 $raw = file_get_contents('php://input');
 $payload = json_decode($raw, true);
@@ -37,6 +41,9 @@ if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login', false)) {
 }
 
 $email = strtolower(trim((string)($payload['email'] ?? '')));
+if ($email !== '') {
+    RateLimiter::enforce('admin_magic_email', hash('sha256', $email), 3600, 6);
+}
 $result = MagicLink::sendAdminLogin($email, $_SERVER['REMOTE_ADDR'] ?? null);
 
 if (!$result['ok']) {

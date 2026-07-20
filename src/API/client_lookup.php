@@ -12,6 +12,8 @@ require __DIR__ . '/../Core/bootstrap.php';
 use Agenduy\Core\ClientLookup;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
+use Agenduy\Core\RateLimiter;
+use Agenduy\Core\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,6 +22,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     echo json_encode(['ok' => false, 'error' => 'Método no permitido']);
     exit;
 }
+
+RateLimiter::enforce('client_lookup_ip', Security::clientIp(), 60, 40);
 
 $raw = file_get_contents('php://input');
 $payload = json_decode($raw, true);

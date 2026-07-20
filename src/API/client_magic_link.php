@@ -12,6 +12,8 @@ require __DIR__ . '/../Core/bootstrap.php';
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MagicLink;
+use Agenduy\Core\RateLimiter;
+use Agenduy\Core\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,6 +22,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     echo json_encode(['ok' => false, 'error' => 'Método no permitido']);
     exit;
 }
+
+RateLimiter::enforce('client_magic_ip', Security::clientIp(), 3600, 20);
 
 $raw = file_get_contents('php://input');
 $payload = json_decode($raw, true);
@@ -37,6 +41,10 @@ if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'public_booking')) {
 $email = strtolower(trim((string)($payload['email'] ?? '')));
 $slug = trim((string)($payload['slug'] ?? ''));
 $idCommerce = (int)($payload['id_commerce'] ?? 0);
+
+if ($email !== '') {
+    RateLimiter::enforce('client_magic_email', hash('sha256', $email), 3600, 8);
+}
 
 $db = Database::getInstance();
 if ($idCommerce <= 0 && $slug !== '') {

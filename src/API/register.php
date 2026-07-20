@@ -6,6 +6,8 @@ require __DIR__ . '/../Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommerceRegistrar;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\RateLimiter;
+use Agenduy\Core\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -38,6 +40,8 @@ try {
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
+    RateLimiter::enforce('public_register_ip', Security::clientIp(), 3600, 10);
 
     $result = CommerceRegistrar::register($payload);
     echo json_encode([

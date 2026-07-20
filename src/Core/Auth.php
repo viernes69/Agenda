@@ -27,11 +27,16 @@ final class Auth
         $app = $cfg['app'];
         $sec = $cfg['security'];
 
+        $secureCookie = (bool)$sec['session_secure_cookie'];
+        if (!$secureCookie && Security::isHttpsRequest()) {
+            $secureCookie = true;
+        }
+
         session_name($app['session_name']);
         session_set_cookie_params([
             'lifetime' => 0,
             'path'     => '/',
-            'secure'   => (bool)$sec['session_secure_cookie'],
+            'secure'   => $secureCookie,
             'httponly' => (bool)$sec['session_httponly'],
             'samesite' => $sec['session_samesite'] ?? 'Lax',
         ]);
@@ -46,6 +51,10 @@ final class Auth
         $sec = $cfg['security'];
 
         $email = strtolower(trim($email));
+        if (!RateLimiter::attempt('login_ip', Security::clientIp(), 900, 30)) {
+            return ['ok' => false, 'error' => 'Demasiados intentos. Intentá más tarde.'];
+        }
+
         $row = $db->fetchOne(
             'SELECT * FROM users WHERE email = :e LIMIT 1',
             [':e' => $email]

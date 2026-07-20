@@ -1,0 +1,4 @@
+# Bloquear endpoints de debug en producción
+<FilesMatch "^(session_debug|xampp_config_check)\.php$">
+    Require all denied
+</FilesMatch>

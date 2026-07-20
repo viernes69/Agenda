@@ -23,6 +23,8 @@ use Agenduy\Core\Crypto;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\NotificationOutbox;
+use Agenduy\Core\RateLimiter;
+use Agenduy\Core\Security;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -55,6 +57,8 @@ if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'public_booking', false)) {
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+RateLimiter::enforce('public_booking_ip', Security::clientIp(), 3600, 40);
 
 try {
     $db = Database::getInstance();
