@@ -39,6 +39,7 @@ if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'public_booking')) {
 }
 
 $email = strtolower(trim((string)($payload['email'] ?? '')));
+$cedula = trim((string)($payload['cedula'] ?? ''));
 $slug = trim((string)($payload['slug'] ?? ''));
 $idCommerce = (int)($payload['id_commerce'] ?? 0);
 
@@ -61,7 +62,7 @@ if ($idCommerce <= 0) {
     exit;
 }
 
-$result = MagicLink::sendClientPortal($email, $idCommerce, $slug !== '' ? $slug : null, $_SERVER['REMOTE_ADDR'] ?? null);
+$result = MagicLink::sendClientPortal($email, $idCommerce, $slug !== '' ? $slug : null, $_SERVER['REMOTE_ADDR'] ?? null, $cedula);
 
 if (!$result['ok']) {
     http_response_code(400);

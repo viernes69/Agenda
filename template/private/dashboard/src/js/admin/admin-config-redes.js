@@ -13,6 +13,7 @@
   if (!form) return;
 
   const visibleCheckbox = form.querySelector('[data-admin-config-redes-visible]');
+  const emailInput = form.querySelector('[data-admin-config-redes-email]');
   const submitBtn = form.querySelector('[data-admin-config-redes-submit]');
   const errorEl = form.querySelector('[data-admin-config-redes-error]');
   const closeEls = modal.querySelectorAll('[data-admin-config-redes-close]');
@@ -58,16 +59,46 @@
     return value;
   };
 
+  const sanitizeWhatsAppDigits = (raw) => String(raw || '').replace(/\D/g, '');
+
+  const resolveCompanyEmail = (data) => {
+    const notif = (data && data.notificaciones) || {};
+    return String(
+      (data && data.email) ||
+      (data.contacto && data.contacto.email) ||
+      notif.owner_email ||
+      ''
+    ).trim();
+  };
+
+  const resolveWhatsAppDigits = (data) => {
+    const redes = (data && data.redes) || {};
+    const contacto = (data && data.contacto) || {};
+    const notifWa = ((data && data.notificaciones) || {}).whatsapp || {};
+    const fromRedes = sanitizeWhatsAppDigits(sanitizeUsername(redes.whatsapp || '', 'https://wa.me/'));
+    if (fromRedes) return fromRedes;
+    const fromContact = sanitizeWhatsAppDigits(contacto.whatsapp || '');
+    if (fromContact) return fromContact;
+    return sanitizeWhatsAppDigits(notifWa.number || '');
+  };
+
   const fillForm = (data) => {
     const redes = (data && data.redes) || {};
     const globalVisible = typeof redes.visible === 'boolean' ? redes.visible : true;
     if (visibleCheckbox) {
       visibleCheckbox.checked = globalVisible;
     }
+    if (emailInput) {
+      emailInput.value = resolveCompanyEmail(data);
+    }
     usernameInputs.forEach((input) => {
       const key = input.getAttribute('data-admin-config-redes-username');
       const config = getNetworkConfig(key);
       if (!config) return;
+      if (key === 'whatsapp') {
+        input.value = resolveWhatsAppDigits(data);
+        return;
+      }
       const valueRaw = redes && redes[key] ? redes[key] : '';
       let username = '';
       if (typeof valueRaw === 'string') {
@@ -80,14 +111,25 @@
   };
 
   const collect = () => {
-    const payload = { redes: {} };
+    const payload = { redes: {}, contacto: {} };
     if (visibleCheckbox) {
       payload.redes.visible = !!visibleCheckbox.checked;
+    }
+    const companyEmail = emailInput ? emailInput.value.trim() : '';
+    if (companyEmail !== '') {
+      payload.email = companyEmail;
+      payload.contacto.email = companyEmail;
     }
     usernameInputs.forEach((input) => {
       const key = input.getAttribute('data-admin-config-redes-username');
       const config = getNetworkConfig(key);
       if (!config) return;
+      if (key === 'whatsapp') {
+        const digits = sanitizeWhatsAppDigits(input.value);
+        payload.redes.whatsapp = digits ? config.base + digits : '';
+        payload.contacto.whatsapp = digits ? '+' + digits.replace(/^\+/, '') : '';
+        return;
+      }
       const username = sanitizeUsername(input.value, config.base);
       payload.redes[key] = username ? config.base + username : '';
     });
@@ -130,6 +172,11 @@
   form.addEventListener('submit', async (evt) => {
     evt.preventDefault();
     if (!form.reportValidity()) return;
+    const waInput = form.querySelector('[data-admin-config-redes-username="whatsapp"]');
+    if (waInput && sanitizeWhatsAppDigits(waInput.value).length < 8) {
+      showError('Ingresá un WhatsApp válido (mínimo 8 dígitos).');
+      return;
+    }
     if (submitBtn) submitBtn.disabled = true;
     if (errorEl) {
       errorEl.hidden = true;
@@ -141,17 +188,17 @@
       const res = await fetch('../../../src/API/AdminConfig.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'config_update', key: 'info_barberia', data: payload })
+        body: JSON.stringify({ action: 'config_update', key: 'info_barberia', data: payload }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json || !json.ok) {
-        throw new Error(json && json.error ? json.error : 'No se pudo guardar las redes.');
+        throw new Error(json && json.error ? json.error : 'No se pudo guardar el contacto.');
       }
       window.ADMIN_INFO_BARBERIA = clone(json.data || {});
-      notify('Redes sociales actualizadas.', 'success');
+      notify('Contacto y redes actualizados.', 'success');
       close();
     } catch (error) {
-      const message = error && error.message ? error.message : 'No se pudo guardar las redes sociales.';
+      const message = error && error.message ? error.message : 'No se pudo guardar el contacto y las redes.';
       showError(message);
       if (submitBtn) submitBtn.disabled = false;
     }

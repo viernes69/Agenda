@@ -64,6 +64,67 @@ final class CommercePanel
         return self::hasLegacyPanel($slug) ? self::legacyUrl($slug) : self::centralUrl($slug);
     }
 
+    /** @var list<string> */
+    public const DASHBOARD_SECTIONS = [
+        'resumen', 'reservas', 'clientes', 'funcionarios', 'servicios', 'productos', 'config',
+    ];
+
+    public static function normalizeDashboardSection(string $section): string
+    {
+        $section = strtolower(trim(ltrim($section, '#')));
+        return in_array($section, self::DASHBOARD_SECTIONS, true) ? $section : 'resumen';
+    }
+
+    /**
+     * @param array<string, scalar|null> $query
+     */
+    public static function appendQuery(string $url, array $query): string
+    {
+        foreach ($query as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $sep = str_contains($url, '?') ? '&' : '?';
+            $url .= $sep . rawurlencode((string)$key) . '=' . rawurlencode((string)$value);
+        }
+        return $url;
+    }
+
+    /**
+     * URL de ingreso al panel admin del comercio (legacy o central) con sección SPA.
+     *
+     * @param array<string, scalar|null> $query
+     */
+    public static function dashboardUrlForSlug(string $slug, string $section = 'resumen', array $query = []): string
+    {
+        $slug = trim($slug, '/');
+        $section = self::normalizeDashboardSection($section);
+
+        if (self::hasLegacyPanel($slug)) {
+            $url = self::legacyUrl($slug);
+            if ($query !== []) {
+                $url = self::appendQuery($url, $query);
+            }
+            return $url . '#' . $section;
+        }
+
+        $params = array_merge(['slug' => $slug, 'section' => $section], $query);
+        return self::appendQuery(self::centralUrl($slug), $params);
+    }
+
+    /**
+     * URL directa al template compartido (ya con sesión/bootstrap previo).
+     */
+    public static function centralDashboardUrl(string $section = 'resumen', array $query = []): string
+    {
+        $section = self::normalizeDashboardSection($section);
+        $url = url(self::CENTRAL_TEMPLATE_PATH);
+        if ($query !== []) {
+            $url = self::appendQuery($url, $query);
+        }
+        return $url . '#' . $section;
+    }
+
     public static function localDatabasePath(int $idCommerce): string
     {
         $dir = CommerceStorage::baseDir($idCommerce);

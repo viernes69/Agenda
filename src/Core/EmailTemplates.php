@@ -31,8 +31,11 @@ final class EmailTemplates
      */
     public static function renderHtmlFromText(string $text, array $vars): string
     {
+        if (!isset($vars['logo'])) {
+            $vars['logo'] = PlatformTemplates::logoHtml();
+        }
         $plain = self::applyVars($text, $vars);
-        return '<p>' . nl2br(htmlspecialchars($plain, ENT_QUOTES, 'UTF-8')) . '</p>';
+        return PlatformTemplates::composeEmailHtml($plain, [], false);
     }
 
     /**

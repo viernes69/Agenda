@@ -28,7 +28,7 @@ final class ClientLookup
 
         if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $fromClient = $db->fetchOne(
-                'SELECT nombre, apellido, email, telefono FROM clients
+                'SELECT nombre, apellido, email, telefono, cedula FROM clients
                  WHERE id_commerce = :c AND lower(trim(email)) = :e
                  ORDER BY updated_at DESC, id_client DESC LIMIT 1',
                 [':c' => $idCommerce, ':e' => $email]
@@ -52,7 +52,7 @@ final class ClientLookup
         if (strlen($phoneDigits) >= 8) {
             $suffix = substr($phoneDigits, -8);
             $fromClient = $db->fetchOne(
-                "SELECT nombre, apellido, email, telefono FROM clients
+                "SELECT nombre, apellido, email, telefono, cedula FROM clients
                  WHERE id_commerce = :c
                    AND replace(replace(replace(replace(replace(telefono,' ',''),'-',''),'.',''),'+',''),'(','') LIKE :p
                  ORDER BY updated_at DESC, id_client DESC LIMIT 1",
@@ -85,7 +85,7 @@ final class ClientLookup
 
     /**
      * @param array<string,mixed> $row
-     * @return array{nombre:string,email:string,telefono:string}
+     * @return array{nombre:string,email:string,telefono:string,cedula:string}
      */
     private static function formatRow(array $row, string $preferredEmail, string $preferredPhoneDigits): array
     {
@@ -109,6 +109,7 @@ final class ClientLookup
             'nombre'   => $nombre,
             'email'    => $email,
             'telefono' => $telefono,
+            'cedula'   => trim((string)($row['cedula'] ?? '')),
         ];
     }
 }

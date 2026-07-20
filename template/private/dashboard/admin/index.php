@@ -145,6 +145,7 @@ if (is_array($pushConfig) && isset($pushConfig['publicKey'])) {
   $pushPublicKey = trim((string)$pushConfig['publicKey']);
 }
 require __DIR__ . '/../src/php/plan_banner_from_sqlite.php';
+$publicUrl = $publicShareUrl !== '' ? $publicShareUrl : url($tenantSlug !== 'template' ? $tenantSlug : '');
 $planSettingsTier = 'full';
 $currentPlanRow = null;
 $maxClientsLimit = null;
@@ -1651,7 +1652,7 @@ $summaryCards = [
               ['id' => 'moneda', 'title' => 'Config. de Moneda', 'icon' => 'bx-money'],
               ['id' => 'fiscal', 'title' => 'Config. Fiscal', 'icon' => 'bx-receipt'],
               ['id' => 'mercadopago', 'title' => 'Mercado Pago', 'icon' => 'bx-credit-card'],
-              ['id' => 'redes', 'title' => 'Redes', 'icon' => 'bx-share-alt'],
+              ['id' => 'redes', 'title' => 'Contacto y redes', 'icon' => 'bx-share-alt'],
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
@@ -1914,6 +1915,19 @@ $summaryCards = [
   <script>
     window.ADMIN_PUSH_PUBLIC_KEY = '<?php echo e($pushPublicKey); ?>';
     window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
+    (function setupWelcomeToast() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('setup') !== 'ok') return;
+        params.delete('setup');
+        var next = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+        history.replaceState(null, '', next);
+        var msg = 'Tu negocio quedó listo. Empezá por Resumen o Configuración.';
+        if (typeof window.AdminNotify === 'function') {
+          window.AdminNotify(msg, 'success');
+        }
+      } catch (_) {}
+    })();
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
@@ -1924,7 +1938,7 @@ $summaryCards = [
   <script src="../src/js/admin/plan-membership-modal.js"></script>
   <script src="../src/js/admin/modal-loading.js"></script>
   <script src="../src/js/admin/layout-sidebar.js"></script>
-  <script src="../src/js/admin/bottom-nav.js?v=3"></script>
+  <script src="../src/js/admin/bottom-nav.js?v=4"></script>
   <script src="../src/js/admin/reservas-filter.js"></script>
   <script src="../src/js/admin/clientes-list.js"></script>
   <script src="../src/js/admin/clientes-form.js"></script>

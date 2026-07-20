@@ -212,7 +212,7 @@ final class CommerceSetup
 
         return [
             'ok'       => true,
-            'redirect' => CommerceRegistrar::buildRedirectUrl($slug),
+            'redirect' => CommercePanel::dashboardUrlForSlug($slug, 'resumen'),
             'public'   => url($slug),
         ];
     }

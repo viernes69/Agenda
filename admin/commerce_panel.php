@@ -38,17 +38,19 @@ if ($requestedSlug !== '' && !hash_equals($slug, $requestedSlug)) {
     exit;
 }
 
+$section = CommercePanel::normalizeDashboardSection((string)($_GET['section'] ?? 'resumen'));
+$query = [];
+if (!empty($_GET['setup'])) {
+    $query['setup'] = 'ok';
+}
+
 if (CommercePanel::hasLegacyPanel($slug)) {
-    header('Location: ' . CommercePanel::legacyUrl($slug));
+    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, $section, $query));
     exit;
 }
 
 CommercePanel::bootstrapCentralAccess($idCommerce, $slug);
 
-$target = url(CommercePanel::CENTRAL_TEMPLATE_PATH);
-$hash = trim((string)($_GET['section'] ?? ''));
-if ($hash !== '') {
-    $target .= '#' . rawurlencode(ltrim($hash, '#'));
-}
+$target = CommercePanel::centralDashboardUrl($section, $query);
 header('Location: ' . $target);
 exit;

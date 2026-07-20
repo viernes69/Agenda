@@ -630,12 +630,16 @@ if (!function_exists('agenduy_render_commerce')) {
                     </div>
                 <?php endif; ?>
                 <?php else: ?>
-                <p class="section-sub">Ingresá con tu email y te enviamos un link seguro para ver tus turnos.</p>
+                <p class="section-sub">Ingresá el email y la cédula con los que reservaste. Te enviamos un link seguro para ver tus turnos.</p>
                 <div class="client-auth-panel" id="client-auth-panel">
                     <form id="client-magic-form" novalidate style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:flex-end">
-                        <label style="flex:1; min-width:220px">
+                        <label style="flex:1; min-width:200px">
                             <span style="display:block; font-size:.85rem; margin-bottom:.25rem">Email</span>
                             <input type="email" name="email" required placeholder="tu@email.com" style="width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--border,#e2e8f0)">
+                        </label>
+                        <label style="flex:1; min-width:160px">
+                            <span style="display:block; font-size:.85rem; margin-bottom:.25rem">Cédula</span>
+                            <input type="text" name="cedula" required inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" title="Solo números, mínimo 7 dígitos" style="width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--border,#e2e8f0)">
                         </label>
                         <button type="submit" class="btn btn--primary">Enviame el link</button>
                     </form>
@@ -719,9 +723,13 @@ if (!function_exists('agenduy_render_commerce')) {
                                     <input type="email" id="booking-email" name="cliente_email" autocomplete="email">
                                 </div>
                                 <div>
-                                    <label for="booking-phone">Teléfono</label>
-                                    <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456">
+                                    <label for="booking-cedula">Cédula</label>
+                                    <input type="text" id="booking-cedula" name="cliente_cedula" inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" title="Solo números, mínimo 7 dígitos">
                                 </div>
+                            </div>
+                            <div class="field">
+                                <label for="booking-phone">Teléfono</label>
+                                <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456">
                             </div>
                             <p class="hint" id="booking-lookup-hint" hidden role="status"></p>
                             <div class="field">
@@ -1220,6 +1228,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const timeHint = document.getElementById('booking-time-hint');
             const bookingNameInput = document.getElementById('booking-name');
             const bookingEmailInput = document.getElementById('booking-email');
+            const bookingCedulaInput = document.getElementById('booking-cedula');
             const bookingPhoneInput = document.getElementById('booking-phone');
             const bookingLookupHint = document.getElementById('booking-lookup-hint');
             const clientLookupUrl = <?= json_encode(url('src/API/client_lookup.php'), JSON_UNESCAPED_SLASHES) ?>;
@@ -1495,8 +1504,9 @@ if (!function_exists('agenduy_render_commerce')) {
                     nombre: String(data.nombre || '').trim(),
                     email: String(data.email || '').trim(),
                     telefono: String(data.telefono || '').trim(),
+                    cedula: String(data.cedula || '').trim(),
                 };
-                if (!payload.nombre && !payload.email && !payload.telefono) return;
+                if (!payload.nombre && !payload.email && !payload.telefono && !payload.cedula) return;
                 localStorage.setItem(bookingGuestKey, JSON.stringify(payload));
             }
 
@@ -1524,6 +1534,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 };
                 fillIfEmpty(bookingNameInput, String(data.nombre || '').trim());
                 fillIfEmpty(bookingEmailInput, String(data.email || '').trim());
+                fillIfEmpty(bookingCedulaInput, String(data.cedula || '').trim());
                 fillIfEmpty(bookingPhoneInput, String(data.telefono || '').trim());
                 if (source === 'lookup' && String(data.nombre || '').trim()) {
                     setLookupHint('Datos completados automáticamente.', false);
@@ -1722,6 +1733,14 @@ if (!function_exists('agenduy_render_commerce')) {
                     alertBox.hidden = false;
                     return;
                 }
+                const bookingEmail = String(bookingEmailInput?.value || '').trim();
+                const bookingCedula = String(bookingCedulaInput?.value || '').replace(/\D/g, '');
+                if (bookingEmail !== '' && (bookingCedula.length < 7)) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresá tu cédula (mínimo 7 dígitos) para acceder a tus reservas después.';
+                    alertBox.hidden = false;
+                    return;
+                }
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner"></span> Enviando...';
                 alertBox.hidden = true;
@@ -1747,6 +1766,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         hora: timeSelect.value || '',
                         nombre: (bookingNameInput || {}).value || '',
                         email: (bookingEmailInput || {}).value || '',
+                        cedula: (bookingCedulaInput || {}).value || '',
                         telefono: (bookingPhoneInput || {}).value || ''
                     };
                     saveGuest(booking);
@@ -1795,8 +1815,16 @@ if (!function_exists('agenduy_render_commerce')) {
             form.addEventListener('submit', function(e){
                 e.preventDefault();
                 var emailInput = form.querySelector('input[name="email"]');
+                var cedulaInput = form.querySelector('input[name="cedula"]');
                 var email = emailInput ? String(emailInput.value || '').trim() : '';
-                if (!email) return;
+                var cedula = cedulaInput ? String(cedulaInput.value || '').replace(/\D/g, '') : '';
+                if (!email || !cedula || cedula.length < 7) {
+                    if (msg) {
+                        msg.textContent = 'Ingresá email y cédula válidos (mínimo 7 dígitos).';
+                        msg.className = 'client-auth-panel__msg is-error';
+                    }
+                    return;
+                }
                 if (msg) {
                     msg.textContent = 'Enviando link...';
                     msg.className = 'client-auth-panel__msg';
@@ -1808,7 +1836,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
                     },
                     credentials: 'include',
-                    body: JSON.stringify({ email: email, slug: slug, id_commerce: commerceId, _csrf: csrfToken }),
+                    body: JSON.stringify({ email: email, cedula: cedula, slug: slug, id_commerce: commerceId, _csrf: csrfToken }),
                 }).then(function(res){
                     return res.json().catch(function(){ return null; }).then(function(data){
                         if (!res.ok || !data || !data.ok) {

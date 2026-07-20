@@ -8,6 +8,7 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CommerceSetup;
 use Agenduy\Core\Database;
 
@@ -37,7 +38,7 @@ $flash = ['type' => '', 'msg' => ''];
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     CSRF::checkRequest('commerce_setup');
     try {
-        $result = CommerceSetup::complete($idCommerce, [
+        CommerceSetup::complete($idCommerce, [
             'nombre'   => $_POST['nombre'] ?? '',
             'telefono' => $_POST['telefono'] ?? '',
             'whatsapp' => $_POST['whatsapp'] ?? '',
@@ -45,7 +46,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             'calle'    => $_POST['calle'] ?? '',
             'servicio' => $_POST['servicio'] ?? '',
         ]);
-        header('Location: ' . (string)$result['redirect'] . '?setup=ok');
+        $slug = trim((string)($commerce['slug'] ?? ''));
+        header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'resumen', ['setup' => 'ok']));
         exit;
     } catch (Throwable $e) {
         $flash = ['type' => 'error', 'msg' => $e->getMessage()];

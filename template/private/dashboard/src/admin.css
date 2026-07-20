@@ -3157,6 +3157,13 @@ body {
   gap: .55rem;
 }
 
+.admin-form__subtitle {
+  margin: 0 0 .15rem;
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--title, var(--text));
+}
+
 .admin-form__hint {
   font-size: .78rem;
   color: var(--muted);

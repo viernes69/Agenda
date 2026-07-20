@@ -18,7 +18,7 @@ ob_start();
           <span class="admin-form__label">Recibir reservas en</span>
           <input id="admin-config-notificaciones-owner-email" type="email" placeholder="admin@tunegocio.com" data-admin-config-notificaciones-owner-email required>
         </label>
-        <p class="admin-form__hint">Las nuevas reservas se envían a este correo usando el SMTP global de Agendarte.</p>
+        <p class="admin-form__hint">Las nuevas reservas se envían a este correo usando el SMTP global de Agendarte. También podés editarlo en Config → Contacto y redes.</p>
       </section>
 
       <section class="admin-form__group">

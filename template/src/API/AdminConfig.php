@@ -211,6 +211,7 @@ function updateCommerceConfig(string $slug, array $payload): array
 {
     $commerce = commerceBySlug($slug);
     $commerceId = (int)$commerce['id_commerce'];
+    syncContactChannels($commerceId, $payload);
     $columns = commercePatch($payload);
     if ($columns !== []) {
         $columns['updated_at'] = date('Y-m-d H:i:s');
@@ -244,6 +245,72 @@ function updateCommerceConfig(string $slug, array $payload): array
     }
     AutoloadDB::updateConfigSection('info_barberia', $payload);
     return readConfig('info_barberia', $slug);
+}
+
+/**
+ * Sincroniza email/WhatsApp entre comercio, redes públicas y notificaciones.
+ *
+ * @param array<string,mixed> $payload
+ */
+function syncContactChannels(int $commerceId, array &$payload): void
+{
+    $email = trim((string)($payload['email'] ?? ''));
+    if ($email === '' && isset($payload['contacto']) && is_array($payload['contacto'])) {
+        $email = trim((string)($payload['contacto']['email'] ?? ''));
+    }
+    if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email = strtolower($email);
+        $payload['email'] = $email;
+        if (!isset($payload['contacto']) || !is_array($payload['contacto'])) {
+            $payload['contacto'] = [];
+        }
+        $payload['contacto']['email'] = $email;
+        CommerceSettings::merge($commerceId, 'notificaciones', ['owner_email' => $email]);
+    }
+
+    $whatsappRaw = '';
+    if (isset($payload['contacto']) && is_array($payload['contacto'])) {
+        $whatsappRaw = trim((string)($payload['contacto']['whatsapp'] ?? ''));
+    }
+    if ($whatsappRaw === '' && isset($payload['redes']) && is_array($payload['redes'])) {
+        $whatsappRaw = extractWhatsAppDigits((string)($payload['redes']['whatsapp'] ?? ''));
+    }
+    $digits = preg_replace('/\D+/', '', $whatsappRaw) ?? '';
+    if ($digits === '') {
+        return;
+    }
+
+    $number = str_starts_with($whatsappRaw, '+') ? '+' . $digits : '+' . $digits;
+    if (!isset($payload['contacto']) || !is_array($payload['contacto'])) {
+        $payload['contacto'] = [];
+    }
+    $payload['contacto']['whatsapp'] = $number;
+    if (!isset($payload['redes']) || !is_array($payload['redes'])) {
+        $payload['redes'] = [];
+    }
+    $payload['redes']['whatsapp'] = 'https://wa.me/' . $digits;
+
+    $existing = CommerceSettings::get(
+        $commerceId,
+        'notificaciones',
+        CommerceSettings::defaultsForSection('notificaciones')
+    );
+    $waCfg = is_array($existing['whatsapp'] ?? null) ? $existing['whatsapp'] : [];
+    CommerceSettings::merge($commerceId, 'notificaciones', [
+        'whatsapp' => array_merge($waCfg, [
+            'number' => $number,
+            'enabled' => array_key_exists('enabled', $waCfg) ? !empty($waCfg['enabled']) : true,
+            'provider' => (string)($waCfg['provider'] ?? 'meta'),
+        ]),
+    ]);
+}
+
+function extractWhatsAppDigits(string $value): string
+{
+    if (preg_match('#wa\.me/(\d+)#i', $value, $matches)) {
+        return (string)$matches[1];
+    }
+    return preg_replace('/\D+/', '', $value) ?? '';
 }
 
 function storeMercadoPagoSecrets(int $commerceId, array $mp): void

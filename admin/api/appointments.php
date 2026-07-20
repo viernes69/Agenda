@@ -21,6 +21,7 @@ use Agenduy\Core\Availability;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\MagicLink;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\NotificationOutbox;
 use Agenduy\Core\RateLimiter;
@@ -76,6 +77,7 @@ try {
     $clienteNombre = trim((string)($payload['cliente_nombre'] ?? ''));
     $clienteEmail = trim((string)($payload['cliente_email'] ?? ''));
     $clienteTelefono = trim((string)($payload['cliente_telefono'] ?? ''));
+    $clienteCedula = MagicLink::normalizeCedula($payload['cliente_cedula'] ?? null);
     $notas = trim((string)($payload['notas'] ?? ''));
     $idService = (int)($payload['id_service'] ?? 0) ?: null;
 
@@ -84,6 +86,9 @@ try {
     if ($clienteNombre === '') throw new InvalidArgumentException('Falta el nombre del cliente.');
     if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
+    }
+    if ($clienteEmail !== '' && $clienteCedula === '') {
+        throw new InvalidArgumentException('Ingresá tu cédula para poder acceder a tus reservas después.');
     }
 
     $horaNormalizada = Availability::normalizeTime($horaInicio);
@@ -145,12 +150,23 @@ try {
         );
         if ($existing) {
             $idClient = (int)$existing['id_client'];
+            if ($clienteCedula !== '') {
+                $patch = [
+                    'cedula'     => $clienteCedula,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+                if ($clienteTelefono !== '') {
+                    $patch['telefono'] = $clienteTelefono;
+                }
+                $db->update('clients', $patch, 'id_client = :id', [':id' => $idClient]);
+            }
         } else {
             $parts = explode(' ', $clienteNombre, 2);
             $idClient = (int)$db->insert('clients', [
                 'id_commerce' => (int)$commerce['id_commerce'],
                 'nombre'      => $parts[0],
                 'apellido'    => $parts[1] ?? '',
+                'cedula'      => $clienteCedula,
                 'email'       => $clienteEmail,
                 'telefono'    => $clienteTelefono,
             ]);

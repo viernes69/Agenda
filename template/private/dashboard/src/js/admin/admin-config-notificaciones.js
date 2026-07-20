@@ -112,9 +112,18 @@
       return;
     }
     const fullNumber = `${prefix}${number}`;
+    const ownerEmail = ownerEmailInput ? ownerEmailInput.value.trim() : '';
     const payload = {
+      email: ownerEmail,
+      contacto: {
+        email: ownerEmail,
+        whatsapp: fullNumber.startsWith('+') ? fullNumber : `+${fullNumber}`,
+      },
+      redes: {
+        whatsapp: `https://wa.me/${number}`,
+      },
       notificaciones: {
-        owner_email: ownerEmailInput ? ownerEmailInput.value.trim() : '',
+        owner_email: ownerEmail,
         whatsapp: {
           enabled: enabledCheckbox ? !!enabledCheckbox.checked : true,
           number: fullNumber.startsWith('+') ? fullNumber : `+${fullNumber}`,

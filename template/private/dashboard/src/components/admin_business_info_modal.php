@@ -109,6 +109,7 @@ $currentRubroId = isset($infoBarberia['ID_Rubro']) ? (int)$infoBarberia['ID_Rubr
           <label class="admin-form__field" for="admin-config-info-email">
             <span class="admin-form__label">Email</span>
             <input id="admin-config-info-email" type="email" maxlength="120" data-admin-config-info-field="contacto.email" placeholder="contacto@tunegocio.com">
+            <span class="admin-form__hint">También se usa para recibir notificaciones de reservas.</span>
           </label>
           <div class="admin-form__field">
             <span class="admin-form__label">Sitio web</span>

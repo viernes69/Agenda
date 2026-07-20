@@ -333,7 +333,7 @@ final class CommerceRegistrar
 
     public static function buildRedirectUrl(string $slug): string
     {
-        return CommercePanel::urlForSlug($slug);
+        return CommercePanel::dashboardUrlForSlug($slug, 'resumen');
     }
 
     public static function buildCentralDashboardUrl(): string

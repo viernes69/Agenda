@@ -55,11 +55,51 @@ final class MagicLink
         return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
     }
 
+    public static function normalizeCedula(?string $cedula): string
+    {
+        $digits = preg_replace('/\D+/', '', (string)$cedula) ?? '';
+        return strlen($digits) >= 7 ? $digits : '';
+    }
+
+    /**
+     * Verifica email + cédula contra clientes o reservas del comercio.
+     */
+    public static function clientIdentityMatches(int $idCommerce, string $email, string $cedula): bool
+    {
+        if ($idCommerce <= 0 || $email === '' || $cedula === '') {
+            return false;
+        }
+
+        $db = Database::getInstance();
+        $fromClient = $db->fetchOne(
+            'SELECT 1 FROM clients
+             WHERE id_commerce = :c AND lower(trim(email)) = :e AND cedula = :ci LIMIT 1',
+            [':c' => $idCommerce, ':e' => $email, ':ci' => $cedula]
+        );
+        if ($fromClient) {
+            return true;
+        }
+
+        $fromAppt = $db->fetchOne(
+            'SELECT 1 FROM appointments a
+             INNER JOIN clients cl ON cl.id_client = a.id_client
+             WHERE a.id_commerce = :c AND lower(trim(a.cliente_email)) = :e AND cl.cedula = :ci
+             LIMIT 1',
+            [':c' => $idCommerce, ':e' => $email, ':ci' => $cedula]
+        );
+        return (bool)$fromAppt;
+    }
+
     /**
      * Link mágico para clientes de un comercio (ver reservas / perfil).
      */
-    public static function sendClientPortal(string $email, int $idCommerce, ?string $slug = null, ?string $ip = null): array
-    {
+    public static function sendClientPortal(
+        string $email,
+        int $idCommerce,
+        ?string $slug = null,
+        ?string $ip = null,
+        ?string $cedula = null
+    ): array {
         $email = strtolower(trim($email));
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'error' => 'Email inválido.'];
@@ -68,25 +108,21 @@ final class MagicLink
             return ['ok' => false, 'error' => 'Comercio inválido.'];
         }
 
-        $db = Database::getInstance();
-        $hasHistory = $db->fetchOne(
-            'SELECT 1 FROM clients WHERE id_commerce = :c AND lower(email) = :e LIMIT 1',
-            [':c' => $idCommerce, ':e' => $email]
-        );
-        if (!$hasHistory) {
-            $hasHistory = $db->fetchOne(
-                'SELECT 1 FROM appointments WHERE id_commerce = :c AND lower(cliente_email) = :e LIMIT 1',
-                [':c' => $idCommerce, ':e' => $email]
-            );
+        $cedulaNorm = self::normalizeCedula($cedula);
+        if ($cedulaNorm === '') {
+            return ['ok' => false, 'error' => 'Ingresá tu cédula (solo números, mínimo 7 dígitos).'];
         }
-        if (!$hasHistory) {
-            return ['ok' => true, 'message' => 'Si tenés reservas con ese email, te enviamos un link.'];
+
+        $generic = ['ok' => true, 'message' => 'Si tus datos coinciden con una reserva, te enviamos un link al email.'];
+
+        if (!self::clientIdentityMatches($idCommerce, $email, $cedulaNorm)) {
+            return $generic;
         }
 
         $token = self::createToken($email, self::PURPOSE_CLIENT, $idCommerce, ['slug' => $slug ?? ''], $ip);
         $path = $slug !== null && $slug !== '' ? ($slug . '/?client_token=' . rawurlencode($token)) : ('?client_token=' . rawurlencode($token));
         $link = url($path);
-        $commerce = $db->fetchOne('SELECT nombre FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
+        $commerce = Database::getInstance()->fetchOne('SELECT nombre FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
         $biz = (string)($commerce['nombre'] ?? 'tu negocio');
         $tplVars = [
             'link' => $link,
@@ -103,7 +139,7 @@ final class MagicLink
         if (!Mail::send($email, $subject, $body, null, $idCommerce)) {
             error_log('[MagicLink.client] fallo SMTP: ' . (Mail::lastError() ?? 'desconocido'));
         }
-        return ['ok' => true, 'message' => 'Si tenés reservas con ese email, te enviamos un link.'];
+        return $generic;
     }
 
     public static function consume(string $token, ?string $ip = null): array

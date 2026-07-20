@@ -198,7 +198,7 @@ final class Auth
             return null;
         }
 
-        $panelUrl = CommercePanel::urlForSlug($slug);
+        $panelUrl = CommercePanel::dashboardUrlForSlug($slug, 'resumen');
         if ($panelUrl !== '') {
             return $panelUrl;
         }

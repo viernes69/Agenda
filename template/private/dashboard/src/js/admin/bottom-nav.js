@@ -1,15 +1,17 @@
 (function adminSectionNavigation() {
-  const sections = Array.from(document.querySelectorAll('.admin-section'));
+  'use strict';
+
+  const sections = Array.from(document.querySelectorAll('.admin-main .admin-section'));
   if (!sections.length) return;
 
   const normalizeSectionId = (value) => String(value || '').replace(/^#/, '').trim().toLowerCase();
+  const defaultSectionId = sections[0].id || 'resumen';
 
   const bottomNav = document.querySelector('.admin-bottomnav');
   const asideNav = document.querySelector('.admin-nav');
 
   const bottomItems = bottomNav ? Array.from(bottomNav.querySelectorAll('[data-admin-nav-target]')) : [];
   const asideItems = asideNav ? Array.from(asideNav.querySelectorAll('a[href^="#"]')) : [];
-  // Summary cards use plain hash links; wire them into the same SPA section switcher.
   const summaryLinks = Array.from(document.querySelectorAll('a.summary-card__cta[href^="#"]'));
 
   const bindNavTarget = (link) => {
@@ -29,7 +31,6 @@
   summaryLinks.forEach(bindNavTarget);
 
   const allNavItems = [...bottomItems, ...asideItems, ...summaryLinks];
-  if (!allNavItems.length) return;
 
   const setNavActive = (id) => {
     const activeId = normalizeSectionId(id);
@@ -47,34 +48,36 @@
 
   const showSection = (id, { scroll = false } = {}) => {
     const targetId = normalizeSectionId(id);
-    let found = false;
     let matchedId = '';
     sections.forEach((section) => {
       const match = normalizeSectionId(section.id) === targetId;
       section.hidden = !match;
       section.classList.toggle('is-active', match);
       if (match) {
-        found = true;
         matchedId = section.id;
         if (scroll) {
           section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
     });
-    return found ? matchedId : '';
+    return matchedId;
   };
 
   const activate = (id, options) => {
     const shownId = showSection(id, options);
-    const validId = shownId || sections[0].id;
+    const validId = shownId || defaultSectionId;
     if (!shownId) {
       showSection(validId, options);
     }
     setNavActive(validId);
-    if (window.location.hash.toLowerCase() !== `#${normalizeSectionId(validId)}`) {
-      history.replaceState(null, '', `#${validId}`);
+    const expectedHash = `#${normalizeSectionId(validId)}`;
+    if (window.location.hash.toLowerCase() !== expectedHash) {
+      history.replaceState(null, '', expectedHash);
     }
   };
+
+  const initialHash = normalizeSectionId(window.location.hash);
+  activate(initialHash || defaultSectionId);
 
   const optimizeEndpoint = '../optimizar.php';
   let isOptimizing = false;
@@ -120,31 +123,29 @@
     }
   };
 
-  const initialHash = normalizeSectionId(window.location.hash);
-  if (initialHash) {
-    activate(initialHash);
-  } else {
-    activate(sections[0].id);
-  }
-
-  allNavItems.forEach((item) => {
-    item.addEventListener('click', async (event) => {
-      const id = normalizeSectionId(item.dataset.adminNavTarget);
-      if (!id) return;
-      event.preventDefault();
-      if (id === 'config') {
-        await runOptimization();
-      }
-      if (typeof window.AdminReservasRefresh === 'function') {
-        window.AdminReservasRefresh();
-      }
-      activate(id, { scroll: true });
+  if (allNavItems.length) {
+    allNavItems.forEach((item) => {
+      item.addEventListener('click', async (event) => {
+        const id = normalizeSectionId(item.dataset.adminNavTarget);
+        if (!id) return;
+        event.preventDefault();
+        if (id === 'config') {
+          await runOptimization();
+        }
+        if (typeof window.AdminReservasRefresh === 'function') {
+          window.AdminReservasRefresh();
+        }
+        activate(id, { scroll: true });
+      });
     });
-  });
+  }
 
   window.addEventListener('hashchange', () => {
     const id = normalizeSectionId(window.location.hash);
-    if (!id) return;
+    if (!id) {
+      activate(defaultSectionId);
+      return;
+    }
     activate(id, { scroll: true });
   });
 
@@ -187,5 +188,3 @@
     });
   }
 })();
-
-

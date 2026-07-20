@@ -7,28 +7,55 @@ ob_start();
     <header class="modal__header">
       <div class="modal__header-text">
         <p class="modal__eyebrow">Presencia digital</p>
-        <h2 id="admin-config-redes-title">Configurar redes sociales</h2>
+        <h2 id="admin-config-redes-title">Contacto y redes</h2>
       </div>
       <button type="button" class="modal__close" data-admin-config-redes-close aria-label="Cerrar">&times;</button>
     </header>
     <form class="modal__body admin-form" data-admin-config-redes-form autocomplete="off" novalidate>
       <section class="admin-form__group">
+        <h3 class="admin-form__subtitle">Contacto del negocio</h3>
+        <label class="admin-form__field" for="admin-config-redes-email">
+          <span class="admin-form__label">Email de la empresa</span>
+          <input id="admin-config-redes-email" type="email" placeholder="contacto@tunegocio.com" data-admin-config-redes-email required>
+          <span class="admin-form__hint">Recibís acá las notificaciones de reservas y avisos del sistema.</span>
+        </label>
+        <div class="admin-social-field" data-admin-social-field="whatsapp">
+          <label class="admin-form__field admin-form__field--social" for="admin-config-redes-whatsapp">
+            <span class="admin-form__label">WhatsApp</span>
+            <div class="admin-social-input">
+              <span class="admin-social-prefix" data-admin-social-prefix>+598</span>
+              <input id="admin-config-redes-whatsapp" type="tel" inputmode="numeric" pattern="[0-9]{8,12}" placeholder="99123456" data-admin-config-redes-username="whatsapp" autocomplete="off">
+            </div>
+            <span class="admin-form__hint">Contacto público y número para alertas (solo dígitos, sin espacios).</span>
+          </label>
+        </div>
+        <div class="admin-social-field" data-admin-social-field="instagram">
+          <label class="admin-form__field admin-form__field--social" for="admin-config-redes-instagram">
+            <span class="admin-form__label">Instagram</span>
+            <div class="admin-social-input">
+              <span class="admin-social-prefix" data-admin-social-prefix>https://www.instagram.com/</span>
+              <input id="admin-config-redes-instagram" type="text" placeholder="usuario" data-admin-config-redes-username="instagram" autocomplete="off">
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <section class="admin-form__group">
+        <h3 class="admin-form__subtitle">Otras redes (opcional)</h3>
         <label class="admin-checkbox">
           <input type="checkbox" data-admin-config-redes-visible>
           <span>Mostrar redes a los clientes</span>
         </label>
-        <p class="admin-form__hint">Ingresa solo el usuario o nombre de tu negocio. La URL base ya est&aacute; definida.</p>
+        <p class="admin-form__hint">Ingresá solo el usuario. La URL base ya está definida.</p>
       </section>
 
       <section class="admin-form__group" data-admin-config-redes-list>
         <?php
           $networks = [
-            ['key' => 'instagram', 'label' => 'Instagram', 'base' => 'https://www.instagram.com/', 'placeholder' => 'usuario'],
             ['key' => 'facebook', 'label' => 'Facebook', 'base' => 'https://www.facebook.com/', 'placeholder' => 'paginanegocio'],
             ['key' => 'tiktok', 'label' => 'TikTok', 'base' => 'https://www.tiktok.com/@', 'placeholder' => 'usuario'],
             ['key' => 'twitter', 'label' => 'Twitter / X', 'base' => 'https://twitter.com/', 'placeholder' => 'usuario'],
             ['key' => 'youtube', 'label' => 'YouTube', 'base' => 'https://www.youtube.com/', 'placeholder' => 'channel/ID o @usuario'],
-            ['key' => 'whatsapp', 'label' => 'WhatsApp', 'base' => 'https://wa.me/', 'placeholder' => '59812345678'],
           ];
           foreach ($networks as $network):
             $key = $network['key'];
