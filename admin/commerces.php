@@ -10,6 +10,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Keys;
+use Agenduy\Core\TenantMigrator;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: login.php'); exit; }
@@ -128,6 +129,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $flash = ['type' => 'error', 'msg' => "No se encontró el usuario {$email}."];
         }
+    } elseif ($action === 'import_tenant_folder') {
+        $slug = Keys::slug((string)($_POST['slug'] ?? ''));
+        if ($slug === '') {
+            $flash = ['type' => 'error', 'msg' => 'Slug inválido.'];
+        } else {
+            try {
+                $result = TenantMigrator::import($slug, dirname(__DIR__));
+                Auth::audit('import_tenant_folder', 'commerce', $result['id_commerce'], null, ['slug' => $slug]);
+                $flash = [
+                    'type' => 'ok',
+                    'msg'  => $result['message'] . ' Servicios nuevos: ' . (int)$result['services_added'] . '.',
+                ];
+            } catch (Throwable $e) {
+                $flash = ['type' => 'error', 'msg' => $e->getMessage()];
+            }
+        }
     }
 }
 
@@ -166,6 +183,7 @@ if (isset($_GET['id'])) {
 
 $rubros      = $db->fetchAll('SELECT id_rubro, nombre FROM rubros WHERE activo = 1 ORDER BY orden ASC, nombre COLLATE NOCASE ASC');
 $memberships = $db->fetchAll('SELECT id_membership, nombre, precio, moneda FROM memberships WHERE activo=1 ORDER BY nombre');
+$tenantFolders = TenantMigrator::scanFolders(dirname(__DIR__));
 
 $pageTitle = 'Comercios';
 $activeSection = 'commerces';
@@ -180,6 +198,47 @@ require __DIR__ . '/partials/header.php';
     <h1>Comercios</h1>
     <p>Gestioná los negocios registrados, su membresía, status y administradores.</p>
 </section>
+
+<?php if ($tenantFolders !== []): ?>
+<article class="card">
+    <h2>Carpetas tenant vs base central</h2>
+    <p class="muted">La web pública (<code>/slug/</code>) solo funciona si el comercio existe en SQLite. Una carpeta en disco no alcanza.</p>
+    <div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr><th>Slug</th><th>Nombre</th><th>Carpeta</th><th>En SQLite</th><th></th></tr>
+        </thead>
+        <tbody>
+        <?php foreach ($tenantFolders as $tf): ?>
+            <tr>
+                <td><code class="code"><?= htmlspecialchars($tf['slug'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td><?= htmlspecialchars($tf['nombre'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= !empty($tf['folder']) ? 'Sí' : 'No' ?></td>
+                <td><?= !empty($tf['registered']) ? 'Sí' : '<strong style="color:var(--danger,#dc2626)">No</strong>' ?></td>
+                <td>
+                    <?php if (!empty($tf['folder'])): ?>
+                    <form method="post" style="display:inline">
+                        <?= CSRF::field('commerces_admin') ?>
+                        <input type="hidden" name="action" value="import_tenant_folder">
+                        <input type="hidden" name="slug" value="<?= htmlspecialchars($tf['slug'], ENT_QUOTES, 'UTF-8') ?>">
+                        <button class="btn btn-primary" type="submit">
+                            <?= !empty($tf['registered']) ? 'Sincronizar' : 'Importar' ?>
+                        </button>
+                    </form>
+                    <?php if (!empty($tf['registered'])): ?>
+                        <a class="btn" href="<?= htmlspecialchars(url($tf['slug']), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Ver web</a>
+                    <?php endif; ?>
+                    <?php else: ?>
+                        <span class="muted">Falta carpeta en servidor</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
+</article>
+<?php endif; ?>
 
 <form class="card filters" method="get" action="">
     <div class="form-grid">
