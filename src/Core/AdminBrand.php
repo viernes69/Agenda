@@ -30,6 +30,16 @@ final class AdminBrand
         return url('src/media/logo/logo-horizontal.png');
     }
 
+    public static function verticalLogoUrl(): string
+    {
+        return url('src/media/logo/logo-vertical.png');
+    }
+
+    public static function monochromeLogoUrl(): string
+    {
+        return url('src/media/logo/logo-monochrome.png');
+    }
+
     public static function faviconUrl(): string
     {
         return url('src/img/favicon/favicon.png');

@@ -2461,15 +2461,11 @@ body.modal-open{ overflow:hidden; }
   display:grid;
   gap:16px;
 }
-.page-loader__badge{
+.page-loader__logo{
   justify-self:center;
-  padding:6px 18px;
-  border-radius:999px;
-  background: var(--primary-soft);
-  border:1px solid color-mix(in srgb, var(--primary) 30%, transparent);
-  font-weight:600;
-  letter-spacing:.03em;
-  color: var(--primary);
+  width:min(160px, 70vw);
+  height:auto;
+  object-fit:contain;
 }
 .page-loader__spinner{
   position:relative;

@@ -154,9 +154,12 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 <div id="page-loader" role="status" aria-live="assertive" aria-label="Cargando contenido">
   <div class="page-loader__glow"></div>
   <div class="page-loader__card">
-    <div class="page-loader__badge">
-      <span>Agendarte <span class="brand-uy">UY</span></span>
-    </div>
+    <img src="<?= h(url('src/media/logo/logo-vertical.png')) ?>"
+         alt="Agendarte UY"
+         class="page-loader__logo"
+         width="160"
+         height="120"
+         decoding="async">
     <div class="page-loader__spinner">
       <span></span>
     </div>
