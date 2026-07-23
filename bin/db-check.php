@@ -1,22 +1,37 @@
 <?php
 /**
  * Diagnóstico de base de datos central.
- * Acceder vía web: https://agendarte.oficiosya.net/data/bin/db-check.php
- * O desde CLI: php bin/db-check.php
+ *
+ * USO:
+ *   CLI:    php bin/db-check.php
+ *   Web:    https://agendarte.oficiosya.net/data/bin/db-check.php?token=...
+ *
+ * Requiere token de seguridad (mismo que migrate-db.php).
  */
+
+define('CHECK_TOKEN', getenv('MIGRATE_TOKEN') ?: 'cambiar-en-produccion');
+
+$isCLI = php_sapi_name() === 'cli';
+$br = $isCLI ? "\n" : "<br>\n";
+
+if (!$isCLI) {
+    $reqToken = $_GET['token'] ?? '';
+    if ($reqToken !== CHECK_TOKEN) {
+        http_response_code(403);
+        echo "Acceso denegado.$br";
+        exit;
+    }
+}
 
 $dbPath = __DIR__ . '/../storage/agenduy.db';
 if (!file_exists($dbPath)) {
-    echo "❌ Base de datos no encontrada en: $dbPath\n";
+    echo "❌ Base de datos no encontrada en: $dbPath$br";
     exit(1);
 }
 
 $db = new PDO('sqlite:' . $dbPath);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-$isCLI = php_sapi_name() === 'cli';
-$br = $isCLI ? "\n" : "<br>\n";
 
 echo ($isCLI ? '' : '<pre>');
 
