@@ -93,9 +93,18 @@ foreach ($commerces as $c) {
         $rubro = $rubroStmt->fetch();
         if ($rubro) {
             $label = strtolower(trim(($rubro['tipo'] ?? '') . ' ' . ($rubro['nombre'] ?? '')));
+            $label = strtr($label, [
+                'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+                'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+                'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+                'Ä' => 'a', 'Ë' => 'e', 'Ï' => 'i', 'Ö' => 'o', 'Ü' => 'u',
+                'ñ' => 'n',
+                'Ñ' => 'n',
+            ]);
             $isStore = strpos($label, 'tienda') !== false
                 || strpos($label, 'comercio') !== false
-                || strpos($label, 'retail') !== false;
+                || strpos($label, 'retail') !== false
+                || strpos($label, 'catalogo') !== false;
         }
     }
 

@@ -24,6 +24,12 @@ $isCLI = php_sapi_name() === 'cli';
 $br = $isCLI ? "\n" : "<br>\n";
 
 if (!$isCLI) {
+    if (SEED_TOKEN === DEFAULT_TOKEN) {
+        http_response_code(500);
+        echo "ERROR: configura SEED_TOKEN antes de ejecutar este seed por web.$br";
+        echo "O ejecuta por CLI: php bin/seed-production.php$br";
+        exit;
+    }
     $reqToken = $_GET['token'] ?? '';
     if ($reqToken !== SEED_TOKEN) {
         http_response_code(403);

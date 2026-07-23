@@ -35,7 +35,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $slug = trim($slug, '/');
 
         $commerce = $db->fetchOne(
-            'SELECT c.*, r.nombre AS rubro_nombre, m.nombre AS plan_nombre
+            'SELECT c.*, r.tipo AS rubro_tipo, r.nombre AS rubro_nombre, m.nombre AS plan_nombre
              FROM commerces c
              LEFT JOIN rubros r ON r.id_rubro = c.id_rubro
              LEFT JOIN memberships m ON m.id_membership = c.id_membership
@@ -167,7 +167,13 @@ if (!function_exists('agenduy_render_commerce')) {
         $tema = CommerceSettings::get($commerceId, 'tema', $legacyInfo['temas'] ?? CommerceSettings::defaultsForSection('tema'));
         $reservasCfg = CommerceSettings::get($commerceId, 'reservas', $legacyInfo['reservas'] ?? CommerceSettings::defaultsForSection('reservas'));
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
-        $businessType = CommerceRegistrar::normalizeBusinessType((string)($funciones['tipo_comercio'] ?? $funciones['tipo'] ?? 'servicios'));
+        $rubroType = trim((string)($commerce['rubro_tipo'] ?? ($legacyInfo['rubro'] ?? '')));
+        $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ($legacyInfo['rubro_nombre'] ?? '')));
+        $hasConfiguredBusinessType = isset($funciones['tipo_comercio']) || isset($funciones['tipo']);
+        $businessType = CommerceRegistrar::businessTypeFromFeatures($funciones, $rubroType, $rubroLabel);
+        if (!$hasConfiguredBusinessType) {
+            $funciones = array_replace($funciones, CommerceRegistrar::featuresForBusinessType($businessType));
+        }
         $isStoreMode = $businessType === 'tienda';
         $showServices = !$isStoreMode && !empty($funciones['servicios']);
         $showBooking = $showServices && !empty($funciones['reservas']);
@@ -177,7 +183,6 @@ if (!function_exists('agenduy_render_commerce')) {
         $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0));
         $coverImageRel = CommercePublic::rubroCoverImage((int)($commerce['id_rubro'] ?? 0), (string)($commerce['rubro_nombre'] ?? ''));
         $coverImageUrl = url($coverImageRel);
-        $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ''));
         $cssPath = dirname(__DIR__, 2) . '/assets/css/commerce-public.css';
         $cssVer = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
 

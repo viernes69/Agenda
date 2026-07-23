@@ -35,6 +35,8 @@ Thumbs.db
 # Temp / inspect
 storage/_inspect_db.php
 .phpunit.result.cache
+.freebuff/
+/nul
 
 # Course template (not product)
 /template_curso/

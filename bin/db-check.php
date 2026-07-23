@@ -10,11 +10,18 @@
  */
 
 define('CHECK_TOKEN', getenv('MIGRATE_TOKEN') ?: 'cambiar-en-produccion');
+define('DEFAULT_TOKEN', 'cambiar-en-produccion');
 
 $isCLI = php_sapi_name() === 'cli';
 $br = $isCLI ? "\n" : "<br>\n";
 
 if (!$isCLI) {
+    if (CHECK_TOKEN === DEFAULT_TOKEN) {
+        http_response_code(500);
+        echo "ERROR: configura MIGRATE_TOKEN antes de ejecutar este diagnostico por web.$br";
+        echo "O ejecuta por CLI: php bin/db-check.php$br";
+        exit;
+    }
     $reqToken = $_GET['token'] ?? '';
     if ($reqToken !== CHECK_TOKEN) {
         http_response_code(403);

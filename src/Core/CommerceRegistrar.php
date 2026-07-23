@@ -298,9 +298,38 @@ final class CommerceRegistrar
 
     public static function normalizeBusinessType(mixed $value): string
     {
-        $type = strtolower(trim((string)$value));
+        $type = self::normalizeBusinessLabel(trim((string)$value));
         $type = str_replace([' ', '-'], '_', $type);
         return in_array($type, ['tienda', 'store', 'catalogo', 'catalog'], true) ? 'tienda' : 'servicios';
+    }
+
+    /**
+     * Detecta el modo por rubro cuando un comercio viejo aun no tiene tipo_comercio.
+     */
+    public static function businessTypeFromRubro(?string $rubroTipo, ?string $rubroNombre = ''): string
+    {
+        $label = self::normalizeBusinessLabel((string)$rubroTipo . ' ' . (string)$rubroNombre);
+        return str_contains($label, 'tienda')
+            || str_contains($label, 'comercio')
+            || str_contains($label, 'retail')
+            || str_contains($label, 'catalogo')
+                ? 'tienda'
+                : 'servicios';
+    }
+
+    /**
+     * Usa funciones como fuente principal y rubro como fallback de compatibilidad.
+     *
+     * @param array<string,mixed> $features
+     */
+    public static function businessTypeFromFeatures(array $features, ?string $rubroTipo = null, ?string $rubroNombre = null): string
+    {
+        $configured = $features['tipo_comercio'] ?? $features['tipo'] ?? null;
+        if (is_string($configured) && trim($configured) !== '') {
+            return self::normalizeBusinessType($configured);
+        }
+
+        return self::businessTypeFromRubro($rubroTipo, $rubroNombre);
     }
 
     public static function featuresForBusinessType(string $businessType): array
@@ -324,6 +353,22 @@ final class CommerceRegistrar
             'barberos' => true,
             'reservas' => true,
             'carrito' => true,
+        ]);
+    }
+
+    private static function normalizeBusinessLabel(string $value): string
+    {
+        $label = function_exists('mb_strtolower')
+            ? mb_strtolower($value, 'UTF-8')
+            : strtolower($value);
+
+        return strtr($label, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            'Ä' => 'a', 'Ë' => 'e', 'Ï' => 'i', 'Ö' => 'o', 'Ü' => 'u',
+            'ñ' => 'n',
+            'Ñ' => 'n',
         ]);
     }
 

@@ -321,6 +321,17 @@ final class CommercePanel
             'funciones',
             CommerceSettings::defaultsForSection('funciones')
         );
+        $rubroTipo = '';
+        $rubroNombre = '';
+        if (!isset($features['tipo_comercio']) && !isset($features['tipo']) && !empty($commerce['id_rubro'])) {
+            $rubro = $db->fetchOne(
+                'SELECT tipo, nombre FROM rubros WHERE id_rubro = :id',
+                [':id' => (int)$commerce['id_rubro']]
+            );
+            $rubroTipo = (string)($rubro['tipo'] ?? '');
+            $rubroNombre = (string)($rubro['nombre'] ?? '');
+        }
+        $businessType = CommerceRegistrar::businessTypeFromFeatures($features, $rubroTipo, $rubroNombre);
 
         try {
             CentralCommerceData::provision(
@@ -339,7 +350,7 @@ final class CommercePanel
                     'ciudad' => (string)($commerce['ciudad'] ?? ''),
                     'calle' => (string)($commerce['calle'] ?? ''),
                     'telefono' => (string)($commerce['telefono'] ?? ''),
-                    'tipo_comercio' => (string)($features['tipo_comercio'] ?? 'servicios'),
+                    'tipo_comercio' => $businessType,
                 ],
                 $schedule,
                 $services,

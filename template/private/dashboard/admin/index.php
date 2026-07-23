@@ -192,9 +192,36 @@ try {
 } catch (Throwable $e) {
   $funcionesFromCentral = $funcionesFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('funciones');
 }
-$businessType = \Agenduy\Core\CommerceRegistrar::normalizeBusinessType(
-  (string)($funcionesFromCentral['tipo_comercio'] ?? $funcionesFromCentral['tipo'] ?? 'servicios')
+$fallbackRubroTipo = trim((string)($infoBarberia['rubro'] ?? ''));
+$fallbackRubroNombre = trim((string)($infoBarberia['rubro_nombre'] ?? ''));
+if (($fallbackRubroTipo === '' || $fallbackRubroNombre === '') && !empty($infoBarberia['ID_Rubro'])) {
+  try {
+    $fallbackRubro = \Agenduy\Core\Database::getInstance()->fetchOne(
+      'SELECT tipo, nombre FROM rubros WHERE id_rubro = :id',
+      [':id' => (int)$infoBarberia['ID_Rubro']]
+    );
+    if ($fallbackRubroTipo === '') {
+      $fallbackRubroTipo = (string)($fallbackRubro['tipo'] ?? '');
+    }
+    if ($fallbackRubroNombre === '') {
+      $fallbackRubroNombre = (string)($fallbackRubro['nombre'] ?? '');
+    }
+  } catch (Throwable $e) {
+    // Mantener fallback legacy si la consulta del rubro no esta disponible.
+  }
+}
+$hasConfiguredBusinessType = isset($funcionesFromCentral['tipo_comercio']) || isset($funcionesFromCentral['tipo']);
+$businessType = \Agenduy\Core\CommerceRegistrar::businessTypeFromFeatures(
+  $funcionesFromCentral,
+  $fallbackRubroTipo,
+  $fallbackRubroNombre
 );
+if (!$hasConfiguredBusinessType) {
+  $funcionesFromCentral = array_replace(
+    $funcionesFromCentral,
+    \Agenduy\Core\CommerceRegistrar::featuresForBusinessType($businessType)
+  );
+}
 $isStoreMode = $businessType === 'tienda';
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
