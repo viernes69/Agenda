@@ -78,7 +78,7 @@ if (!function_exists('agenduy_request')) {
             $relative = ltrim(str_replace('\\', '/', dirname($scriptName)), '/');
             if ($relative !== '' && $relative !== '.') {
                 $parts = explode('/', $relative);
-                $internalDirs = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api', 'categorias', 'ubicaciones'];
+                $internalDirs = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api', 'categorias', 'ubicaciones', 'template', 'private', 'dashboard'];
                 while ($parts !== []) {
                     $last = strtolower((string)end($parts));
                     if (in_array($last, $internalDirs, true)) {

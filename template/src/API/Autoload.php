@@ -82,10 +82,29 @@ class AutoloadDB {
     }
 
     /**
-     * Si la reserva local tiene ID_Appointment, refleja Status/fecha/hora en SQLite.
-     *
-     * @param array<string,mixed> $row
+     * Slug efectivo del tenant (panel central compartido bajo /template/).
      */
+    private static function effectiveTenantSlug(): string
+    {
+        static $resolved = null;
+        if (is_string($resolved)) {
+            return $resolved;
+        }
+
+        $projectRoot = dirname(__DIR__, 3);
+        $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+        if (is_file($bootstrap)) {
+            require_once $bootstrap;
+            if (class_exists(\Agenduy\Core\CommercePanel::class)) {
+                $resolved = \Agenduy\Core\CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 2));
+                return $resolved;
+            }
+        }
+
+        $resolved = basename(dirname(__DIR__, 2));
+        return $resolved;
+    }
+
     private static function afterReservaUpdateHook(array $row): void {
         $appointmentId = $row['ID_Appointment'] ?? null;
         if ($appointmentId === null || $appointmentId === '' || !is_numeric($appointmentId)) {
@@ -101,10 +120,9 @@ class AutoloadDB {
             if (!class_exists(\Agenduy\Core\TenantLocalDb::class)) {
                 return;
             }
-            $slug = basename(dirname(__DIR__, 2));
+            $slug = self::effectiveTenantSlug();
             if ($slug === '' || $slug === 'template') {
-                // En template no hay comercio real; el tenant copia este archivo.
-                // Igual intentamos con el slug del path (terap, etc.).
+                return;
             }
             \Agenduy\Core\TenantLocalDb::pushReservaToCentral($slug, $row);
         } catch (\Throwable $e) {
@@ -611,10 +629,6 @@ class AutoloadDB {
      */
     public static function checkClientPlanLimit(): ?array
     {
-        $tenantSlug = basename(dirname(__DIR__, 2));
-        if ($tenantSlug === '' || $tenantSlug === 'template') {
-            return null;
-        }
         $projectRoot = dirname(__DIR__, 3);
         $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
         if (!is_file($bootstrap)) {
@@ -622,6 +636,10 @@ class AutoloadDB {
         }
         require_once $bootstrap;
         if (!class_exists(\Agenduy\Core\MembershipPlan::class)) {
+            return null;
+        }
+        $tenantSlug = self::effectiveTenantSlug();
+        if ($tenantSlug === '' || \Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)) {
             return null;
         }
         try {
@@ -659,7 +677,7 @@ class AutoloadDB {
             return null;
         }
         $newStatus = (string)$data['Status'];
-        $tenantSlug = basename(dirname(__DIR__, 2));
+        $tenantSlug = self::effectiveTenantSlug();
         if ($tenantSlug === '' || $tenantSlug === 'template') {
             return null;
         }
@@ -704,6 +722,11 @@ class AutoloadDB {
 
 // Basic HTTP layer to use as a simple API
 if (php_sapi_name() !== 'cli' && realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
+    $projectRoot = dirname(__DIR__, 3);
+    require_once $projectRoot . '/src/Core/bootstrap.php';
+
+    \Agenduy\Core\TenantApiGuard::requireStaff(dirname(__DIR__, 2));
+
     header('Content-Type: application/json; charset=utf-8');
 
     // Merge JSON body into request if provided

@@ -15,6 +15,7 @@ use Agenduy\Core\Availability;
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CommercePublic;
+use Agenduy\Core\CommerceRegistrar;
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
@@ -166,7 +167,12 @@ if (!function_exists('agenduy_render_commerce')) {
         $tema = CommerceSettings::get($commerceId, 'tema', $legacyInfo['temas'] ?? CommerceSettings::defaultsForSection('tema'));
         $reservasCfg = CommerceSettings::get($commerceId, 'reservas', $legacyInfo['reservas'] ?? CommerceSettings::defaultsForSection('reservas'));
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
+        $businessType = CommerceRegistrar::normalizeBusinessType((string)($funciones['tipo_comercio'] ?? $funciones['tipo'] ?? 'servicios'));
+        $isStoreMode = $businessType === 'tienda';
+        $showServices = !$isStoreMode && !empty($funciones['servicios']);
+        $showBooking = $showServices && !empty($funciones['reservas']);
         $showProducts = !empty($funciones['productos']) && $localProducts !== [];
+        $showCatalogSection = $showProducts || $isStoreMode;
         $scheduleSummary = CommercePublic::scheduleSummary($scheduleRaw);
         $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0));
         $coverImageRel = CommercePublic::rubroCoverImage((int)($commerce['id_rubro'] ?? 0), (string)($commerce['rubro_nombre'] ?? ''));
@@ -260,6 +266,11 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($hasDlocalPlans): ?>
         <link rel="stylesheet" href="<?= htmlspecialchars(url('public/assets/css/dlocal-plans.css'), ENT_QUOTES, 'UTF-8') ?>">
         <?php endif; ?>
+        <link rel="icon" type="image/png" href="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="apple-touch-icon" href="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="manifest" href="<?= htmlspecialchars(url('template/manifest.webmanifest'), ENT_QUOTES, 'UTF-8') ?>">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="csrf-token" content="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
         </head>
         <body class="site-public" data-theme="<?= htmlspecialchars($defaultTheme, ENT_QUOTES, 'UTF-8') ?>">
@@ -281,12 +292,14 @@ if (!function_exists('agenduy_render_commerce')) {
                     </span>
                 </a>
                 <nav class="nav" aria-label="Navegación">
+                    <?php if ($showServices): ?>
                     <a href="#servicios">Servicios</a>
+                    <?php endif; ?>
                     <?php if ($hasDlocalPlans): ?>
                     <a href="#suscripciones">Suscripciones</a>
                     <?php endif; ?>
-                    <?php if ($showProducts): ?>
-                    <a href="#productos">Productos</a>
+                    <?php if ($showCatalogSection): ?>
+                    <a href="#productos"><?= $isStoreMode ? 'Catalogo' : 'Productos' ?></a>
                     <?php endif; ?>
                     <a href="#nosotros">Nosotros</a>
                     <a href="#horarios">Horarios</a>
@@ -299,6 +312,9 @@ if (!function_exists('agenduy_render_commerce')) {
                         <span class="cart-btn__count" id="cart-count">0</span>
                     </button>
                     <?php endif; ?>
+                    <button class="install-app-btn" type="button" id="install-app" aria-label="Instalar app" hidden>
+                        <i class="bx bx-download" aria-hidden="true"></i>
+                    </button>
                     <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Cambiar tema">
                         <i class="bx bx-moon" id="theme-icon"></i>
                     </button>
@@ -306,33 +322,41 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bx bx-grid-alt"></i> Panel
                     </a>
-                    <?php elseif ($clientLoggedIn): ?>
+                    <?php elseif (!$isStoreMode && $clientLoggedIn): ?>
                     <a class="client-auth-btn client-auth-btn--profile" href="#mis-reservas" id="client-profile-link">
                         <i class="bx bx-user"></i> Perfil
                     </a>
-                    <?php else: ?>
+                    <?php elseif (!$isStoreMode): ?>
                     <button class="client-auth-btn" type="button" id="client-auth-toggle" aria-expanded="false">
                         <i class="bx bx-log-in"></i> Iniciar sesión
                     </button>
                     <?php endif; ?>
+                    <?php if ($showBooking): ?>
                     <a href="#reservar" class="btn btn--primary">Reservar</a>
+                    <?php elseif ($showCatalogSection): ?>
+                    <a href="#productos" class="btn btn--primary">Catalogo</a>
+                    <?php endif; ?>
                     <button class="menu-btn" type="button" id="menu-btn" aria-label="Menú">
                         <i class="bx bx-menu"></i>
                     </button>
                 </div>
             </div>
             <div class="mobile-menu" id="mobile-menu">
+                <?php if ($showServices): ?>
                 <a href="#servicios">Servicios</a>
+                <?php endif; ?>
                 <?php if ($hasDlocalPlans): ?>
                 <a href="#suscripciones">Suscripciones</a>
                 <?php endif; ?>
-                <?php if ($showProducts): ?>
-                <a href="#productos">Productos</a>
+                <?php if ($showCatalogSection): ?>
+                <a href="#productos"><?= $isStoreMode ? 'Catalogo' : 'Productos' ?></a>
                 <?php endif; ?>
                 <a href="#nosotros">Nosotros</a>
                 <a href="#horarios">Horarios</a>
                 <a href="#contacto">Contacto</a>
+                <?php if ($showBooking): ?>
                 <a href="#reservar">Reservar ahora</a>
+                <?php endif; ?>
             </div>
         </header>
 
@@ -340,6 +364,22 @@ if (!function_exists('agenduy_render_commerce')) {
         <section class="hero">
             <div class="wrap hero__inner">
                 <div>
+                    <?php if ($isStoreMode): ?>
+                    <span class="hero__eyebrow"><i class="bx bx-store"></i> <?= $rubroLabel !== '' ? htmlspecialchars($rubroLabel, ENT_QUOTES, 'UTF-8') : 'Catalogo online' ?></span>
+                    <h1>Explora el catalogo de <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h1>
+                    <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Conoce productos, arma tu pedido y coordina entrega o retiro por WhatsApp.' ?></p>
+                    <div class="hero__actions">
+                        <a href="#productos" class="btn btn--primary btn--lg"><i class="bx bx-package"></i> Ver catalogo</a>
+                        <?php if ($whatsappDigits !== ''): ?>
+                        <a target="_blank" rel="noopener" href="https://wa.me/<?= htmlspecialchars($whatsappDigits, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--ghost btn--lg">Consultar por WhatsApp</a>
+                        <?php endif; ?>
+                    </div>
+                    <div class="hero__stats">
+                        <div><div class="stat__num">+<?= count($localProducts) ?></div><div class="stat__lbl">Productos</div></div>
+                        <div><div class="stat__num">WA</div><div class="stat__lbl">Pedidos directos</div></div>
+                        <div><div class="stat__num">24/7</div><div class="stat__lbl">Catalogo visible</div></div>
+                    </div>
+                    <?php else: ?>
                     <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $rubroLabel !== '' ? htmlspecialchars($rubroLabel, ENT_QUOTES, 'UTF-8') : 'Reservas online 24/7' ?></span>
                     <h1>Reservá tu turno en <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> en segundos</h1>
                     <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Elegí tu servicio, día y horario. Sin llamadas, sin esperas.' ?></p>
@@ -352,6 +392,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         <div><div class="stat__num">+<?= count($services) ?></div><div class="stat__lbl">Servicios</div></div>
                         <div><div class="stat__num">⭐ 4.9</div><div class="stat__lbl">Calificación</div></div>
                     </div>
+                    <?php endif; ?>
                 </div>
                 <div class="hero__visual">
                     <?php if ($hasLogo): ?>
@@ -361,13 +402,35 @@ if (!function_exists('agenduy_render_commerce')) {
                             <span class="hero__visual-initial"><?= htmlspecialchars(mb_strtoupper($initial, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
                     <?php endif; ?>
-                    <div class="hero__badge"><i class="bx bx-check-circle" style="color: var(--success)"></i> Confirmación inmediata</div>
+                    <div class="hero__badge"><i class="bx bx-check-circle" style="color: var(--success)"></i> <?= $isStoreMode ? ($showProducts ? 'Catalogo disponible' : 'Catalogo en preparacion') : 'Confirmacion inmediata' ?></div>
                 </div>
             </div>
         </section>
 
         <section class="steps alt" aria-label="Cómo reservar">
             <div class="wrap">
+                <?php if ($isStoreMode): ?>
+                <span class="eyebrow">Simple y directo</span>
+                <h2 class="section-title">Compra en 3 pasos</h2>
+                <p class="section-sub">Explora el catalogo, arma tu pedido y coordina los detalles por WhatsApp.</p>
+                <div class="steps-grid">
+                    <article class="step-card">
+                        <span class="step-card__num">1</span>
+                        <h3>Elegi productos</h3>
+                        <p>Revisa precios, tipos y detalles del catalogo disponible.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-card__num">2</span>
+                        <h3>Arma tu pedido</h3>
+                        <p>Agrega al carrito lo que quieras consultar o comprar.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-card__num">3</span>
+                        <h3>Coordina entrega</h3>
+                        <p>Envia el pedido por WhatsApp y acuerda retiro, envio o pago.</p>
+                    </article>
+                </div>
+                <?php else: ?>
                 <span class="eyebrow">Simple y rápido</span>
                 <h2 class="section-title">Reservá en 3 pasos</h2>
                 <p class="section-sub">Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.</p>
@@ -388,9 +451,11 @@ if (!function_exists('agenduy_render_commerce')) {
                         <p>Recibís confirmación por email. También avisamos al negocio.</p>
                     </article>
                 </div>
+                <?php endif; ?>
             </div>
         </section>
 
+        <?php if ($showServices): ?>
         <section id="servicios" class="alt">
             <div class="wrap">
                 <span class="eyebrow">Servicios</span>
@@ -444,6 +509,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php endif; ?>
             </div>
         </section>
+        <?php endif; ?>
 
         <?php if ($hasDlocalPlans): ?>
         <section id="suscripciones" class="alt">
@@ -453,12 +519,22 @@ if (!function_exists('agenduy_render_commerce')) {
         </section>
         <?php endif; ?>
 
-        <?php if ($showProducts): ?>
+        <?php if ($showCatalogSection): ?>
         <section id="productos">
             <div class="wrap">
                 <span class="eyebrow">Productos</span>
                 <h2 class="section-title">Nuestra tienda</h2>
                 <p class="section-sub">Agregá al carrito y enviá tu pedido por WhatsApp. Coordinamos entrega o retiro en el local.</p>
+                <?php if (!$showProducts): ?>
+                    <p class="section-sub">El catalogo esta en preparacion. Volve pronto o contacta al comercio para consultar productos.</p>
+                    <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
+                    <div style="display:flex; gap:.75rem; flex-wrap:wrap">
+                        <a href="<?= htmlspecialchars(CommercePanel::dashboardUrlForSlug($slug, 'productos'), ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
+                            <i class="bx bx-package"></i> Cargar productos
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                <?php else: ?>
                 <div class="prod-grid">
                     <?php foreach ($localProducts as $p):
                         $pId = (string)($p['ID_Product'] ?? '');
@@ -468,14 +544,50 @@ if (!function_exists('agenduy_render_commerce')) {
                         $pImgRel = trim((string)($p['Img_src'] ?? ''));
                         $pImgUrl = $pImgRel !== '' ? $tenantAssetUrl($pImgRel) : '';
                         $pPrice = is_numeric($p['Precio'] ?? null) ? (float)$p['Precio'] : 0;
+                        // Gallery: additional images from Img_Gallery (pipe-separated)
+                        $allImages = [];
+                        if ($pImgUrl !== '') {
+                            $allImages[] = $pImgUrl;
+                        }
+                        $pGalleryRaw = $p['Img_Gallery'] ?? '';
+                        if ($pGalleryRaw !== '') {
+                            $parts = is_array($pGalleryRaw) ? $pGalleryRaw : explode('|', (string)$pGalleryRaw);
+                            foreach ($parts as $g) {
+                                $g = trim((string)$g);
+                                if ($g !== '') {
+                                    $gUrl = $tenantAssetUrl($g);
+                                    if ($gUrl !== '') {
+                                        $allImages[] = $gUrl;
+                                    }
+                                }
+                            }
+                        }
+                        $hasMultiple = count($allImages) > 1;
                     ?>
                     <article class="prod-card"
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-name="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>">
                         <div class="prod-card__media">
-                            <?php if ($pImgUrl !== ''): ?>
-                                <img src="<?= htmlspecialchars($pImgUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
+                            <?php if (!empty($allImages)): ?>
+                                <div class="prod-gallery" data-gallery>
+                                    <div class="prod-gallery__track" data-track>
+                                        <?php foreach ($allImages as $gi => $gUrl): ?>
+                                        <div class="prod-gallery__slide<?= $gi === 0 ? ' is-active' : '' ?>" data-slide="<?= $gi ?>">
+                                            <img src="<?= htmlspecialchars($gUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($pName . ($gi > 0 ? ' - ' . ($gi + 1) : ''), ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php if ($hasMultiple): ?>
+                                    <button type="button" class="prod-gallery__arrow prod-gallery__arrow--prev" data-dir="-1" aria-label="Anterior"><i class="bx bx-chevron-left"></i></button>
+                                    <button type="button" class="prod-gallery__arrow prod-gallery__arrow--next" data-dir="1" aria-label="Siguiente"><i class="bx bx-chevron-right"></i></button>
+                                    <div class="prod-gallery__dots" data-dots>
+                                        <?php foreach ($allImages as $di => $_): ?>
+                                        <button type="button" class="prod-gallery__dot<?= $di === 0 ? ' is-active' : '' ?>" data-slide="<?= $di ?>" aria-label="Imagen <?= $di + 1 ?>"></button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                             <?php else: ?>
                                 <span class="prod-card__placeholder" aria-hidden="true"><i class="bx bx-package"></i></span>
                             <?php endif; ?>
@@ -498,6 +610,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     </article>
                     <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </section>
         <?php endif; ?>
@@ -590,12 +703,13 @@ if (!function_exists('agenduy_render_commerce')) {
             </div>
         </section>
 
+        <?php if (!$isStoreMode || $isCommerceOwner): ?>
         <section id="mis-reservas" class="alt">
             <div class="wrap">
                 <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                 <span class="eyebrow">Panel del negocio</span>
                 <h2 class="section-title">Administrá tu negocio</h2>
-                <p class="section-sub">Estás logueado como dueño. Gestioná reservas, servicios y horarios desde tu panel.</p>
+                <p class="section-sub"><?= $isStoreMode ? 'Estas logueado como dueno. Gestiona catalogo, pedidos y configuracion desde tu panel.' : 'Estás logueado como dueño. Gestioná reservas, servicios y horarios desde tu panel.' ?></p>
                 <div style="display:flex; gap:.75rem; flex-wrap:wrap">
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--lg">
                     <i class="bx bx-grid-alt"></i> Ir al panel
@@ -655,7 +769,9 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php endif; ?>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($showBooking): ?>
         <section id="reservar" class="alt" style="text-align:center">
             <div class="wrap">
                 <span class="eyebrow">Reservar</span>
@@ -664,6 +780,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Ver servicios y reservar</a>
             </div>
         </section>
+        <?php endif; ?>
         </main>
 
         <footer class="footer">
@@ -684,8 +801,16 @@ if (!function_exists('agenduy_render_commerce')) {
                         <a href="tel:<?= htmlspecialchars($telefono, ENT_QUOTES, 'UTF-8') ?>" aria-label="Teléfono"><i class="bx bx-phone" style="font-size:1.5rem"></i></a>
                     <?php endif; ?>
                 </div>
-                <div class="footer__small">© <?= date('Y') ?> <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> · Powered by Agendarte UY</div>
-                <div class="footer__legal">Gestionado con <a href="<?= htmlspecialchars(url(''), ENT_QUOTES, 'UTF-8') ?>">Agendarte UY</a> · Sistema de reservas online</div>
+                <div class="footer__small">© <?= date('Y') ?> <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="footer__legal">
+                    <a href="<?= htmlspecialchars(url(''), ENT_QUOTES, 'UTF-8') ?>" class="footer__brand-link">
+                        <span class="footer__brand-logo">
+                            <img src="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>" alt="Agendarte UY">
+                        </span>
+                        <span>Agendarte UY</span>
+                    </a>
+                    · Sistema de reservas online
+                </div>
             </div>
         </footer>
 
@@ -1872,6 +1997,97 @@ if (!function_exists('agenduy_render_commerce')) {
                     }
                 });
             });
+        })();
+        </script>
+        <script>
+        // Product gallery carousel
+        (function(){
+            document.querySelectorAll('[data-gallery]').forEach(function(gallery) {
+                var track = gallery.querySelector('[data-track]');
+                var prev = gallery.querySelector('[data-dir="-1"]');
+                var next = gallery.querySelector('[data-dir="1"]');
+                var dots = gallery.querySelector('[data-dots]');
+                var slides = track ? track.querySelectorAll('.prod-gallery__slide') : [];
+                if (!track || slides.length < 2) return;
+
+                var current = 0;
+                var total = slides.length;
+
+                function goTo(index) {
+                    if (index < 0) index = total - 1;
+                    if (index >= total) index = 0;
+                    current = index;
+                    track.style.transform = 'translateX(-' + (current * 100) + '%)';
+                    slides.forEach(function(s, i) {
+                        s.classList.toggle('is-active', i === current);
+                    });
+                    if (dots) {
+                        dots.querySelectorAll('.prod-gallery__dot').forEach(function(d, i) {
+                            d.classList.toggle('is-active', i === current);
+                        });
+                    }
+                }
+
+                if (prev) prev.addEventListener('click', function() { goTo(current - 1); });
+                if (next) next.addEventListener('click', function() { goTo(current + 1); });
+
+                if (dots) {
+                    dots.querySelectorAll('.prod-gallery__dot').forEach(function(dot) {
+                        dot.addEventListener('click', function() {
+                            var idx = parseInt(this.getAttribute('data-slide'), 10);
+                            if (!isNaN(idx)) goTo(idx);
+                        });
+                    });
+                }
+
+                // Auto-rotate every 5 seconds, pause on hover
+                var autoTimer = setInterval(function() { goTo(current + 1); }, 5000);
+                gallery.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
+                gallery.addEventListener('mouseleave', function() {
+                    clearInterval(autoTimer);
+                    autoTimer = setInterval(function() { goTo(current + 1); }, 5000);
+                });
+            });
+        })();
+
+        // PWA install prompt
+        (function(){
+            var installBtn = document.getElementById('install-app');
+            if (!installBtn) return;
+
+            var deferredPrompt = null;
+
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                deferredPrompt = e;
+                installBtn.removeAttribute('hidden');
+            });
+
+            installBtn.addEventListener('click', function() {
+                if (!deferredPrompt) {
+                    window.alert('Para instalar esta app, abrí el menú del navegador y seleccioná "Agregar a pantalla de inicio" o "Instalar app".');
+                    return;
+                }
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function(choiceResult) {
+                    if (choiceResult.outcome === 'accepted') {
+                        installBtn.setAttribute('hidden', '');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+
+            // Service worker registration
+            if ('serviceWorker' in navigator) {
+                var swUrl = <?= json_encode(url('sw.js'), JSON_UNESCAPED_SLASHES) ?>;
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register(swUrl, { scope: '/' }).then(function(reg) {
+                        // registered
+                    }).catch(function(err) {
+                        // service worker not available
+                    });
+                });
+            }
         })();
         </script>
         </body>

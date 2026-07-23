@@ -446,19 +446,19 @@ final class MembershipPlan
     {
         return [
             'Free' => [
-                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes y 25 reservas al mes.',
+                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 10 productos en tu tienda.',
                 'features' => [
                     'Hasta 25 reservas al mes',
                     'Hasta 25 clientes',
                     '1 profesional',
                     'Hasta 4 servicios',
-                    'Sin productos en la tienda',
+                    'Hasta 10 productos en la tienda',
                     'Configuración básica (nombre, logo, redes)',
                     'Agenda online básica',
                     'Soporte por email',
                 ],
                 'limits' => [
-                    self::LIMIT_MAX_PRODUCTS => 0,
+                    self::LIMIT_MAX_PRODUCTS => 10,
                     self::LIMIT_MAX_SERVICES => 4,
                     self::LIMIT_MAX_APPOINTMENTS_MONTH => 25,
                     self::LIMIT_MAX_PROFESSIONALS => 1,
@@ -469,19 +469,19 @@ final class MembershipPlan
                 'descuento_anual_pct' => 0.0,
             ],
             'Básico' => [
-                'descripcion' => 'Agenda completa, hasta 3 profesionales, 8 servicios, 6 productos, 100 clientes y 100 reservas al mes.',
+                'descripcion' => 'Agenda completa, hasta 3 profesionales, 8 servicios, 20 productos, 100 clientes y 100 reservas al mes.',
                 'features' => [
                     'Hasta 100 reservas al mes',
                     'Hasta 100 clientes',
                     'Hasta 3 profesionales',
                     'Hasta 8 servicios',
-                    'Hasta 6 productos en la tienda',
+                    'Hasta 20 productos en la tienda',
                     'Configuración completa',
                     'Agenda y recordatorios',
                     'Soporte prioritario',
                 ],
                 'limits' => [
-                    self::LIMIT_MAX_PRODUCTS => 6,
+                    self::LIMIT_MAX_PRODUCTS => 20,
                     self::LIMIT_MAX_SERVICES => 8,
                     self::LIMIT_MAX_APPOINTMENTS_MONTH => 100,
                     self::LIMIT_MAX_PROFESSIONALS => 3,

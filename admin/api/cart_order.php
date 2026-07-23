@@ -16,6 +16,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
+use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -64,6 +65,26 @@ try {
     $itemsRaw = $payload['items'] ?? [];
     if (!is_array($itemsRaw) || $itemsRaw === []) {
         throw new InvalidArgumentException('El pedido no tiene productos.');
+    }
+
+    // Verificar límite de productos según el plan del comercio
+    $plan = MembershipPlan::forCommerceId((int)$commerce['id_commerce']);
+    $maxProducts = $plan ? MembershipPlan::maxProducts($plan) : null;
+    if ($maxProducts !== null) {
+        $uniqueProductIds = [];
+        foreach ($itemsRaw as $item) {
+            if (!is_array($item)) continue;
+            $pid = trim((string)($item['id'] ?? $item['ID_Product'] ?? ''));
+            if ($pid !== '') $uniqueProductIds[$pid] = true;
+        }
+        $uniqueCount = count($uniqueProductIds);
+        if ($uniqueCount > $maxProducts) {
+            throw new InvalidArgumentException(
+                'El plan de este comercio permite hasta ' . $maxProducts . ' productos distintos por pedido. ' .
+                'Este pedido contiene ' . $uniqueCount . ' productos distintos. ' .
+                'Mejorá la membresía para incluir más productos.'
+            );
+        }
     }
 
     $catalog = TenantLocalDb::productIndex($slug);

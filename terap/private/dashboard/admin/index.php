@@ -15,7 +15,53 @@ require_once dirname(__DIR__, 2) . '/session_guard.php';
 if (empty($_SESSION['admin_config_csrf']) || !is_string($_SESSION['admin_config_csrf'])) {
   $_SESSION['admin_config_csrf'] = bin2hex(random_bytes(32));
 }
-$tenantSlug = basename(dirname(__DIR__, 3));
+$centralPanelSlug = \Agenduy\Core\CommercePanel::centralSessionSlug();
+$templateHost = \Agenduy\Core\CommercePanel::isTemplateHost(basename(dirname(__DIR__, 3)));
+if ($centralPanelSlug !== '') {
+  $tenantSlug = $centralPanelSlug;
+  $commerceIdForPanel = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+  if ($commerceIdForPanel > 0) {
+    \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $tenantSlug);
+  }
+} elseif ($templateHost) {
+  $commerceIdForPanel = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+  if ($commerceIdForPanel > 0) {
+    $commerceRow = \Agenduy\Core\Database::getInstance()->fetchOne(
+      'SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1',
+      [':id' => $commerceIdForPanel]
+    );
+    $ownedSlugRow = trim((string)($commerceRow['slug'] ?? ''));
+    if ($ownedSlugRow !== '') {
+      $tenantSlug = $ownedSlugRow;
+      \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $ownedSlugRow);
+    } else {
+      $tenantSlug = 'template';
+    }
+  } else {
+    $tenantSlug = 'template';
+  }
+} else {
+  $tenantSlug = basename(dirname(__DIR__, 3));
+}
+
+// URL canónica: evitar /template/private/dashboard/admin/ en el navegador (acceso directo al archivo)
+if (
+    $templateHost
+    && $tenantSlug !== ''
+    && $tenantSlug !== 'template'
+    && !defined('AGENDUY_COMMERCE_PANEL_EMBED')
+) {
+  $reqPath = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?') ?: '';
+  if (stripos($reqPath, '/template/private/dashboard/admin') !== false) {
+    $section = \Agenduy\Core\CommercePanel::normalizeDashboardSection((string)($_GET['section'] ?? 'resumen'));
+    $redirectQuery = [];
+    if (!empty($_GET['setup'])) {
+      $redirectQuery['setup'] = 'ok';
+    }
+    header('Location: ' . \Agenduy\Core\CommercePanel::dashboardUrlForSlug($tenantSlug, $section, $redirectQuery), true, 302);
+    exit;
+  }
+}
 
 function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
@@ -86,7 +132,10 @@ foreach ($servicios as $servicio) {
   }
 }
 $infoBarberia = [];
-$dbFull = @include dirname(__DIR__, 3) . '/src/db/database.php';
+$dbPath = (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) && AGENDUY_LOCAL_DB_PATH !== '')
+  ? AGENDUY_LOCAL_DB_PATH
+  : dirname(__DIR__, 3) . '/src/db/database.php';
+$dbFull = is_file($dbPath) ? @include $dbPath : null;
 if (is_array($dbFull) && isset($dbFull['info_barberia']) && is_array($dbFull['info_barberia'])) {
   $infoBarberia = $dbFull['info_barberia'];
 if (!isset($infoBarberia['temas']) || !is_array($infoBarberia['temas'])) {
@@ -115,6 +164,7 @@ if (is_array($pushConfig) && isset($pushConfig['publicKey'])) {
   $pushPublicKey = trim((string)$pushConfig['publicKey']);
 }
 require __DIR__ . '/../src/php/plan_banner_from_sqlite.php';
+$publicUrl = $publicShareUrl !== '' ? $publicShareUrl : url($tenantSlug !== 'template' ? $tenantSlug : '');
 $planSettingsTier = 'full';
 $currentPlanRow = null;
 $maxClientsLimit = null;
@@ -131,6 +181,21 @@ try {
   $maxClientsLimit = null;
   $maxProductsLimit = null;
 }
+// Source of truth: CommerceSettings funciones (central DB), fallback: legacy features (local database.php)
+$funcionesFromLegacy = $infoBarberia['features'] ?? [];
+try {
+  $funcionesFromCentral = \Agenduy\Core\CommerceSettings::get(
+    (int)\Agenduy\Core\Auth::commerceId(),
+    'funciones',
+    $funcionesFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('funciones')
+  );
+} catch (Throwable $e) {
+  $funcionesFromCentral = $funcionesFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('funciones');
+}
+$businessType = \Agenduy\Core\CommerceRegistrar::normalizeBusinessType(
+  (string)($funcionesFromCentral['tipo_comercio'] ?? $funcionesFromCentral['tipo'] ?? 'servicios')
+);
+$isStoreMode = $businessType === 'tienda';
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
   $dayNameMap = [
@@ -403,9 +468,17 @@ foreach ($reservas as $reserva) {
   if ($cid === null || $cid === '' || !is_numeric($cid)) { continue; }
   $clientIdsWithReservations[(string)$cid] = true;
 }
+$clientIdsWithOrders = [];
+foreach ($carritos as $carrito) {
+  $oid = $carrito['ID_Cliente'] ?? null;
+  if ($oid !== null && $oid !== '' && is_numeric($oid)) {
+    $clientIdsWithOrders[(string)(int)$oid] = true;
+  }
+}
 $clientesStats = [
   'total' => 0,
   'con_reservas' => count($clientIdsWithReservations),
+  'con_pedidos' => count($clientIdsWithOrders),
   'con_email' => 0,
   'con_telefono' => 0,
 ];
@@ -735,8 +808,21 @@ usort($barberSummaryList, static function($a, $b) {
   return strcasecmp($a['name'], $b['name']);
 });
 
-$summaryCards = [
-  [
+$summaryCards = [];
+if ($isStoreMode) {
+  $summaryCards[] = [
+    'title' => 'Pedidos',
+    'subtitle' => $formatNumber($cartTotalOrders) . ' registrados',
+    'items' => [
+      ['label' => 'Pendientes', 'value' => $formatNumber($cartPendingCount)],
+      ['label' => 'Finalizados', 'value' => $formatNumber((int)($cartStatusCounts['finalizado'] ?? 0))],
+      ['label' => 'Cancelados', 'value' => $formatNumber((int)($cartStatusCounts['cancelado'] ?? 0))],
+    ],
+    'cta_type' => 'link',
+    'target' => '#pedidos',
+  ];
+} else {
+  $summaryCards[] = [
     'title' => 'Reservas',
     'subtitle' => $formatNumber($totalReservas) . ' registradas',
     'items' => [
@@ -746,8 +832,8 @@ $summaryCards = [
     ],
     'cta_type' => 'modal',
     'modal' => 'reservas-summary',
-  ],
-  [
+  ];
+  $summaryCards[] = [
     'title' => 'Profesionales',
     'subtitle' => $formatNumber($barberStats['total']) . ' en el equipo',
     'items' => [
@@ -757,30 +843,8 @@ $summaryCards = [
     ],
     'cta_type' => 'link',
     'target' => '#funcionarios',
-  ],
-  [
-    'title' => 'Clientes',
-    'subtitle' => $formatNumber($clientesStats['total']) . ' registrados',
-    'items' => [
-      ['label' => 'Con reservas', 'value' => $formatNumber($clientesStats['con_reservas'])],
-      ['label' => 'Con email', 'value' => $formatNumber($clientesStats['con_email'])],
-      ['label' => 'Con teléfono', 'value' => $formatNumber($clientesStats['con_telefono'])],
-    ],
-    'cta_type' => 'link',
-    'target' => '#clientes',
-  ],
-  [
-    'title' => 'Productos',
-    'subtitle' => $formatNumber($productosStats['total']) . ' en catálogo',
-    'items' => [
-      ['label' => 'Con imagen', 'value' => $formatNumber($productosStats['con_imagen'])],
-      ['label' => 'Con puntos', 'value' => $formatNumber($productosStats['con_puntos'])],
-      ['label' => 'Tipos distintos', 'value' => $formatNumber($productosStats['tipos'])],
-    ],
-    'cta_type' => 'modal',
-    'modal' => 'productos-summary',
-  ],
-  [
+  ];
+  $summaryCards[] = [
     'title' => 'Servicios',
     'subtitle' => $formatNumber($serviciosStats['total']) . ' publicados',
     'items' => [
@@ -790,25 +854,64 @@ $summaryCards = [
     ],
     'cta_type' => 'link',
     'target' => '#servicios',
+  ];
+}
+$summaryCards[] = [
+  'title' => 'Clientes',
+  'subtitle' => $formatNumber($clientesStats['total']) . ' registrados',
+  'items' => [
+    ['label' => $isStoreMode ? 'Con pedidos' : 'Con reservas', 'value' => $formatNumber($isStoreMode ? ($clientesStats['con_pedidos'] ?? 0) : $clientesStats['con_reservas'])],
+    ['label' => 'Con email', 'value' => $formatNumber($clientesStats['con_email'])],
+    ['label' => 'Con teléfono', 'value' => $formatNumber($clientesStats['con_telefono'])],
   ],
+  'cta_type' => 'link',
+  'target' => '#clientes',
 ];
+$summaryCards[] = [
+  'title' => 'Productos',
+  'subtitle' => $formatNumber($productosStats['total']) . ' en catálogo',
+  'items' => [
+    ['label' => 'Con imagen', 'value' => $formatNumber($productosStats['con_imagen'])],
+    ['label' => 'Con puntos', 'value' => $formatNumber($productosStats['con_puntos'])],
+    ['label' => 'Tipos distintos', 'value' => $formatNumber($productosStats['tipos'])],
+  ],
+  'cta_type' => 'modal',
+  'modal' => 'productos-summary',
+];
+$isCentralPanelEmbed = defined('AGENDUY_COMMERCE_PANEL_EMBED') && AGENDUY_COMMERCE_PANEL_EMBED;
+if (!function_exists('admin_panel_href')) {
+    function admin_panel_href(string $relative): string {
+        if (!defined('AGENDUY_COMMERCE_PANEL_EMBED') || !AGENDUY_COMMERCE_PANEL_EMBED) {
+            return $relative;
+        }
+        return \Agenduy\Core\CommercePanel::dashboardAssetUrl($relative);
+    }
+}
+$panelApiEndpoints = $isCentralPanelEmbed ? \Agenduy\Core\CommercePanel::dashboardApiEndpoints() : [];
+$tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
+    ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
+    : url('');
 ?>
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?php if (defined('AGENDUY_PANEL_BASE_HREF') && AGENDUY_PANEL_BASE_HREF !== ''): ?>
+  <base href="<?php echo e(AGENDUY_PANEL_BASE_HREF); ?>">
+  <?php endif; ?>
   <meta name="theme-color" content="#7c3aed">
   <meta name="csrf-token" content="<?php echo e($_SESSION['admin_config_csrf']); ?>">
+  <!-- DEBUG: MODE=<?php echo $isStoreMode ? 'TIENDA' : 'AGENDA'; ?> | CID=<?php echo (int)\Agenduy\Core\Auth::commerceId(); ?> | EMBED=<?php echo defined('AGENDUY_COMMERCE_PANEL_EMBED') && AGENDUY_COMMERCE_PANEL_EMBED ? 'YES' : 'NO'; ?> | BASE=<?php echo defined('AGENDUY_PANEL_BASE_HREF') && AGENDUY_PANEL_BASE_HREF !== '' ? AGENDUY_PANEL_BASE_HREF : '(none)'; ?> | URL=<?php echo htmlspecialchars(($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> -->
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
-  <link rel="manifest" href="../manifest.admin.php">
-  <link rel="stylesheet" href="../../../src/css/main.css">
+  <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="../src/admin.css">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
-  <link rel="stylesheet" href="../src/reservas-ledger.css">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(\Agenduy\Core\AdminBrand::faviconUrl()); ?>">
   <link rel="apple-touch-icon" href="<?php echo e(\Agenduy\Core\AdminBrand::iconUrl()); ?>">
@@ -822,11 +925,16 @@ $summaryCards = [
       </div>
       <nav class="admin-nav">
         <a class="admin-link" href="#resumen">Resumen</a>
+        <?php if ($isStoreMode): ?>
+        <a class="admin-link" href="#pedidos">Pedidos</a>
+        <?php else: ?>
         <a class="admin-link" href="#reservas">Reservas</a>
-        <a class="admin-link" href="#clientes">Clientes</a>
         <a class="admin-link" href="#funcionarios">Profesionales</a>
         <a class="admin-link" href="#servicios">Servicios</a>
+        <?php endif; ?>
+        <a class="admin-link" href="#clientes">Clientes</a>
         <a class="admin-link" href="#productos">Productos</a>
+        <a class="admin-link" href="<?php echo e(\Agenduy\Core\CommercePanel::siteUrl('admin/commerce_plan.php')); ?>">Mi Plan</a>
         <a class="admin-link" href="#config">Configuración</a>
       </nav>
     </aside>
@@ -849,6 +957,16 @@ $summaryCards = [
           <?php else: ?>
           <h1 class="admin-heading">Dashboard</h1>
           <?php endif; ?>
+          <?php
+            $modeLabel = $funcionesFromCentral['tipo_comercio_label'] ?? '';
+            if ($modeLabel === '') {
+              $modeLabel = $isStoreMode ? 'Modo tienda' : 'Modo agenda';
+            }
+          ?>
+          <span class="admin-mode-badge admin-mode-badge--<?php echo $isStoreMode ? 'tienda' : 'agenda'; ?>">
+            <i class="bx <?php echo $isStoreMode ? 'bx-store' : 'bx-calendar-check'; ?>" aria-hidden="true"></i>
+            <?php echo e($modeLabel); ?>
+          </span>
         </div>
         <details class="admin-orders"<?php echo $hasAnyCartOrders ? '' : ' data-empty="1"'; ?> data-active-status="<?php echo e($cartActiveStatus); ?>">
           <summary class="admin-orders__summary" aria-label="Pedidos">
@@ -1050,6 +1168,46 @@ $summaryCards = [
         </div>
       </section>
 
+      <?php if ($isStoreMode): ?>
+      <section class="admin-section" id="pedidos">
+        <div class="admin-section-tools">
+          <span class="admin-section-count">Total: <?php echo (int)$cartTotalOrders; ?> pedidos</span>
+          <button type="button" class="btn btn-success" onclick="document.querySelector('.admin-orders__summary').click()">
+            <i class="bx bx-cart"></i> Ver pedidos
+          </button>
+        </div>
+        <?php if ($cartTotalOrders > 0): ?>
+        <div class="table-wrap table-wrap--scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Productos</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach (array_slice($cartOrders, 0, 50) as $order): ?>
+              <tr>
+                <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
+                <td><?php echo e($order['client']); ?></td>
+                <td><?php echo e(implode(', ', array_map(function($i) { return $i['quantity'] . 'x ' . $i['name']; }, $order['items_data'] ?? []))); ?></td>
+                <td><?php echo e($order['date']); ?></td>
+                <td><span class="status-pill st-<?php echo e($order['status_key']); ?>"><?php echo e($order['status_label']); ?></span></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php else: ?>
+        <p class="muted">Aún no hay pedidos registrados.</p>
+        <?php endif; ?>
+      </section>
+      <?php endif; ?>
+
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="reservas">
         <div class="admin-section-tools">
           <div class="admin-reservas-filter">
@@ -1180,6 +1338,7 @@ $summaryCards = [
         </div>
         <p class="muted admin-reservas-empty" data-admin-reserva-empty data-empty-base="No hay reservas para el estado seleccionado."<?php echo $renderedCount > 0 ? ' hidden' : ''; ?>>No hay reservas para el estado seleccionado.</p>
       </section>
+      <?php endif; ?>
 
       <section class="admin-section" id="clientes">
         <div class="admin-clients">
@@ -1272,6 +1431,8 @@ $summaryCards = [
           </div>
         </div>
       </section>
+
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="funcionarios">
         <div class="admin-barbers" data-admin-barber-services="<?php echo e($serviceNameJson); ?>">
           <?php
@@ -1386,6 +1547,8 @@ $summaryCards = [
           <p class="muted admin-barbers-empty" data-empty-base="Aún no tienes Profesionales registrados."<?php echo $hasBarbers ? ' hidden' : ''; ?>>Aún no tienes Profesionales registrados.</p>
         </div>
       </section>
+      <?php endif; ?>
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="servicios">
         <div class="admin-services-header">
           <button type="button" class="btn btn-success admin-services-add" data-admin-service-create>
@@ -1473,6 +1636,7 @@ $summaryCards = [
         </div>
         <p class="muted admin-services-empty" data-empty-base="A&uacute;n no tienes Servicios registrados."<?php echo ($serviceCount ?? 0) > 0 ? ' hidden' : ''; ?>>A&uacute;n no tienes Servicios registrados.</p>
       </section>
+      <?php endif; ?>
       <section class="admin-section" id="productos">
         <?php
           $productCountTotal = 0;
@@ -1617,15 +1781,15 @@ $summaryCards = [
             $configOptions = [
               ['id' => 'info', 'title' => 'Info. del Negocio', 'icon' => 'bx-buildings'],
               ['id' => 'horarios', 'title' => 'Horarios', 'icon' => 'bx-time-five'],
-              ['id' => 'reservas', 'title' => 'Config. de Reservas', 'icon' => 'bx-calendar-check'],
+              ['id' => 'reservas', 'title' => $isStoreMode ? 'Config. de Carrito / Pedidos' : 'Config. de Reservas', 'icon' => $isStoreMode ? 'bx-cart' : 'bx-calendar-check'],
               ['id' => 'moneda', 'title' => 'Config. de Moneda', 'icon' => 'bx-money'],
               ['id' => 'fiscal', 'title' => 'Config. Fiscal', 'icon' => 'bx-receipt'],
               ['id' => 'mercadopago', 'title' => 'Mercado Pago', 'icon' => 'bx-credit-card'],
-              ['id' => 'redes', 'title' => 'Redes', 'icon' => 'bx-share-alt'],
+              ['id' => 'redes', 'title' => 'Contacto y redes', 'icon' => 'bx-share-alt'],
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
-              ['id' => 'funciones', 'title' => 'Funciones', 'icon' => 'bx-wrench'],
+              ['id' => 'funciones', 'title' => $isStoreMode ? 'Modo del comercio' : 'Funciones', 'icon' => 'bx-wrench'],
               ['id' => 'temas', 'title' => 'Tema visual', 'icon' => 'bx-palette'],
             ];
             foreach ($configOptions as $option):
@@ -1648,16 +1812,18 @@ $summaryCards = [
         <span>Resumen</span>
         <span class="admin-bottomnav__badge" data-bottom-badge="resumen">1</span>
       </a>
+      <?php if ($isStoreMode): ?>
+      <a class="admin-bottomnav__item" href="#pedidos" data-admin-nav-target="pedidos">
+        <i class="bx bx-cart" aria-hidden="true"></i>
+        <span>Pedidos</span>
+      </a>
+      <?php else: ?>
       <a class="admin-bottomnav__item" href="#reservas" data-admin-nav-target="reservas">
         <i class="bx bx-calendar" aria-hidden="true"></i>
         <span>Reservas</span>
         <span class="admin-bottomnav__badge" data-bottom-badge="reservas"<?php echo $pendingReservations > 0 ? '' : ' hidden'; ?>>
           <?php echo (int)$pendingReservations; ?>
         </span>
-      </a>
-      <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
-        <i class="bx bx-user" aria-hidden="true"></i>
-        <span>Clientes</span>
       </a>
       <a class="admin-bottomnav__item" href="#funcionarios" data-admin-nav-target="funcionarios">
         <i class="bx bx-customize" aria-hidden="true"></i>
@@ -1666,6 +1832,11 @@ $summaryCards = [
       <a class="admin-bottomnav__item" href="#servicios" data-admin-nav-target="servicios">
         <i class="bx bx-cut" aria-hidden="true"></i>
         <span>Servicios</span>
+      </a>
+      <?php endif; ?>
+      <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
+        <i class="bx bx-user" aria-hidden="true"></i>
+        <span>Clientes</span>
       </a>
       <a class="admin-bottomnav__item" href="#productos" data-admin-nav-target="productos">
         <i class="bx bx-package" aria-hidden="true"></i>
@@ -1682,34 +1853,44 @@ $summaryCards = [
     </nav>
   </div>
   <div id="admin-modal-root">
-    <?php if (file_exists('../src/components/admin_reserva_modal.php')) { echo include '../src/components/admin_reserva_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_qr_modal.php')) { echo include '../src/components/admin_qr_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_cliente_modal.php')) { echo include '../src/components/admin_cliente_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_client_form_modal.php')) { echo include '../src/components/admin_client_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_historial_modal.php')) { echo include '../src/components/admin_historial_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_reservas_summary_modal.php')) { echo include '../src/components/admin_reservas_summary_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_productos_summary_modal.php')) { echo include '../src/components/admin_productos_summary_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_service_form_modal.php')) { echo include '../src/components/admin_service_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_service_modal.php')) { echo include '../src/components/admin_service_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_product_form_modal.php')) { echo include '../src/components/admin_product_form_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_barber_modal.php')) { echo include '../src/components/admin_barber_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_barber_edit_modal.php')) { echo include '../src/components/admin_barber_edit_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_business_info_modal.php')) { echo include '../src/components/admin_business_info_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_auth_guard_modal.php')) { echo include '../src/components/admin_auth_guard_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_redes_modal.php')) { echo include '../src/components/admin_config_redes_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_seo_modal.php')) { echo include '../src/components/admin_config_seo_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_notifications_modal.php')) { echo include '../src/components/admin_config_notifications_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_features_modal.php')) { echo include '../src/components/admin_config_features_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_mercadopago_modal.php')) { echo include '../src/components/admin_config_mercadopago_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_fiscal_modal.php')) { echo include '../src/components/admin_config_fiscal_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_moneda_modal.php')) { echo include '../src/components/admin_config_moneda_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_hours_modal.php')) { echo include '../src/components/admin_hours_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_reservas_config_modal.php')) { echo include '../src/components/admin_reservas_config_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_trial_modal.php')) { echo include '../src/components/admin_plan_trial_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_cancel_modal.php')) { echo include '../src/components/admin_plan_cancel_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_plan_membership_modal.php')) { echo include '../src/components/admin_plan_membership_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_theme_modal.php')) { echo include '../src/components/admin_theme_modal.php'; } ?>
-    <?php if (file_exists('../src/components/admin_config_legales_modal.php')) { echo include '../src/components/admin_config_legales_modal.php'; } ?>
+    <?php
+    $adminComponentsDir = __DIR__ . '/../src/components';
+    foreach ([
+        'admin_reserva_modal.php',
+        'admin_qr_modal.php',
+        'admin_cliente_modal.php',
+        'admin_client_form_modal.php',
+        'admin_historial_modal.php',
+        'admin_reservas_summary_modal.php',
+        'admin_productos_summary_modal.php',
+        'admin_service_form_modal.php',
+        'admin_service_modal.php',
+        'admin_product_form_modal.php',
+        'admin_barber_modal.php',
+        'admin_barber_edit_modal.php',
+        'admin_business_info_modal.php',
+        'admin_auth_guard_modal.php',
+        'admin_config_redes_modal.php',
+        'admin_config_seo_modal.php',
+        'admin_config_notifications_modal.php',
+        'admin_config_features_modal.php',
+        'admin_config_mercadopago_modal.php',
+        'admin_config_fiscal_modal.php',
+        'admin_config_moneda_modal.php',
+        'admin_hours_modal.php',
+        'admin_reservas_config_modal.php',
+        'admin_plan_trial_modal.php',
+        'admin_plan_cancel_modal.php',
+        'admin_plan_membership_modal.php',
+        'admin_theme_modal.php',
+        'admin_config_legales_modal.php',
+    ] as $adminComponentFile) {
+        $adminComponentPath = $adminComponentsDir . '/' . $adminComponentFile;
+        if (is_file($adminComponentPath)) {
+            echo include $adminComponentPath;
+        }
+    }
+    ?>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -1763,23 +1944,65 @@ $summaryCards = [
   ?>
   <script>
     window.ADMIN_INFO_BARBERIA = <?php echo $infoBarberiaJson; ?>;
+    window.ADMIN_DASHBOARD = <?php echo json_encode($panelApiEndpoints, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     window.__TENANT_CONFIG__ = {
       slug: <?php echo json_encode($tenantSlug, JSON_UNESCAPED_SLASHES); ?>,
-      basePath: <?php echo json_encode($publicUrl, JSON_UNESCAPED_SLASHES); ?>
+      basePath: <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>,
+      publicUrl: <?php echo json_encode($tenantPublicUrl, JSON_UNESCAPED_SLASHES); ?>,
+      logoutUrl: <?php echo json_encode(url('admin/logout.php'), JSON_UNESCAPED_SLASHES); ?>
     };
-    (function attachAdminCsrf() {
+    (function attachAdminFetch() {
       const nativeFetch = window.fetch.bind(window);
       const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      const dash = window.ADMIN_DASHBOARD || {};
+
+      const resolveUrl = (input) => {
+        if (typeof input !== 'string') {
+          return input;
+        }
+        let url = input;
+        if (dash.adminConfig && url.includes('AdminConfig.php')) {
+          return dash.adminConfig;
+        }
+        if (dash.autoload && url.includes('Autoload.php')) {
+          return dash.autoload;
+        }
+        if (dash.adminPush && url.includes('AdminPush.php')) {
+          return dash.adminPush;
+        }
+        if (dash.reservas && url.includes('reservas_admin.php')) {
+          return dash.reservas;
+        }
+        if (dash.servicios && url.includes('servicios.php')) {
+          return dash.servicios;
+        }
+        if (dash.productos && url.includes('productos.php')) {
+          return dash.productos;
+        }
+        if (dash.barberos && url.includes('barberos.php')) {
+          return dash.barberos;
+        }
+        return url;
+      };
+
       window.fetch = function(resource, options) {
-        const url = typeof resource === 'string' ? resource : resource?.url || '';
-        if (!url.includes('/src/API/AdminConfig.php') && !url.includes('../../../src/API/AdminConfig.php')) {
-          return nativeFetch(resource, options);
+        const originalUrl = typeof resource === 'string' ? resource : resource?.url || '';
+        const resolvedUrl = resolveUrl(originalUrl);
+        let finalResource = resource;
+        if (typeof resource === 'string' && resolvedUrl !== originalUrl) {
+          finalResource = resolvedUrl;
+        } else if (resource && typeof resource === 'object' && resolvedUrl !== originalUrl) {
+          finalResource = new Request(resolvedUrl, resource);
+        }
+        const url = typeof finalResource === 'string' ? finalResource : finalResource?.url || resolvedUrl;
+        if (!url.includes('AdminConfig.php')) {
+          return nativeFetch(finalResource, options);
         }
         const next = { ...(options || {}) };
         next.headers = new Headers(next.headers || {});
         next.headers.set('X-CSRF-Token', token);
         next.credentials = next.credentials || 'same-origin';
-        return nativeFetch(resource, next);
+        return nativeFetch(finalResource, next);
       };
     })();
     window.AdminNotify = function(message, icon) {
@@ -1883,46 +2106,64 @@ $summaryCards = [
 
   <script>
     window.ADMIN_PUSH_PUBLIC_KEY = '<?php echo e($pushPublicKey); ?>';
-    window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
+    window.ADMIN_PUSH_ENDPOINT = <?php echo json_encode(
+        $panelApiEndpoints['adminPush'] ?? admin_panel_href('../../../src/API/AdminPush.php'),
+        JSON_UNESCAPED_SLASHES
+    ); ?>;
+    (function setupWelcomeToast() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('setup') !== 'ok') return;
+        params.delete('setup');
+        var next = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+        history.replaceState(null, '', next);
+        var msg = 'Tu negocio quedó listo. Empezá por Resumen o Configuración.';
+        if (typeof window.AdminNotify === 'function') {
+          window.AdminNotify(msg, 'success');
+        }
+      } catch (_) {}
+    })();
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
-  <script src="../src/js/admin/core.js"></script>
-  <script src="../src/js/admin/admin-orders.js"></script>
-  <script src="../src/js/admin/plan-trial-modal.js"></script>
-  <script src="../src/js/admin/plan-membership-modal.js"></script>
-  <script src="../src/js/admin/modal-loading.js"></script>
-  <script src="../src/js/admin/layout-sidebar.js"></script>
-  <script src="../src/js/admin/bottom-nav.js?v=3"></script>
-  <script src="../src/js/admin/reservas-filter.js"></script>
-  <script src="../src/js/admin/clientes-list.js"></script>
-  <script src="../src/js/admin/clientes-form.js"></script>
-  <script src="../src/js/admin/barberos-list.js"></script>
-  <script src="../src/js/admin/barbero-create-modal.js"></script>
-  <script src="../src/js/admin/barbero-edit-modal.js"></script>
-  <script src="../src/js/admin/reserva-modal.js"></script>
-  <script src="../src/js/admin/reservas-summary-modal.js"></script>
-  <script src="../src/js/admin/productos-summary-modal.js"></script>
-  <script src="../src/js/admin/cliente-modal.js"></script>
-  <script src="../src/js/admin/servicios-crud.js"></script>
-  <script src="../src/js/admin/productos-crud.js"></script>
-  <script src="../src/js/admin/service-modal.js"></script>
-  <script src="../src/js/admin/config-info-modal.js"></script>
-  <script src="../src/js/admin/admin-auth-guard.js"></script>
-  <script src="../src/js/admin/admin-config-redes.js"></script>
-  <script src="../src/js/admin/admin-config-seo.js"></script>
-  <script src="../src/js/admin/admin-config-notificaciones.js"></script>
-  <script src="../src/js/admin/admin-config-legales.js"></script>
-  <script src="../src/js/admin/admin-config-features.js"></script>
-  <script src="../src/js/admin/admin-config-theme.js"></script>
-  <script src="../src/js/admin/admin-config-fiscal.js"></script>
-  <script src="../src/js/admin/admin-config-moneda.js"></script>
-  <script src="../src/js/admin/admin-config-mercadopago.js"></script>
-  <script src="../src/js/admin/config-reservas-modal.js"></script>
-  <script src="../src/js/admin/config-hours.js"></script>
-  <script src="../src/js/admin/config-cards.js"></script>
-  <script src="../src/js/admin/pwa.js"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/layout-sidebar.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/bottom-nav.js?v=4')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-list.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-form.js')); ?>"></script>
+  <?php if (!$isStoreMode): ?>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-filter.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barberos-list.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-create-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-edit-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reserva-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-summary-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/servicios-crud.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/service-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-reservas-modal.js')); ?>"></script>
+  <?php endif; ?>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-summary-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/cliente-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-crud.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-info-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-auth-guard.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-redes.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-seo.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-notificaciones.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-legales.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-features.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-theme.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-mercadopago.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>
   </body>
   </html>
 

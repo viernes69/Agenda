@@ -22,6 +22,15 @@ final class CommerceRegistrar
         $services = is_array($payload['servicios'] ?? null) ? $payload['servicios'] : [];
         $planId = (int)($payload['planId'] ?? $payload['plan_id'] ?? 0);
         $rubroId = (int)($payload['rubroId'] ?? $business['rubroId'] ?? 0);
+        $businessType = self::normalizeBusinessType(
+            $payload['tipoComercio']
+                ?? $payload['tipo_comercio']
+                ?? $business['tipoComercio']
+                ?? $business['tipo_comercio']
+                ?? $business['tipo']
+                ?? 'servicios'
+        );
+        $isStore = $businessType === 'tienda';
 
         $email = strtolower(trim((string)($owner['email'] ?? '')));
         $pass = (string)($owner['password'] ?? '');
@@ -72,7 +81,9 @@ final class CommerceRegistrar
         }
         self::assert($bizName !== '' && $ciudad !== '' && $calle !== '' && $tel !== '', 'Completa los datos del negocio.');
         self::assert($rubroId > 0, 'Selecciona un rubro válido.');
-        self::assert(count($services) > 0, 'Agrega al menos un servicio.');
+        if (!$isStore) {
+            self::assert(count($services) > 0, 'Agrega al menos un servicio.');
+        }
 
         $db = Database::getInstance();
         $exists = $db->fetchOne('SELECT id_user FROM users WHERE email = :e', [':e' => $email]);
@@ -116,7 +127,7 @@ final class CommerceRegistrar
             $db->transaction(function () use (
                 &$idCommerce, &$idUser, $db, $slug, $rubroId, $planId, $bizName, $rut, $email, $tel,
                 $pais, $ciudad, $calle, $tz, $trialEnd, $trialDays, $name, $last, $cedula, $pass,
-                $services, $schedule, $membership, $googleProfile
+                $services, $schedule, $membership, $googleProfile, $businessType
             ) {
                 $idCommerce = (int)$db->insert('commerces', [
                     'slug'             => $slug,
@@ -180,6 +191,7 @@ final class CommerceRegistrar
                 CommerceSettings::set($idCommerce, 'horarios', self::normalizeSchedule($schedule));
                 CommerceSettings::set($idCommerce, 'moneda', CommerceSettings::defaultsForSection('moneda'));
                 CommerceSettings::set($idCommerce, 'tema', ['publico' => 'claro', 'privado' => 'claro']);
+                CommerceSettings::set($idCommerce, 'funciones', self::featuresForBusinessType($businessType));
             });
 
             if ($useLegacyFolders) {
@@ -199,7 +211,7 @@ final class CommerceRegistrar
                 $legacy = self::customiseLegacyDatabase(
                     $legacy,
                     ['nombre' => $name, 'apellido' => $last, 'cedula' => $cedula, 'email' => $email, 'password_hash' => $passwordHash, 'id_admin' => $idUser],
-                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'rubro_id' => $rubroId, 'website' => $website, 'timezone' => $tz, 'id_negocio' => $idCommerce, 'telefono' => $tel],
+                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'rubro_id' => $rubroId, 'website' => $website, 'timezone' => $tz, 'id_negocio' => $idCommerce, 'telefono' => $tel, 'tipo_comercio' => $businessType],
                     $schedule,
                     $services,
                     $rubroId
@@ -210,7 +222,7 @@ final class CommerceRegistrar
                     $idCommerce,
                     $idUser,
                     ['nombre' => $name, 'apellido' => $last, 'cedula' => $cedula, 'email' => $email],
-                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'telefono' => $tel],
+                    ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'telefono' => $tel, 'tipo_comercio' => $businessType],
                     $schedule,
                     $services,
                     $rubroId
@@ -284,6 +296,37 @@ final class CommerceRegistrar
         return $out;
     }
 
+    public static function normalizeBusinessType(mixed $value): string
+    {
+        $type = strtolower(trim((string)$value));
+        $type = str_replace([' ', '-'], '_', $type);
+        return in_array($type, ['tienda', 'store', 'catalogo', 'catalog'], true) ? 'tienda' : 'servicios';
+    }
+
+    public static function featuresForBusinessType(string $businessType): array
+    {
+        $defaults = CommerceSettings::defaultsForSection('funciones');
+        if (self::normalizeBusinessType($businessType) === 'tienda') {
+            return array_replace($defaults, [
+                'tipo_comercio' => 'tienda',
+                'productos' => true,
+                'servicios' => false,
+                'barberos' => false,
+                'reservas' => false,
+                'carrito' => true,
+            ]);
+        }
+
+        return array_replace($defaults, [
+            'tipo_comercio' => 'servicios',
+            'productos' => true,
+            'servicios' => true,
+            'barberos' => true,
+            'reservas' => true,
+            'carrito' => true,
+        ]);
+    }
+
     private static function copyDirectory(string $source, string $destination): bool
     {
         if (!is_dir($source)) return false;
@@ -328,7 +371,7 @@ final class CommerceRegistrar
 
     public static function buildWebsiteUrl(string $slug): string
     {
-        return url($slug);
+        return CommercePanel::publicUrlForSlug($slug);
     }
 
     public static function buildRedirectUrl(string $slug): string
@@ -338,7 +381,7 @@ final class CommerceRegistrar
 
     public static function buildCentralDashboardUrl(): string
     {
-        return url('admin/commerce_dashboard.php');
+        return CommercePanel::siteUrl('admin/commerce_dashboard.php');
     }
 
     private static function tenantDashboardExists(string $slug): bool
@@ -392,6 +435,7 @@ final class CommerceRegistrar
             'ciudad' => (string)$business['ciudad'],
             'calle' => (string)$business['calle'],
         ];
+        $info['features'] = self::featuresForBusinessType((string)($business['tipo_comercio'] ?? 'servicios'));
         $info['seo'] = $preset['seo'];
         $info['horarios'] = self::normalizeSchedule($schedule);
         $descriptor = strtoupper(preg_replace('/[^A-Za-z0-9 ]+/', '', (string)$business['nombre']) ?? '');
@@ -408,7 +452,8 @@ final class CommerceRegistrar
         $info['mercado_pago']['statement_descriptor'] = $descriptor;
         $database['info_barberia'] = $info;
 
-        [$servicesTable] = self::buildServicesDataset($services);
+        $isStore = self::normalizeBusinessType((string)($business['tipo_comercio'] ?? 'servicios')) === 'tienda';
+        [$servicesTable] = self::buildServicesDataset($services, !$isStore);
         $database['servicios'] = $servicesTable;
 
         $database['barberos'] = [
@@ -435,7 +480,7 @@ final class CommerceRegistrar
         return $database;
     }
 
-    private static function buildServicesDataset(array $services): array
+    private static function buildServicesDataset(array $services, bool $addFallback = true): array
     {
         $records = [[
             'ID_Servicio' => null, 'Nombre' => null, 'Duracion' => null, 'Estado' => null,
@@ -457,7 +502,7 @@ final class CommerceRegistrar
             ];
             $nextId++;
         }
-        if ($nextId === 1) {
+        if ($nextId === 1 && $addFallback) {
             $records[1] = ['ID_Servicio' => 1, 'Nombre' => 'Servicio', 'Duracion' => 30, 'Estado' => 'Activo', 'Precio' => 0.0, 'Puntos' => null, 'Img_Link' => ''];
         }
         return [$records];
@@ -470,6 +515,22 @@ final class CommerceRegistrar
             'descripcion' => 'Gestiona turnos, clientes y servicios con Agenduy.',
             'seo' => ['title' => 'Reservas online', 'description' => 'Reserva tu turno online.', 'keywords' => ['reservas','agenda']],
         ];
+        try {
+            $rubro = Database::getInstance()->fetchOne(
+                'SELECT tipo, nombre FROM rubros WHERE id_rubro = :id',
+                [':id' => $rubroId]
+            );
+            $label = strtolower((string)($rubro['tipo'] ?? '') . ' ' . (string)($rubro['nombre'] ?? ''));
+            if (str_contains($label, 'tienda') || str_contains($label, 'comercio') || str_contains($label, 'retail')) {
+                return [
+                    'slogan' => 'Tu catálogo online, simple y listo para vender.',
+                    'descripcion' => 'Mostrá productos, recibí pedidos por WhatsApp y gestioná ventas desde tu panel.',
+                    'seo' => ['title' => 'Tienda online', 'description' => 'Explorá el catálogo y pedí por WhatsApp.', 'keywords' => ['tienda','catalogo','productos']],
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Usar defaults si SQLite no está disponible.
+        }
         $map = [
             9 => ['slogan' => 'Bienestar y belleza a tu medida.', 'descripcion' => 'Tratamientos y servicios de belleza.', 'seo' => ['title' => 'Belleza y estética', 'description' => 'Reserva tratamientos online.', 'keywords' => ['estetica','belleza']]],
             10 => ['slogan' => 'Tu corte perfecto comienza aquí.', 'descripcion' => 'Barbería y peluquería profesional.', 'seo' => ['title' => 'Barbería', 'description' => 'Reserva tu corte online.', 'keywords' => ['barberia','corte']]],

@@ -99,6 +99,7 @@ $appts = $db->fetchAll(
         <a href="commerce_appointments.php" class="is-active">Turnos</a>
         <a href="commerce_clients.php">Clientes</a>
         <a href="commerce_services.php">Servicios</a>
+        <a href="commerce_plan.php">Mi Plan</a>
         <a href="commerce_settings.php">Configuración</a>
     </nav>
     <div class="topbar__user">

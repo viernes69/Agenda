@@ -155,6 +155,7 @@ final class CentralCommerceData
             'ciudad' => (string)$business['ciudad'],
             'calle' => (string)$business['calle'],
         ];
+        $info['features'] = CommerceRegistrar::featuresForBusinessType((string)($business['tipo_comercio'] ?? 'servicios'));
         $info['seo'] = $preset['seo'];
         $info['horarios'] = CommerceRegistrar::normalizeSchedule($schedule);
         $info['notificaciones'] = [
@@ -164,7 +165,8 @@ final class CentralCommerceData
         ];
         $info['temas'] = ['publico' => 'claro', 'privado' => 'claro'];
         $database['info_barberia'] = $info;
-        $database['servicios'] = self::buildServicesDataset($services)[0];
+        $isStore = CommerceRegistrar::normalizeBusinessType((string)($business['tipo_comercio'] ?? 'servicios')) === 'tienda';
+        $database['servicios'] = self::buildServicesDataset($services, !$isStore)[0];
         $database['barberos'] = [
             [
                 'ID_Barber' => null, 'Nombre' => null, 'Apellido' => null, 'Cedula' => null,
@@ -193,7 +195,7 @@ final class CentralCommerceData
      * @param list<array<string,mixed>> $services
      * @return array{0: list<array<string,mixed>>}
      */
-    private static function buildServicesDataset(array $services): array
+    private static function buildServicesDataset(array $services, bool $addFallback = true): array
     {
         $records = [[
             'ID_Servicio' => null, 'Nombre' => null, 'Duracion' => null, 'Estado' => null,
@@ -219,7 +221,7 @@ final class CentralCommerceData
             ];
             $nextId++;
         }
-        if ($nextId === 1) {
+        if ($nextId === 1 && $addFallback) {
             $records[1] = ['ID_Servicio' => 1, 'Nombre' => 'Servicio', 'Duracion' => 30, 'Estado' => 'Activo', 'Precio' => 0.0, 'Puntos' => null, 'Img_Link' => ''];
         }
         return [$records];
@@ -235,6 +237,22 @@ final class CentralCommerceData
             'descripcion' => 'Gestiona turnos, clientes y servicios con Agendarte UY.',
             'seo' => ['title' => 'Reservas online', 'description' => 'Reserva tu turno online.', 'keywords' => ['reservas', 'agenda']],
         ];
+        try {
+            $rubro = Database::getInstance()->fetchOne(
+                'SELECT tipo, nombre FROM rubros WHERE id_rubro = :id',
+                [':id' => $rubroId]
+            );
+            $label = strtolower((string)($rubro['tipo'] ?? '') . ' ' . (string)($rubro['nombre'] ?? ''));
+            if (str_contains($label, 'tienda') || str_contains($label, 'comercio') || str_contains($label, 'retail')) {
+                return [
+                    'slogan' => 'Tu catálogo online, simple y listo para vender.',
+                    'descripcion' => 'Mostrá productos, recibí pedidos por WhatsApp y gestioná ventas desde tu panel.',
+                    'seo' => ['title' => 'Tienda online', 'description' => 'Explorá el catálogo y pedí por WhatsApp.', 'keywords' => ['tienda', 'catalogo', 'productos']],
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Usar defaults si SQLite no está disponible.
+        }
         $map = [
             9 => ['slogan' => 'Bienestar y belleza a tu medida.', 'descripcion' => 'Tratamientos y servicios de belleza.', 'seo' => ['title' => 'Belleza y estética', 'description' => 'Reserva tratamientos online.', 'keywords' => ['estetica', 'belleza']]],
             10 => ['slogan' => 'Tu corte perfecto comienza aquí.', 'descripcion' => 'Barbería y peluquería profesional.', 'seo' => ['title' => 'Barbería', 'description' => 'Reserva tu corte online.', 'keywords' => ['barberia', 'corte']]],

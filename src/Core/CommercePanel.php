@@ -28,17 +28,54 @@ final class CommercePanel
         return is_file($path);
     }
 
+    private const INTERNAL_PATH_SEGMENTS = ['admin', 'src', 'storage', 'bin', 'tests', 'auth', 'api',
+        'categorias', 'ubicaciones', 'template', 'private', 'dashboard'];
+
+    public static function siteBaseUrl(): string
+    {
+        $base = rtrim(\url(''), '/');
+        $parts = parse_url($base);
+        if (!is_array($parts)) {
+            return $base;
+        }
+
+        $path = trim((string)($parts['path'] ?? ''), '/');
+        $segments = $path !== '' ? explode('/', $path) : [];
+        foreach ($segments as $idx => $segment) {
+            if (in_array(strtolower($segment), self::INTERNAL_PATH_SEGMENTS, true)) {
+                $segments = array_slice($segments, 0, $idx);
+                break;
+            }
+        }
+
+        $cleanPath = $segments !== [] ? '/' . implode('/', $segments) : '';
+        if (empty($parts['host'])) {
+            return $cleanPath;
+        }
+
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'];
+        $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+        return $scheme . '://' . $host . $port . $cleanPath;
+    }
+
+    public static function siteUrl(string $path = ''): string
+    {
+        $path = ltrim($path, '/');
+        return self::siteBaseUrl() . ($path !== '' ? '/' . $path : '');
+    }
+
     public static function legacyUrl(string $slug): string
     {
-        return \url($slug . '/private/dashboard/admin/index.php');
+        return self::siteUrl($slug . '/private/dashboard/admin/index.php');
     }
 
     public static function centralUrl(?string $slug = null): string
     {
         if ($slug !== null && $slug !== '') {
-            return \url($slug . '/private/dashboard/admin/');
+            return self::siteUrl($slug . '/private/dashboard/admin/');
         }
-        return \url('admin/commerce_panel.php');
+        return self::siteUrl('admin/commerce_panel.php');
     }
 
     public static function publicUrlForSlug(string $slug): string
@@ -48,15 +85,8 @@ final class CommercePanel
             return \url('');
         }
 
-        $base = rtrim(\url(''), '/');
-        $parts = parse_url($base);
-        $path = is_array($parts) ? trim((string)($parts['path'] ?? ''), '/') : '';
-        $segments = $path !== '' ? explode('/', $path) : [];
-        if ($segments !== [] && end($segments) === $slug) {
-            return $base . '/';
-        }
-
-        return \url($slug . '/');
+        $baseUrl = rtrim(self::siteBaseUrl(), '/');
+        return $baseUrl . '/' . $slug . '/';
     }
 
     /**
@@ -136,7 +166,7 @@ final class CommercePanel
     public static function centralDashboardUrl(string $section = 'resumen', array $query = []): string
     {
         $section = self::normalizeDashboardSection($section);
-        $url = url(self::CENTRAL_TEMPLATE_PATH);
+        $url = self::siteUrl(self::CENTRAL_TEMPLATE_PATH);
         if ($query !== []) {
             $url = self::appendQuery($url, $query);
         }
@@ -146,7 +176,7 @@ final class CommercePanel
     /** URL base del admin compartido (/template/private/dashboard/admin/). */
     public static function templateDashboardAdminBase(): string
     {
-        return rtrim(url('template/private/dashboard/admin/'), '/') . '/';
+        return rtrim(self::siteUrl('template/private/dashboard/admin/'), '/') . '/';
     }
 
     /**
@@ -171,7 +201,7 @@ final class CommercePanel
         $projectRoot = realpath(dirname(__DIR__, 2));
         $adminDir = realpath($projectRoot . '/template/private/dashboard/admin');
         if ($projectRoot === false || $adminDir === false) {
-            return url(ltrim($relativeFromAdmin, '/')) . $query;
+            return self::siteUrl(ltrim($relativeFromAdmin, '/')) . $query;
         }
 
         $path = $adminDir;
@@ -189,27 +219,29 @@ final class CommercePanel
         $normalizedRoot = str_replace('\\', '/', $projectRoot);
         $normalizedPath = str_replace('\\', '/', $path);
         if (!str_starts_with($normalizedPath, $normalizedRoot)) {
-            return url(ltrim($relativeFromAdmin, '/')) . $query;
+            return self::siteUrl(ltrim($relativeFromAdmin, '/')) . $query;
         }
 
         $rel = ltrim(substr($normalizedPath, strlen($normalizedRoot)), '/');
-        return url($rel) . $query;
+        return self::siteUrl($rel) . $query;
     }
 
     /**
-     * Endpoints absolutos del panel (APIs compartidas en /template/).
-     *
-     * @return array{reservas:string,adminConfig:string,autoload:string,adminPush:string,optimize:string,manifest:string}
+     * @return array{reservas:string,adminConfig:string,autoload:string,adminPush:string,optimize:string,manifest:string,servicios:string,productos:string,barberos:string,serviceWorker:string}
      */
     public static function dashboardApiEndpoints(): array
     {
         return [
-            'reservas'    => url('template/private/dashboard/src/api/reservas_admin.php'),
-            'adminConfig' => url('template/src/API/AdminConfig.php'),
-            'autoload'    => url('template/src/API/Autoload.php'),
-            'adminPush'   => url('template/src/API/AdminPush.php'),
-            'optimize'    => url('template/private/dashboard/optimizar.php'),
-            'manifest'    => url('template/private/dashboard/manifest.admin.php'),
+            'reservas'      => self::siteUrl('template/private/dashboard/src/api/reservas_admin.php'),
+            'servicios'     => self::siteUrl('template/private/dashboard/src/api/servicios.php'),
+            'productos'     => self::siteUrl('template/private/dashboard/src/api/productos.php'),
+            'barberos'      => self::siteUrl('template/private/dashboard/src/api/barberos.php'),
+            'adminConfig'   => self::siteUrl('template/src/API/AdminConfig.php'),
+            'autoload'      => self::siteUrl('template/src/API/Autoload.php'),
+            'adminPush'     => self::siteUrl('template/src/API/AdminPush.php'),
+            'optimize'      => self::siteUrl('template/private/dashboard/optimizar.php'),
+            'manifest'      => self::siteUrl('template/private/dashboard/manifest.admin.php'),
+            'serviceWorker' => self::siteUrl('template/private/dashboard/sw.js'),
         ];
     }
 
@@ -284,6 +316,11 @@ final class CommercePanel
             'horarios',
             CommerceSettings::defaultsForSection('horarios')
         );
+        $features = CommerceSettings::get(
+            $idCommerce,
+            'funciones',
+            CommerceSettings::defaultsForSection('funciones')
+        );
 
         try {
             CentralCommerceData::provision(
@@ -302,6 +339,7 @@ final class CommercePanel
                     'ciudad' => (string)($commerce['ciudad'] ?? ''),
                     'calle' => (string)($commerce['calle'] ?? ''),
                     'telefono' => (string)($commerce['telefono'] ?? ''),
+                    'tipo_comercio' => (string)($features['tipo_comercio'] ?? 'servicios'),
                 ],
                 $schedule,
                 $services,

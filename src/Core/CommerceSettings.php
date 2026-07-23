@@ -97,7 +97,14 @@ final class CommerceSettings
                     'body' => "Nueva reserva en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
                 ],
             ],
-            'funciones' => ['productos' => true, 'servicios' => true, 'barberos' => true],
+            'funciones' => [
+                'tipo_comercio' => 'servicios',
+                'productos' => true,
+                'servicios' => true,
+                'barberos' => true,
+                'reservas' => true,
+                'carrito' => true,
+            ],
             'tema' => ['publico' => 'claro', 'privado' => 'claro'],
             default => [],
         };

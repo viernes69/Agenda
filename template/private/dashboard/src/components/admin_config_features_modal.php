@@ -13,6 +13,14 @@ ob_start();
     </header>
     <form class="modal__body admin-form" data-admin-config-features-form autocomplete="off" novalidate>
       <section class="admin-form__group">
+        <label class="admin-label" for="features-mode-label">Nombre del modo</label>
+        <input type="text" id="features-mode-label" class="admin-input admin-input--sm" data-admin-config-features-label="tipo_comercio_label" placeholder="Ej: Modo tienda, Modo agenda" maxlength="60">
+        <p class="admin-form__hint">Este texto se muestra como indicador en el panel. Dejalo vacío para usar el valor automático según el tipo de comercio.</p>
+      </section>
+
+      <hr class="admin-form__divider">
+
+      <section class="admin-form__group">
         <label class="admin-checkbox">
           <input type="checkbox" data-admin-config-features-toggle="productos">
           <span>Productos</span>

@@ -13,6 +13,7 @@
   if (!form) return;
 
   const toggleInputs = Array.from(form.querySelectorAll('[data-admin-config-features-toggle]'));
+  const labelInput = form.querySelector('[data-admin-config-features-label]');
   const errorEl = form.querySelector('[data-admin-config-features-error]');
   const submitBtn = form.querySelector('[data-admin-config-features-submit]');
   const closeEls = modal.querySelectorAll('[data-admin-config-features-close]');
@@ -38,6 +39,9 @@
       const key = input.getAttribute('data-admin-config-features-toggle');
       input.checked = !!features[key];
     });
+    if (labelInput) {
+      labelInput.value = features['tipo_comercio_label'] || '';
+    }
     if (errorEl) {
       errorEl.hidden = true;
       errorEl.textContent = '';
@@ -51,6 +55,14 @@
       const key = input.getAttribute('data-admin-config-features-toggle');
       payload.features[key] = !!input.checked;
     });
+    if (labelInput) {
+      const val = labelInput.value.trim();
+      if (val) {
+        payload.features['tipo_comercio_label'] = val;
+      } else {
+        payload.features['tipo_comercio_label'] = '';
+      }
+    }
     return payload;
   };
 
@@ -102,8 +114,8 @@
         throw new Error(json && json.error ? json.error : 'No se pudo guardar las funciones.');
       }
       window.ADMIN_INFO_BARBERIA = clone(json.data || {});
-      notify('Funciones actualizadas.', 'success');
-      close();
+      notify('Funciones actualizadas. Recargando panel...', 'success');
+      window.setTimeout(function() { window.location.reload(); }, 800);
     } catch (error) {
       const message = error && error.message ? error.message : 'No se pudo guardar las funciones.';
       showError(message);

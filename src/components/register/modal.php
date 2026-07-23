@@ -77,6 +77,13 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
               <small data-reg-phone-hint>Ingresá un celular uruguayo (09 + 7 d&iacute;gitos)</small>
             </label>
             <label class="reg-field"><span>Nombre del Negocio</span><input type="text" name="business_name" required></label>
+            <label class="reg-field">
+              <span>Tipo de negocio</span>
+              <select name="business_type" data-reg-business-type required>
+                <option value="servicios" selected>Servicios con reservas</option>
+                <option value="tienda">Tienda / catalogo</option>
+              </select>
+            </label>
             <label class="reg-field"><span>RUT <small>(opcional)</small></span><input type="text" name="business_rut"></label>
             <label class="reg-field"><span>Pa&iacute;s</span>
               <select name="business_country" required>

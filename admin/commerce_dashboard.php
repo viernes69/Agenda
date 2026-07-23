@@ -147,7 +147,7 @@ $activeSection = '';
         <h2>Administrá tu negocio</h2>
         <p>Abrí el panel completo para editar horarios, SEO, legal, tema, redes y el resto de la configuración que ven tus clientes.</p>
         <p>
-            <a class="btn btn-primary" href="<?= htmlspecialchars(CommercePanel::urlForSlug((string)$commerce['slug']) . (CommercePanel::hasLegacyPanel((string)$commerce['slug']) ? '#config' : '&section=config'), ENT_QUOTES, 'UTF-8') ?>">
+            <a class="btn btn-primary" href="<?= htmlspecialchars(CommercePanel::dashboardUrlForSlug((string)$commerce['slug'], 'config'), ENT_QUOTES, 'UTF-8') ?>">
                 Ir al panel de configuración
             </a>
         </p>

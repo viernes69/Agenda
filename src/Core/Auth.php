@@ -284,12 +284,7 @@ final class Auth
 
     public static function loginUrl(): string
     {
-        // Si el script que llama vive bajo /admin/, login es /admin/login.php
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        if (strpos($script, '/admin/') !== false) {
-            return '/admin/login.php';
-        }
-        return '/agenduy.uy/admin/login.php';
+        return \url('admin/login.php');
     }
 
     public static function hash(string $plain): string

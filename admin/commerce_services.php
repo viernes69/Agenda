@@ -71,6 +71,7 @@ if (isset($_GET['id'])) {
         <a href="commerce_appointments.php">Turnos</a>
         <a href="commerce_clients.php">Clientes</a>
         <a href="commerce_services.php" class="is-active">Servicios</a>
+        <a href="commerce_plan.php">Mi Plan</a>
         <a href="commerce_settings.php">Configuración</a>
     </nav>
     <div class="topbar__user">

@@ -298,6 +298,8 @@ section.alt { background: var(--bg-soft); }
   background: var(--surface-2, #f3f4f6);
   display: grid;
   place-items: center;
+  position: relative;
+  overflow: hidden;
 }
 .prod-card__media img {
   width: 100%; height: 100%; object-fit: cover; display: block;
@@ -745,3 +747,138 @@ body[data-theme="dark"] .alert--ok    { background: #0c2e23; color: #6ee7b7; bor
   border-radius: 0 0 8px 0;
 }
 .skip-link:focus { left: 0; }
+
+/* ─── Product gallery carousel ─── */
+.prod-gallery {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.prod-gallery__track {
+  display: flex;
+  transition: transform .35s cubic-bezier(.25,.46,.45,.94);
+  height: 100%;
+}
+.prod-gallery__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prod-gallery__slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.prod-gallery__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255,255,255,.88);
+  color: #1a1d24;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+  opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 2;
+  padding: 0;
+}
+.prod-gallery:hover .prod-gallery__arrow { opacity: 1; }
+.prod-gallery__arrow:hover { transform: translateY(-50%) scale(1.1); }
+.prod-gallery__arrow--prev { left: 8px; }
+.prod-gallery__arrow--next { right: 8px; }
+.prod-gallery__dots {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+  padding: 3px 8px;
+  background: rgba(0,0,0,.3);
+  border-radius: 999px;
+}
+.prod-gallery__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255,255,255,.5);
+  cursor: pointer;
+  padding: 0;
+  transition: background .2s ease, transform .2s ease;
+}
+.prod-gallery__dot.is-active {
+  background: #fff;
+  transform: scale(1.25);
+}
+body[data-theme="dark"] .prod-gallery__arrow {
+  background: rgba(22,26,35,.88);
+  color: #e5e7ef;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+body[data-theme="dark"] .prod-gallery__dots {
+  background: rgba(0,0,0,.55);
+}
+body[data-theme="dark"] .prod-gallery__dot {
+  background: rgba(255,255,255,.4);
+}
+body[data-theme="dark"] .prod-gallery__dot.is-active {
+  background: #fff;
+}
+
+/* ─── PWA install button ─── */
+.install-app-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-soft);
+  text-decoration: none;
+}
+.install-app-btn:hover { color: var(--text); }
+.install-app-btn[hidden] { display: none; }
+
+/* ─── Footer brand link ─── */
+.footer__brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: .9rem;
+}
+.footer__brand-link:hover { color: #a5b4fc; }
+.footer__brand-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.footer__brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

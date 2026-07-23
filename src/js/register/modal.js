@@ -30,6 +30,7 @@
   const hiddenPlanId = form.querySelector('input[name="plan_id"]');
   const hiddenPlanNombre = form.querySelector('input[name="plan_nombre"]');
   const businessPlanSelect = form.querySelector('select[name="business_plan"]');
+  const businessTypeSelect = form.querySelector('[data-reg-business-type]');
   const logoInput = form.querySelector('input[name="business_logo"]');
   const termsInput = form.querySelector('input[name="terms"]');
   const phoneCountryField = form.querySelector('[data-reg-phone-country]');
@@ -46,6 +47,8 @@
   const dayFieldsets = hoursContainer ? Array.from(hoursContainer.querySelectorAll('[data-reg-hours-day]')) : [];
 
   const serviceFormEl = modal.querySelector('[data-reg-service-form]');
+  const serviceStepTitle = modal.querySelector('#reg-step-3-title');
+  const serviceStepHint = modal.querySelector('[data-step-panel="2"] .reg-hint');
   const serviceListEl = modal.querySelector('[data-reg-service-list]');
   const serviceErrorEl = modal.querySelector('[data-reg-service-error]');
   const serviceAddBtn = modal.querySelector('[data-reg-service-add]');
@@ -154,6 +157,37 @@
     if (!planId) return null;
     const key = String(planId);
     return Object.prototype.hasOwnProperty.call(planConfig, key) ? planConfig[key] : null;
+  }
+
+  function normalizeBusinessType(value) {
+    const type = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return ['tienda', 'store', 'catalogo', 'catalog'].includes(type) ? 'tienda' : 'servicios';
+  }
+
+  function selectedBusinessType() {
+    return normalizeBusinessType(businessTypeSelect ? businessTypeSelect.value : 'servicios');
+  }
+
+  function inferBusinessType(payload = {}) {
+    const explicit = payload.tipoComercio || payload.tipo_comercio || payload.businessType || payload.business_type || '';
+    if (explicit) return normalizeBusinessType(explicit);
+    const label = String(payload.rubroNombre || payload.rubro_nombre || currentRubroName || '').toLowerCase();
+    return /tienda|comercio|retail|catalogo/.test(label) ? 'tienda' : 'servicios';
+  }
+
+  function syncBusinessTypeUi() {
+    const isStore = selectedBusinessType() === 'tienda';
+    if (serviceStepTitle) {
+      serviceStepTitle.textContent = isStore ? 'Catalogo de tu tienda' : 'Servicios de tu Negocio';
+    }
+    if (serviceStepHint) {
+      serviceStepHint.textContent = isStore
+        ? 'No necesitas cargar servicios ahora. Al finalizar vas al panel para subir productos y armar tu catalogo.'
+        : 'Agrega los servicios que ofreceras. Podras sumar mas desde el panel.';
+    }
+    if (serviceFormEl) serviceFormEl.hidden = isStore;
+    if (serviceListEl) serviceListEl.hidden = isStore;
+    showServiceError('');
   }
 
   function getPlanIdForRubro(rubroId) {
@@ -316,6 +350,9 @@
 
   function validateServicesStep() {
     showServiceError('');
+    if (selectedBusinessType() === 'tienda') {
+      return true;
+    }
     if (!serviceFormEl) return true;
     if (serviceFormHasValues()) {
       showServiceError('Completa el servicio y presiona "Agregar servicio" o limpia los campos.');
@@ -337,9 +374,11 @@
     const phoneCountry = (formData.get('business_phone_country') || PHONE_DEFAULT_COUNTRY).toString().trim() || PHONE_DEFAULT_COUNTRY;
     const phoneLocal = (formData.get('business_phone') || '').toString().trim();
     const telefono = formatPhoneValue(phoneCountry, phoneLocal);
+    const tipoComercio = selectedBusinessType();
 
     return {
       _csrf: csrfToken,
+      tipoComercio,
       planId: plan && plan.id ? String(plan.id) : String(planId || ''),
       planNombre: plan && plan.nombre ? plan.nombre : (hiddenPlanNombre ? hiddenPlanNombre.value : ''),
       rubroId: rubroId ? String(rubroId) : '',
@@ -354,6 +393,7 @@
       negocio: {
         rubroId: rubroId ? String(rubroId) : '',
         rubroNombre: rubroName,
+        tipoComercio,
         telefono,
         telefonoPais: phoneCountry,
         nombre: (formData.get('business_name') || '').toString().trim(),
@@ -363,7 +403,7 @@
         calle: (formData.get('business_street') || '').toString().trim(),
         logoNombre: logoInput && logoInput.files && logoInput.files[0] ? logoInput.files[0].name : ''
       },
-      servicios: serializeServices(),
+      servicios: tipoComercio === 'tienda' ? [] : serializeServices(),
       horarios: collectHoursData(),
     };
   }
@@ -545,6 +585,7 @@
     serviceAutoId = 1;
     resetServiceForm();
     renderServicesList();
+    syncBusinessTypeUi();
     showServiceError('');
     resetHoursForm();
     toggleProgress(false);
@@ -831,8 +872,12 @@
 
     resetForm();
     syncRubroSelection(rubroId ? String(rubroId) : '');
+    if (businessTypeSelect) {
+      businessTypeSelect.value = inferBusinessType({ ...payload, rubroNombre: rubroName || currentRubroName });
+      syncBusinessTypeUi();
+    }
     if (hiddenPlanNombre) hiddenPlanNombre.value = payload.planNombre || '';
-    currentRubroName = rubroName || '';
+    currentRubroName = rubroName || currentRubroName || '';
     syncPlanInfo(resolvedPlanId, currentRubroName);
     showError('');
     clearStatus();
@@ -911,6 +956,7 @@
   initializeDayFieldsets();
   resetHoursForm();
   renderServicesList();
+  syncBusinessTypeUi();
   syncPhoneField();
   if (regGoogleWrap) {
     regGoogleWrap.hidden = !(config.googleClientId);
@@ -993,12 +1039,19 @@
       const rid = businessRubroSelect.value || '';
       syncRubroSelection(rid);
       syncPlanInfo(getPlanIdForRubro(rid), currentRubroName);
+      if (businessTypeSelect) {
+        businessTypeSelect.value = inferBusinessType({ rubroNombre: currentRubroName });
+        syncBusinessTypeUi();
+      }
     });
   }
   if (businessPlanSelect) {
     businessPlanSelect.addEventListener('change', () => {
       syncPlanInfo(businessPlanSelect.value, currentRubroName);
     });
+  }
+  if (businessTypeSelect) {
+    businessTypeSelect.addEventListener('change', syncBusinessTypeUi);
   }
   overlayTriggers.forEach((el) => el.addEventListener('click', closeModal));
   if (nextBtn) nextBtn.addEventListener('click', onNext);

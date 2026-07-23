@@ -29,7 +29,7 @@ $free = ['limits' => json_encode($catalog['Free']['limits'], JSON_UNESCAPED_UNIC
 $basico = ['limits' => json_encode($catalog['Básico']['limits'], JSON_UNESCAPED_UNICODE)];
 $pro = ['limits' => json_encode($catalog['Profesional']['limits'], JSON_UNESCAPED_UNICODE)];
 
-assertTrue(MembershipPlan::maxProducts($free) === 0, 'Free max_products=0');
+assertTrue(MembershipPlan::maxProducts($free) === 10, 'Free max_products=10');
 assertTrue(MembershipPlan::maxServices($free) === 4, 'Free max_services=4');
 assertTrue(MembershipPlan::maxAppointmentsMonth($free) === 25, 'Free max_appointments=25');
 assertTrue(MembershipPlan::maxProfessionals($free) === 1, 'Free max_professionals=1');
@@ -39,7 +39,7 @@ assertTrue(!MembershipPlan::allowsConfigKey($free, 'fiscal'), 'Free blocks fisca
 assertTrue(MembershipPlan::allowsConfigKey($free, 'redes'), 'Free allows redes');
 assertTrue(MembershipPlan::allowsConfigKey($free, 'horarios'), 'Free allows horarios');
 
-assertTrue(MembershipPlan::maxProducts($basico) === 6, 'Basico max_products=6');
+assertTrue(MembershipPlan::maxProducts($basico) === 20, 'Basico max_products=20');
 assertTrue(MembershipPlan::maxServices($basico) === 8, 'Basico max_services=8');
 assertTrue(MembershipPlan::maxAppointmentsMonth($basico) === 100, 'Basico max_appointments=100');
 assertTrue(MembershipPlan::maxProfessionals($basico) === 3, 'Basico max_professionals=3');
@@ -134,14 +134,14 @@ foreach (['Free', 'Básico', 'Profesional'] as $name) {
     $limits = MembershipPlan::limits($row);
     assertTrue(isset($limits['settings_tier']), "{$name} has settings_tier in DB");
     if ($name === 'Free') {
-        assertTrue((int)($limits['max_products'] ?? -1) === 0, 'DB Free products=0');
+        assertTrue((int)($limits['max_products'] ?? -1) === 10, 'DB Free products=10');
         assertTrue((int)($limits['max_services'] ?? -1) === 4, 'DB Free services=4');
         assertTrue((int)($limits['max_appointments_month'] ?? -1) === 25, 'DB Free appts=25');
         assertTrue((int)($limits['max_professionals'] ?? -1) === 1, 'DB Free professionals=1');
         assertTrue((int)($limits['max_clients'] ?? -1) === 25, 'DB Free clients=25');
     }
     if ($name === 'Básico') {
-        assertTrue((int)($limits['max_products'] ?? -1) === 6, 'DB Basico products=6');
+        assertTrue((int)($limits['max_products'] ?? -1) === 20, 'DB Basico products=20');
         assertTrue((int)($limits['max_services'] ?? -1) === 8, 'DB Basico services=8');
         assertTrue((int)($limits['max_appointments_month'] ?? -1) === 100, 'DB Basico appts=100');
         assertTrue((int)($limits['max_professionals'] ?? -1) === 3, 'DB Basico professionals=3');

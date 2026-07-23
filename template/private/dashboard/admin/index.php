@@ -181,6 +181,21 @@ try {
   $maxClientsLimit = null;
   $maxProductsLimit = null;
 }
+// Source of truth: CommerceSettings funciones (central DB), fallback: legacy features (local database.php)
+$funcionesFromLegacy = $infoBarberia['features'] ?? [];
+try {
+  $funcionesFromCentral = \Agenduy\Core\CommerceSettings::get(
+    (int)\Agenduy\Core\Auth::commerceId(),
+    'funciones',
+    $funcionesFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('funciones')
+  );
+} catch (Throwable $e) {
+  $funcionesFromCentral = $funcionesFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('funciones');
+}
+$businessType = \Agenduy\Core\CommerceRegistrar::normalizeBusinessType(
+  (string)($funcionesFromCentral['tipo_comercio'] ?? $funcionesFromCentral['tipo'] ?? 'servicios')
+);
+$isStoreMode = $businessType === 'tienda';
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
   $dayNameMap = [
@@ -453,9 +468,17 @@ foreach ($reservas as $reserva) {
   if ($cid === null || $cid === '' || !is_numeric($cid)) { continue; }
   $clientIdsWithReservations[(string)$cid] = true;
 }
+$clientIdsWithOrders = [];
+foreach ($carritos as $carrito) {
+  $oid = $carrito['ID_Cliente'] ?? null;
+  if ($oid !== null && $oid !== '' && is_numeric($oid)) {
+    $clientIdsWithOrders[(string)(int)$oid] = true;
+  }
+}
 $clientesStats = [
   'total' => 0,
   'con_reservas' => count($clientIdsWithReservations),
+  'con_pedidos' => count($clientIdsWithOrders),
   'con_email' => 0,
   'con_telefono' => 0,
 ];
@@ -785,8 +808,21 @@ usort($barberSummaryList, static function($a, $b) {
   return strcasecmp($a['name'], $b['name']);
 });
 
-$summaryCards = [
-  [
+$summaryCards = [];
+if ($isStoreMode) {
+  $summaryCards[] = [
+    'title' => 'Pedidos',
+    'subtitle' => $formatNumber($cartTotalOrders) . ' registrados',
+    'items' => [
+      ['label' => 'Pendientes', 'value' => $formatNumber($cartPendingCount)],
+      ['label' => 'Finalizados', 'value' => $formatNumber((int)($cartStatusCounts['finalizado'] ?? 0))],
+      ['label' => 'Cancelados', 'value' => $formatNumber((int)($cartStatusCounts['cancelado'] ?? 0))],
+    ],
+    'cta_type' => 'link',
+    'target' => '#pedidos',
+  ];
+} else {
+  $summaryCards[] = [
     'title' => 'Reservas',
     'subtitle' => $formatNumber($totalReservas) . ' registradas',
     'items' => [
@@ -796,8 +832,8 @@ $summaryCards = [
     ],
     'cta_type' => 'modal',
     'modal' => 'reservas-summary',
-  ],
-  [
+  ];
+  $summaryCards[] = [
     'title' => 'Profesionales',
     'subtitle' => $formatNumber($barberStats['total']) . ' en el equipo',
     'items' => [
@@ -807,30 +843,8 @@ $summaryCards = [
     ],
     'cta_type' => 'link',
     'target' => '#funcionarios',
-  ],
-  [
-    'title' => 'Clientes',
-    'subtitle' => $formatNumber($clientesStats['total']) . ' registrados',
-    'items' => [
-      ['label' => 'Con reservas', 'value' => $formatNumber($clientesStats['con_reservas'])],
-      ['label' => 'Con email', 'value' => $formatNumber($clientesStats['con_email'])],
-      ['label' => 'Con teléfono', 'value' => $formatNumber($clientesStats['con_telefono'])],
-    ],
-    'cta_type' => 'link',
-    'target' => '#clientes',
-  ],
-  [
-    'title' => 'Productos',
-    'subtitle' => $formatNumber($productosStats['total']) . ' en catálogo',
-    'items' => [
-      ['label' => 'Con imagen', 'value' => $formatNumber($productosStats['con_imagen'])],
-      ['label' => 'Con puntos', 'value' => $formatNumber($productosStats['con_puntos'])],
-      ['label' => 'Tipos distintos', 'value' => $formatNumber($productosStats['tipos'])],
-    ],
-    'cta_type' => 'modal',
-    'modal' => 'productos-summary',
-  ],
-  [
+  ];
+  $summaryCards[] = [
     'title' => 'Servicios',
     'subtitle' => $formatNumber($serviciosStats['total']) . ' publicados',
     'items' => [
@@ -840,7 +854,29 @@ $summaryCards = [
     ],
     'cta_type' => 'link',
     'target' => '#servicios',
+  ];
+}
+$summaryCards[] = [
+  'title' => 'Clientes',
+  'subtitle' => $formatNumber($clientesStats['total']) . ' registrados',
+  'items' => [
+    ['label' => $isStoreMode ? 'Con pedidos' : 'Con reservas', 'value' => $formatNumber($isStoreMode ? ($clientesStats['con_pedidos'] ?? 0) : $clientesStats['con_reservas'])],
+    ['label' => 'Con email', 'value' => $formatNumber($clientesStats['con_email'])],
+    ['label' => 'Con teléfono', 'value' => $formatNumber($clientesStats['con_telefono'])],
   ],
+  'cta_type' => 'link',
+  'target' => '#clientes',
+];
+$summaryCards[] = [
+  'title' => 'Productos',
+  'subtitle' => $formatNumber($productosStats['total']) . ' en catálogo',
+  'items' => [
+    ['label' => 'Con imagen', 'value' => $formatNumber($productosStats['con_imagen'])],
+    ['label' => 'Con puntos', 'value' => $formatNumber($productosStats['con_puntos'])],
+    ['label' => 'Tipos distintos', 'value' => $formatNumber($productosStats['tipos'])],
+  ],
+  'cta_type' => 'modal',
+  'modal' => 'productos-summary',
 ];
 $isCentralPanelEmbed = defined('AGENDUY_COMMERCE_PANEL_EMBED') && AGENDUY_COMMERCE_PANEL_EMBED;
 if (!function_exists('admin_panel_href')) {
@@ -888,11 +924,16 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
       </div>
       <nav class="admin-nav">
         <a class="admin-link" href="#resumen">Resumen</a>
+        <?php if ($isStoreMode): ?>
+        <a class="admin-link" href="#pedidos">Pedidos</a>
+        <?php else: ?>
         <a class="admin-link" href="#reservas">Reservas</a>
-        <a class="admin-link" href="#clientes">Clientes</a>
         <a class="admin-link" href="#funcionarios">Profesionales</a>
         <a class="admin-link" href="#servicios">Servicios</a>
+        <?php endif; ?>
+        <a class="admin-link" href="#clientes">Clientes</a>
         <a class="admin-link" href="#productos">Productos</a>
+        <a class="admin-link" href="<?php echo e(\Agenduy\Core\CommercePanel::siteUrl('admin/commerce_plan.php')); ?>">Mi Plan</a>
         <a class="admin-link" href="#config">Configuración</a>
       </nav>
     </aside>
@@ -915,6 +956,16 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
           <?php else: ?>
           <h1 class="admin-heading">Dashboard</h1>
           <?php endif; ?>
+          <?php
+            $modeLabel = $funcionesFromCentral['tipo_comercio_label'] ?? '';
+            if ($modeLabel === '') {
+              $modeLabel = $isStoreMode ? 'Modo tienda' : 'Modo agenda';
+            }
+          ?>
+          <span class="admin-mode-badge admin-mode-badge--<?php echo $isStoreMode ? 'tienda' : 'agenda'; ?>">
+            <i class="bx <?php echo $isStoreMode ? 'bx-store' : 'bx-calendar-check'; ?>" aria-hidden="true"></i>
+            <?php echo e($modeLabel); ?>
+          </span>
         </div>
         <details class="admin-orders"<?php echo $hasAnyCartOrders ? '' : ' data-empty="1"'; ?> data-active-status="<?php echo e($cartActiveStatus); ?>">
           <summary class="admin-orders__summary" aria-label="Pedidos">
@@ -1116,6 +1167,46 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         </div>
       </section>
 
+      <?php if ($isStoreMode): ?>
+      <section class="admin-section" id="pedidos">
+        <div class="admin-section-tools">
+          <span class="admin-section-count">Total: <?php echo (int)$cartTotalOrders; ?> pedidos</span>
+          <button type="button" class="btn btn-success" onclick="document.querySelector('.admin-orders__summary').click()">
+            <i class="bx bx-cart"></i> Ver pedidos
+          </button>
+        </div>
+        <?php if ($cartTotalOrders > 0): ?>
+        <div class="table-wrap table-wrap--scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Productos</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach (array_slice($cartOrders, 0, 50) as $order): ?>
+              <tr>
+                <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
+                <td><?php echo e($order['client']); ?></td>
+                <td><?php echo e(implode(', ', array_map(function($i) { return $i['quantity'] . 'x ' . $i['name']; }, $order['items_data'] ?? []))); ?></td>
+                <td><?php echo e($order['date']); ?></td>
+                <td><span class="status-pill st-<?php echo e($order['status_key']); ?>"><?php echo e($order['status_label']); ?></span></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php else: ?>
+        <p class="muted">Aún no hay pedidos registrados.</p>
+        <?php endif; ?>
+      </section>
+      <?php endif; ?>
+
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="reservas">
         <div class="admin-section-tools">
           <div class="admin-reservas-filter">
@@ -1246,6 +1337,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         </div>
         <p class="muted admin-reservas-empty" data-admin-reserva-empty data-empty-base="No hay reservas para el estado seleccionado."<?php echo $renderedCount > 0 ? ' hidden' : ''; ?>>No hay reservas para el estado seleccionado.</p>
       </section>
+      <?php endif; ?>
 
       <section class="admin-section" id="clientes">
         <div class="admin-clients">
@@ -1338,6 +1430,8 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
           </div>
         </div>
       </section>
+
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="funcionarios">
         <div class="admin-barbers" data-admin-barber-services="<?php echo e($serviceNameJson); ?>">
           <?php
@@ -1452,6 +1546,8 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
           <p class="muted admin-barbers-empty" data-empty-base="Aún no tienes Profesionales registrados."<?php echo $hasBarbers ? ' hidden' : ''; ?>>Aún no tienes Profesionales registrados.</p>
         </div>
       </section>
+      <?php endif; ?>
+      <?php if (!$isStoreMode): ?>
       <section class="admin-section" id="servicios">
         <div class="admin-services-header">
           <button type="button" class="btn btn-success admin-services-add" data-admin-service-create>
@@ -1539,6 +1635,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         </div>
         <p class="muted admin-services-empty" data-empty-base="A&uacute;n no tienes Servicios registrados."<?php echo ($serviceCount ?? 0) > 0 ? ' hidden' : ''; ?>>A&uacute;n no tienes Servicios registrados.</p>
       </section>
+      <?php endif; ?>
       <section class="admin-section" id="productos">
         <?php
           $productCountTotal = 0;
@@ -1683,7 +1780,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             $configOptions = [
               ['id' => 'info', 'title' => 'Info. del Negocio', 'icon' => 'bx-buildings'],
               ['id' => 'horarios', 'title' => 'Horarios', 'icon' => 'bx-time-five'],
-              ['id' => 'reservas', 'title' => 'Config. de Reservas', 'icon' => 'bx-calendar-check'],
+              ['id' => 'reservas', 'title' => $isStoreMode ? 'Config. de Carrito / Pedidos' : 'Config. de Reservas', 'icon' => $isStoreMode ? 'bx-cart' : 'bx-calendar-check'],
               ['id' => 'moneda', 'title' => 'Config. de Moneda', 'icon' => 'bx-money'],
               ['id' => 'fiscal', 'title' => 'Config. Fiscal', 'icon' => 'bx-receipt'],
               ['id' => 'mercadopago', 'title' => 'Mercado Pago', 'icon' => 'bx-credit-card'],
@@ -1691,7 +1788,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
-              ['id' => 'funciones', 'title' => 'Funciones', 'icon' => 'bx-wrench'],
+              ['id' => 'funciones', 'title' => $isStoreMode ? 'Modo del comercio' : 'Funciones', 'icon' => 'bx-wrench'],
               ['id' => 'temas', 'title' => 'Tema visual', 'icon' => 'bx-palette'],
             ];
             foreach ($configOptions as $option):
@@ -1714,16 +1811,18 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         <span>Resumen</span>
         <span class="admin-bottomnav__badge" data-bottom-badge="resumen">1</span>
       </a>
+      <?php if ($isStoreMode): ?>
+      <a class="admin-bottomnav__item" href="#pedidos" data-admin-nav-target="pedidos">
+        <i class="bx bx-cart" aria-hidden="true"></i>
+        <span>Pedidos</span>
+      </a>
+      <?php else: ?>
       <a class="admin-bottomnav__item" href="#reservas" data-admin-nav-target="reservas">
         <i class="bx bx-calendar" aria-hidden="true"></i>
         <span>Reservas</span>
         <span class="admin-bottomnav__badge" data-bottom-badge="reservas"<?php echo $pendingReservations > 0 ? '' : ' hidden'; ?>>
           <?php echo (int)$pendingReservations; ?>
         </span>
-      </a>
-      <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
-        <i class="bx bx-user" aria-hidden="true"></i>
-        <span>Clientes</span>
       </a>
       <a class="admin-bottomnav__item" href="#funcionarios" data-admin-nav-target="funcionarios">
         <i class="bx bx-customize" aria-hidden="true"></i>
@@ -1732,6 +1831,11 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
       <a class="admin-bottomnav__item" href="#servicios" data-admin-nav-target="servicios">
         <i class="bx bx-cut" aria-hidden="true"></i>
         <span>Servicios</span>
+      </a>
+      <?php endif; ?>
+      <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
+        <i class="bx bx-user" aria-hidden="true"></i>
+        <span>Clientes</span>
       </a>
       <a class="admin-bottomnav__item" href="#productos" data-admin-nav-target="productos">
         <i class="bx bx-package" aria-hidden="true"></i>
@@ -1782,7 +1886,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     ] as $adminComponentFile) {
         $adminComponentPath = $adminComponentsDir . '/' . $adminComponentFile;
         if (is_file($adminComponentPath)) {
-            include $adminComponentPath;
+            echo include $adminComponentPath;
         }
     }
     ?>
@@ -1867,6 +1971,15 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         }
         if (dash.reservas && url.includes('reservas_admin.php')) {
           return dash.reservas;
+        }
+        if (dash.servicios && url.includes('servicios.php')) {
+          return dash.servicios;
+        }
+        if (dash.productos && url.includes('productos.php')) {
+          return dash.productos;
+        }
+        if (dash.barberos && url.includes('barberos.php')) {
+          return dash.barberos;
         }
         return url;
       };
@@ -2020,19 +2133,22 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/layout-sidebar.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/bottom-nav.js?v=4')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-filter.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-list.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/clientes-form.js')); ?>"></script>
+  <?php if (!$isStoreMode): ?>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-filter.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/barberos-list.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-create-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/barbero-edit-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/reserva-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/reservas-summary-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/servicios-crud.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/service-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-reservas-modal.js')); ?>"></script>
+  <?php endif; ?>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-summary-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/cliente-modal.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/servicios-crud.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-crud.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/service-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-info-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-auth-guard.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-redes.js')); ?>"></script>
@@ -2044,7 +2160,6 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-mercadopago.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-reservas-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>

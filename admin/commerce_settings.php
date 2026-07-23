@@ -8,6 +8,7 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
@@ -98,9 +99,11 @@ $keys = $db->fetchAll('SELECT * FROM api_keys WHERE id_commerce = :c ORDER BY pr
     <div class="topbar__brand"><a href="commerce_dashboard.php"><strong>Agendarte</strong></a></div>
     <nav class="topbar__nav">
         <a href="commerce_dashboard.php">Resumen</a>
+        <a href="<?= htmlspecialchars(CommercePanel::urlForSlug((string)$commerce['slug']), ENT_QUOTES, 'UTF-8') ?>">Panel del negocio</a>
         <a href="commerce_appointments.php">Turnos</a>
         <a href="commerce_clients.php">Clientes</a>
         <a href="commerce_services.php">Servicios</a>
+        <a href="commerce_plan.php">Mi Plan</a>
         <a href="commerce_settings.php" class="is-active">Configuración</a>
     </nav>
     <div class="topbar__user">
