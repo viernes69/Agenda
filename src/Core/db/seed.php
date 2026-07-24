@@ -40,7 +40,10 @@ final class Seed
         ];
         $ordenSeed = 10;
         foreach ($rubros as $r) {
-            $exists = $db->fetchOne('SELECT id_rubro, imagen FROM rubros WHERE tipo = :t', [':t' => $r['tipo']]);
+            $exists = $db->fetchOne(
+                'SELECT id_rubro, nombre, descripcion, imagen, activo, orden FROM rubros WHERE tipo = :t',
+                [':t' => $r['tipo']]
+            );
             if (!$exists) {
                 $r['activo'] = 1;
                 $r['orden']  = $ordenSeed;
@@ -49,9 +52,25 @@ final class Seed
                 continue;
             }
             $ordenSeed += 10;
-            // Backfill imagen vacía (p.ej. reseed de desarrollo sin paths)
+            // Backfill de seeds viejos/parciales.
+            $updates = [];
+            if (trim((string)($exists['nombre'] ?? '')) === '') {
+                $updates['nombre'] = $r['nombre'];
+            }
+            if (trim((string)($exists['descripcion'] ?? '')) === '') {
+                $updates['descripcion'] = $r['descripcion'];
+            }
             if (trim((string)($exists['imagen'] ?? '')) === '') {
-                $db->update('rubros', ['imagen' => $r['imagen'], 'activo' => 1], 'id_rubro = :id', [
+                $updates['imagen'] = $r['imagen'];
+            }
+            if ((int)($exists['orden'] ?? 0) === 0) {
+                $updates['orden'] = $ordenSeed - 10;
+            }
+            if ((int)($exists['activo'] ?? 0) !== 1) {
+                $updates['activo'] = 1;
+            }
+            if ($updates !== []) {
+                $db->update('rubros', $updates, 'id_rubro = :id', [
                     ':id' => (int)$exists['id_rubro'],
                 ]);
             }

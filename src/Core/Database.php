@@ -107,6 +107,7 @@ final class Database
             }
         }
 
+        $this->ensureDefaultRubros();
         $this->ensureMembershipPlanColumns();
         $this->ensureSubscriptionBillingPeriod();
         $this->ensureServicesIdLocal();
@@ -117,6 +118,79 @@ final class Database
         $this->ensureOAuthAuth();
         $this->ensureRateLimitsTable();
         $this->ensurePlatformSettingsTable();
+    }
+
+    /**
+     * Keeps a fresh/partial production DB from rendering the one-card landing fallback.
+     * Existing customized rubros are left intact, except when none are active.
+     */
+    private function ensureDefaultRubros(): void
+    {
+        $defaults = [
+            ['Abogacía', 'abogados', 'Servicios legales y asesoramiento', 'src/media/carousel/abogados.jpg', 10],
+            ['Barbería', 'barberia', 'Barberías y peluquerías', 'src/media/carousel/barberias.jpg', 20],
+            ['Belleza y estética', 'belleza', 'Salones y spas', 'src/media/carousel/clinicas_estetica.jpg', 30],
+            ['Clínica de Estética', 'estetica', 'Servicios de belleza y cuidado personal', 'src/media/carousel/clinicas_estetica.jpg', 40],
+            ['Coaching', 'coaches', 'Coaching personal y profesional', 'src/media/carousel/coaches.jpg', 50],
+            ['Consultorios', 'consultorios', 'Servicios médicos y de salud', 'src/media/carousel/consultorios.jpg', 60],
+            ['Dentistas', 'dentistas', 'Servicios odontológicos y cuidado dental', 'src/media/carousel/dentistas.jpg', 70],
+            ['Emprendedores', 'emprendedores', 'Asesoría para emprendedores', 'src/media/carousel/emprendedores.jpg', 80],
+            ['Lavaderos', 'lavaderos', 'Servicios de lavado y limpieza de vehículos', 'src/media/carousel/lavaderos.jpg', 90],
+            ['Locales de Eventos', 'eventos', 'Espacios para eventos y celebraciones', 'src/media/carousel/fiestas_eventos.jpg', 100],
+            ['Odontología', 'odontologia', 'Consultorios dentales', 'src/media/carousel/dentistas.jpg', 110],
+            ['Profesores Particulares', 'profesores', 'Clases y tutorías personalizadas', 'src/media/carousel/profesionales.jpg', 120],
+            ['Tienda', 'tienda', 'Tiendas y retail con agenda de atención', 'src/media/carousel/emprendedores.jpg', 130],
+        ];
+
+        $activeCount = (int)$this->pdo->query('SELECT COUNT(*) FROM rubros WHERE activo = 1')->fetchColumn();
+        $reactivateDefaults = $activeCount === 0;
+
+        $select = $this->pdo->prepare(
+            'SELECT id_rubro, nombre, descripcion, imagen, activo, orden FROM rubros WHERE tipo = ?'
+        );
+        $insert = $this->pdo->prepare(
+            "INSERT INTO rubros (nombre, tipo, descripcion, imagen, activo, orden, created_at, updated_at)
+             VALUES (?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))"
+        );
+
+        foreach ($defaults as [$nombre, $tipo, $descripcion, $imagen, $orden]) {
+            $select->execute([$tipo]);
+            $row = $select->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                $insert->execute([$nombre, $tipo, $descripcion, $imagen, $orden]);
+                continue;
+            }
+
+            $sets = [];
+            $params = [];
+            if (trim((string)($row['nombre'] ?? '')) === '') {
+                $sets[] = 'nombre = ?';
+                $params[] = $nombre;
+            }
+            if (trim((string)($row['descripcion'] ?? '')) === '') {
+                $sets[] = 'descripcion = ?';
+                $params[] = $descripcion;
+            }
+            if (trim((string)($row['imagen'] ?? '')) === '') {
+                $sets[] = 'imagen = ?';
+                $params[] = $imagen;
+            }
+            if ((int)($row['orden'] ?? 0) === 0) {
+                $sets[] = 'orden = ?';
+                $params[] = $orden;
+            }
+            if ($reactivateDefaults && (int)($row['activo'] ?? 0) !== 1) {
+                $sets[] = 'activo = 1';
+            }
+            if ($sets === []) {
+                continue;
+            }
+
+            $sets[] = "updated_at = datetime('now')";
+            $params[] = (int)$row['id_rubro'];
+            $sql = 'UPDATE rubros SET ' . implode(', ', $sets) . ' WHERE id_rubro = ?';
+            $this->pdo->prepare($sql)->execute($params);
+        }
     }
 
     private function ensurePlatformSettingsTable(): void
@@ -411,6 +485,45 @@ final class Database
     private function seedMembershipPlanDefaults(): void
     {
         $defaults = MembershipPlan::catalogDefaults();
+        $prices = ['Free' => 0.0, 'Básico' => 299.0, 'Profesional' => 599.0];
+        $trials = ['Free' => 30, 'Básico' => 0, 'Profesional' => 0];
+        $hasActiveModern = (int)$this->pdo->query(
+            "SELECT COUNT(*) FROM memberships WHERE activo = 1 AND nombre IN ('Free', 'Básico', 'Profesional')"
+        )->fetchColumn() > 0;
+
+        $selectByName = $this->pdo->prepare(
+            'SELECT id_membership, activo FROM memberships WHERE nombre = ? ORDER BY id_membership ASC LIMIT 1'
+        );
+        $insertDefault = $this->pdo->prepare(
+            "INSERT INTO memberships
+                (nombre, descripcion, precio, moneda, duracion_dias, trial_dias, activo,
+                 features, limits, anual_habilitado, descuento_anual_pct, created_at, updated_at)
+             VALUES (?, ?, ?, 'UYU', 30, ?, 1, ?, ?, ?, ?, datetime('now'), datetime('now'))"
+        );
+        $reactivateDefault = $this->pdo->prepare(
+            "UPDATE memberships SET activo = 1, updated_at = datetime('now') WHERE id_membership = ?"
+        );
+
+        foreach ($defaults as $name => $def) {
+            $selectByName->execute([$name]);
+            $row = $selectByName->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                $insertDefault->execute([
+                    $name,
+                    (string)($def['descripcion'] ?? ''),
+                    (float)($prices[$name] ?? 0),
+                    (int)($trials[$name] ?? 0),
+                    json_encode($def['features'], JSON_UNESCAPED_UNICODE) ?: '[]',
+                    json_encode($def['limits'], JSON_UNESCAPED_UNICODE) ?: '{}',
+                    (int)($def['anual_habilitado'] ?? 0),
+                    (float)($def['descuento_anual_pct'] ?? 0),
+                ]);
+                continue;
+            }
+            if (!$hasActiveModern && (int)($row['activo'] ?? 0) !== 1) {
+                $reactivateDefault->execute([(int)$row['id_membership']]);
+            }
+        }
 
         $rows = $this->pdo->query(
             'SELECT id_membership, nombre, descripcion, features, limits, anual_habilitado, descuento_anual_pct FROM memberships'
