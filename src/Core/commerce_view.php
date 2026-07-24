@@ -179,6 +179,13 @@ if (!function_exists('agenduy_render_commerce')) {
         $showBooking = $showServices && !empty($funciones['reservas']);
         $showProducts = !empty($funciones['productos']) && $localProducts !== [];
         $showCatalogSection = $showProducts || $isStoreMode;
+        $hasConfiguredSchedule = false;
+        foreach (array_keys($horarios) as $dayKey) {
+            if (Availability::isWeekdayConfiguredOpen($scheduleRaw, $dayKey)) {
+                $hasConfiguredSchedule = true;
+                break;
+            }
+        }
         $scheduleSummary = CommercePublic::scheduleSummary($scheduleRaw);
         $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0));
         $coverImageRel = CommercePublic::rubroCoverImage((int)($commerce['id_rubro'] ?? 0), (string)($commerce['rubro_nombre'] ?? ''));
@@ -307,7 +314,9 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a href="#productos"><?= $isStoreMode ? 'Catalogo' : 'Productos' ?></a>
                     <?php endif; ?>
                     <a href="#nosotros">Nosotros</a>
+                    <?php if ($hasConfiguredSchedule): ?>
                     <a href="#horarios">Horarios</a>
+                    <?php endif; ?>
                     <a href="#contacto">Contacto</a>
                 </nav>
                 <div style="display:flex; gap:.5rem; align-items:center">
@@ -357,7 +366,9 @@ if (!function_exists('agenduy_render_commerce')) {
                 <a href="#productos"><?= $isStoreMode ? 'Catalogo' : 'Productos' ?></a>
                 <?php endif; ?>
                 <a href="#nosotros">Nosotros</a>
+                <?php if ($hasConfiguredSchedule): ?>
                 <a href="#horarios">Horarios</a>
+                <?php endif; ?>
                 <a href="#contacto">Contacto</a>
                 <?php if ($showBooking): ?>
                 <a href="#reservar">Reservar ahora</a>
@@ -638,6 +649,7 @@ if (!function_exists('agenduy_render_commerce')) {
             </div>
         </section>
 
+        <?php if ($hasConfiguredSchedule): ?>
         <section id="horarios" class="alt">
             <div class="wrap">
                 <span class="eyebrow">Horarios</span>
@@ -661,6 +673,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
         <section id="contacto">
             <div class="wrap">
