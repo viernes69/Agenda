@@ -187,7 +187,7 @@ if (!function_exists('agenduy_render_commerce')) {
             }
         }
         $scheduleSummary = CommercePublic::scheduleSummary($scheduleRaw);
-        $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0));
+        $aboutHighlights = CommercePublic::highlights((int)($commerce['id_rubro'] ?? 0), $businessType);
         $coverImageRel = CommercePublic::rubroCoverImage((int)($commerce['id_rubro'] ?? 0), (string)($commerce['rubro_nombre'] ?? ''));
         $coverImageUrl = url($coverImageRel);
         $cssPath = dirname(__DIR__, 2) . '/assets/css/commerce-public.css';
@@ -196,6 +196,11 @@ if (!function_exists('agenduy_render_commerce')) {
         $titulo = (string)($commerce['nombre'] ?? 'Agenduy');
         $slogan = (string)($commerce['slogan'] ?? '');
         $descripcion = (string)($commerce['descripcion'] ?? '');
+        $aboutDescription = $descripcion !== ''
+            ? $descripcion
+            : ($isStoreMode
+                ? 'Somos una tienda pensada para que encuentres productos, consultes disponibilidad y coordines tu pedido de forma simple.'
+                : 'Somos un equipo con agenda organizada para que puedas consultar servicios, elegir disponibilidad y reservar sin vueltas.');
         $ciudad = (string)($commerce['ciudad'] ?? '');
         $calle = (string)($commerce['calle'] ?? '');
         $telefono = (string)($commerce['telefono'] ?? '');
@@ -636,7 +641,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <div class="about__text">
                     <span class="eyebrow">Nosotros</span>
                     <h2 class="section-title">Sobre <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h2>
-                    <p><?= $descripcion !== '' ? htmlspecialchars($descripcion, ENT_QUOTES, 'UTF-8') : 'Somos un equipo de profesionales dedicados a ofrecerte la mejor experiencia. Cada visita es una oportunidad para que te sientas atendido como te merecés.' ?></p>
+                    <p><?= htmlspecialchars($aboutDescription, ENT_QUOTES, 'UTF-8') ?></p>
                     <ul class="about-highlights">
                         <?php foreach ($aboutHighlights as $highlight): ?>
                         <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= htmlspecialchars($highlight, ENT_QUOTES, 'UTF-8') ?></span></li>

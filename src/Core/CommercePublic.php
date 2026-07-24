@@ -125,15 +125,23 @@ final class CommercePublic
     /**
      * @return list<string>
      */
-    public static function highlights(int $idRubro): array
+    public static function highlights(int $idRubro, string $businessType = 'servicios'): array
     {
+        if ($businessType === 'tienda') {
+            return [
+                'Catálogo online de productos',
+                'Pedidos y consultas por WhatsApp',
+                'Entrega o retiro coordinado con la tienda',
+            ];
+        }
+
         $map = [
             9  => ['Tratamientos personalizados', 'Reservas online sin llamadas', 'Recordatorios por email y WhatsApp'],
             10 => ['Profesionales experimentados', 'Reservas online sin llamadas', 'Confirmación inmediata'],
             11 => ['Atención profesional', 'Turnos online las 24 h', 'Recordatorios automáticos'],
         ];
         return $map[$idRubro] ?? [
-            'Profesionales dedicados',
+            'Atención con agenda organizada',
             'Reservas online sin llamadas',
             'Confirmación por email y WhatsApp',
         ];
