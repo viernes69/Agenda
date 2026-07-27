@@ -11,7 +11,7 @@ use RuntimeException;
 final class MercadoPago
 {
     private const PROVIDER = 'mercadopago';
-    private const DEFAULT_PUBLIC_BASE_URL = 'https://www.agenduy.uy';
+    private const DEFAULT_PUBLIC_BASE_URL = 'https://agendarte.oficiosya.net';
 
     /**
      * Credenciales globales del super admin. Se usan para cobrar membresias.
@@ -121,6 +121,24 @@ final class MercadoPago
     public static function createPreapproval(array $config, array $payload): array
     {
         return self::requestJson('POST', '/preapproval', $config, $payload);
+    }
+
+    /**
+     * El recurso de Mercado Pago puede traer dos URLs: produccion y sandbox.
+     * En modo prueba siempre debe ganar sandbox_init_point.
+     *
+     * @param array<string,mixed> $resource
+     */
+    public static function checkoutUrl(array $resource, bool $sandbox): string
+    {
+        $sandboxLink = trim((string)($resource['sandbox_init_point'] ?? ''));
+        $liveLink = trim((string)($resource['init_point'] ?? ''));
+
+        if ($sandbox && $sandboxLink !== '') {
+            return $sandboxLink;
+        }
+
+        return $liveLink !== '' ? $liveLink : $sandboxLink;
     }
 
     /**
@@ -548,7 +566,15 @@ final class MercadoPago
                 || str_contains($lowerMessage, 'valid url')) {
                 throw new RuntimeException(
                     'Mercado Pago rechazo la URL de retorno. Configura una URL publica de Agendarte '
-                    . '(por ejemplo https://www.agenduy.uy) o usa un tunel publico si estas en localhost.'
+                    . '(por ejemplo https://agendarte.oficiosya.net) o usa un tunel publico si estas en localhost.'
+                );
+            }
+            if (str_contains($lowerMessage, 'both payer and collector')
+                || str_contains($lowerMessage, 'real or test users')) {
+                throw new RuntimeException(
+                    'Mercado Pago esta en modo prueba: usa credenciales de vendedor de prueba '
+                    . 'y una cuenta compradora de prueba del mismo pais, o desactiva sandbox '
+                    . 'y usa credenciales reales.'
                 );
             }
             throw new RuntimeException($message);

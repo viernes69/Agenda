@@ -416,6 +416,10 @@ body {
   display: grid;
   gap: .85rem;
   padding: .15rem 0 .35rem;
+  width: 100%;
+  max-width: min(760px, 100%);
+  margin-inline: auto;
+  align-content: start;
 }
 
 .plan-membership-pay__back {
@@ -457,6 +461,7 @@ body {
 
 .plan-membership-pay__methods {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: .55rem;
   margin-top: .25rem;
 }
@@ -489,7 +494,7 @@ body {
 
 .plan-membership-transfer__dl > div {
   display: grid;
-  grid-template-columns: 7.5rem 1fr;
+  grid-template-columns: minmax(7rem, .35fr) 1fr;
   gap: .5rem;
   font-size: .9rem;
 }
@@ -3769,6 +3774,62 @@ body {
 .admin-layout .modal__body {
   padding-bottom: calc(1.5rem + var(--modal-pad-lg));
 }
+}
+
+.admin-layout .modal__dialog--lg.plan-membership-modal {
+  max-width: min(1120px, calc(100vw - clamp(.75rem, 3vw, 2rem)));
+  width: 100%;
+  max-height: min(860px, calc(100dvh - var(--bottomnav-offset) - var(--modal-pad-sm)));
+  min-height: 0;
+}
+
+.admin-layout .plan-membership-modal .modal__header {
+  flex: 0 0 auto;
+}
+
+.admin-layout .plan-membership-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: clamp(.25rem, 1vw, .75rem);
+}
+
+@media (min-width: 641px) {
+  .admin-layout .modal__dialog--lg.plan-membership-modal {
+    max-height: min(860px, calc(100dvh - var(--bottomnav-offset) - var(--modal-pad-lg)));
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-layout .modal__dialog--lg.plan-membership-modal {
+    max-width: calc(100vw - .75rem);
+    border-radius: .85rem;
+    max-height: calc(100dvh - var(--bottomnav-offset) - .75rem);
+  }
+
+  .admin-layout .plan-membership-modal__body {
+    padding-inline: .85rem;
+  }
+
+  .plan-membership-pay__methods {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-membership-transfer__dl > div {
+    grid-template-columns: 1fr;
+    gap: .15rem;
+  }
+
+  .plan-membership-card {
+    padding: 1rem;
+    border-radius: .85rem;
+  }
+
+  .plan-membership-carousel {
+    grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+  }
 }
 
 .admin-modal-loading {

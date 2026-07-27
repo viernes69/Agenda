@@ -280,7 +280,7 @@ try {
     try {
         $preference = MercadoPago::createPreference($mp, $preferencePayload);
         $preferenceId = trim((string)($preference['id'] ?? ''));
-        $checkoutUrl = checkoutUrlFromPreference($preference, !empty($mp['sandbox']));
+        $checkoutUrl = MercadoPago::checkoutUrl($preference, !empty($mp['sandbox']));
         if ($preferenceId === '' || $checkoutUrl === '') {
             throw new RuntimeException('Mercado Pago no devolvio una URL de checkout.');
         }
@@ -339,6 +339,7 @@ try {
         'checkout_url' => $checkoutUrl,
         'init_point' => $preference['init_point'] ?? null,
         'sandbox_init_point' => $preference['sandbox_init_point'] ?? null,
+        'sandbox' => !empty($mp['sandbox']),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (InvalidArgumentException $e) {
     http_response_code(400);
@@ -389,14 +390,6 @@ function preferencePayer(string $name, string $email, string $phone): array
         $payer['phone'] = ['number' => $digits];
     }
     return $payer;
-}
-
-function checkoutUrlFromPreference(array $preference, bool $sandbox): string
-{
-    if ($sandbox && !empty($preference['sandbox_init_point'])) {
-        return (string)$preference['sandbox_init_point'];
-    }
-    return trim((string)($preference['init_point'] ?? $preference['sandbox_init_point'] ?? ''));
 }
 
 function markStorePaymentRejected(Database $db, string $slug, int $orderId, int $paymentRowId, string $reason): void

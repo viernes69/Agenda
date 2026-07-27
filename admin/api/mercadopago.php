@@ -51,6 +51,7 @@ $action = $_GET['action'] ?? $payload['action'] ?? 'create_preapproval';
 try {
     $db = Database::getInstance();
     $mpConfig = MercadoPago::platformConfig();
+    $sandboxMode = !empty($mpConfig['sandbox']);
 
     if (empty($mpConfig['enabled']) || trim((string)($mpConfig['access_token'] ?? '')) === '') {
         throw new RuntimeException('Mercado Pago de membresias no esta configurado por el super admin.');
@@ -120,6 +121,10 @@ try {
     }
 
     $decoded = MercadoPago::createPreapproval($mpConfig, $request);
+    $checkoutUrl = MercadoPago::checkoutUrl($decoded, $sandboxMode);
+    if ($cardToken === '' && $checkoutUrl === '') {
+        throw new RuntimeException('Mercado Pago no devolvio una URL de checkout.');
+    }
     // Si quedó autorizada o pending, registramos la subscription local
     $mpStatus = (string)($decoded['status'] ?? 'pending');
     $localStatus = $mpStatus === 'authorized' ? 'active' : 'past_due';
@@ -168,6 +173,8 @@ try {
         'ok'                 => true,
         'preapproval_id'     => $decoded['id'] ?? null,
         'status'             => $mpStatus,
+        'sandbox'            => $sandboxMode,
+        'checkout_url'       => $checkoutUrl,
         'init_point'         => $decoded['init_point'] ?? null,
         'sandbox_init_point' => $decoded['sandbox_init_point'] ?? null,
         'public_key'         => (string)($mpConfig['public_key'] ?? ''),

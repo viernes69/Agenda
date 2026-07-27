@@ -82,7 +82,7 @@ ob_start();
         <div class="admin-form__grid admin-form__grid--2cols">
           <label class="admin-form__field" for="admin-config-mercadopago-public-base-url">
             <span class="admin-form__label">URL publica de la tienda</span>
-            <input id="admin-config-mercadopago-public-base-url" type="url" placeholder="https://www.agenduy.uy" data-admin-config-mercadopago-field="mercado_pago.public_base_url">
+            <input id="admin-config-mercadopago-public-base-url" type="url" placeholder="https://agendarte.oficiosya.net" data-admin-config-mercadopago-field="mercado_pago.public_base_url">
             <small class="admin-form__hint">Necesaria si probas Mercado Pago desde localhost.</small>
           </label>
           <label class="admin-form__field" for="admin-config-mercadopago-success-url">

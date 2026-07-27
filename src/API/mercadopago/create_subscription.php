@@ -49,6 +49,10 @@ try {
     if ($accessToken === '') {
         throw new RuntimeException('ACCESS_TOKEN de Mercado Pago faltante.');
     }
+    $mode = strtolower(trim((string)($mpConfig['modo'] ?? $mpConfig['MODO'] ?? $mpConfig['MODE'] ?? '')));
+    $sandbox = array_key_exists('sandbox', $mpConfig)
+        ? filter_var($mpConfig['sandbox'], FILTER_VALIDATE_BOOLEAN)
+        : ($mode !== 'live' && $mode !== 'prod' && $mode !== 'production');
 
     $planesRaw = Autoload::get('planes');
     $planes = [];
@@ -200,6 +204,11 @@ try {
         $message = is_array($decoded) && isset($decoded['message'])
             ? (string)$decoded['message']
             : 'Mercado Pago rechazo la solicitud.';
+        $lowerMessage = strtolower($message);
+        if (str_contains($lowerMessage, 'both payer and collector')
+            || str_contains($lowerMessage, 'real or test users')) {
+            $message = 'Mercado Pago esta en modo prueba: usa credenciales de vendedor de prueba y una cuenta compradora de prueba del mismo pais, o desactiva sandbox y usa credenciales reales.';
+        }
         throw new RuntimeException($message);
     }
     if (!is_array($decoded)) {
@@ -212,6 +221,9 @@ try {
     } elseif (isset($decoded['auto_recurring']) && is_array($decoded['auto_recurring']) && isset($decoded['auto_recurring']['next_payment_date'])) {
         $nextPayment = (string)$decoded['auto_recurring']['next_payment_date'];
     }
+    $sandboxLink = trim((string)($decoded['sandbox_init_point'] ?? ''));
+    $liveLink = trim((string)($decoded['init_point'] ?? ''));
+    $checkoutUrl = ($sandbox && $sandboxLink !== '') ? $sandboxLink : ($liveLink !== '' ? $liveLink : $sandboxLink);
 
     echo json_encode([
         'ok'                 => true,
@@ -220,9 +232,11 @@ try {
         'status_detail'      => $decoded['status_detail'] ?? null,
         'next_payment_date'  => $nextPayment,
         'payer_email'        => $decoded['payer_email'] ?? $resolvedPayerEmail,
+        'sandbox'            => $sandbox,
+        'checkout_url'       => $checkoutUrl,
         'init_point'         => $decoded['init_point'] ?? null,
         'sandbox_init_point' => $decoded['sandbox_init_point'] ?? null,
-        'requires_redirect'  => !empty($decoded['init_point']),
+        'requires_redirect'  => $checkoutUrl !== '',
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $status = $e instanceof InvalidArgumentException ? 400 : 422;

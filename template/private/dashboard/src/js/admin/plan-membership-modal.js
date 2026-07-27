@@ -18,6 +18,22 @@
   let pendingPay = null;
 
   const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-UY');
+  const mercadoPagoTestUsersHelp = 'Mercado Pago esta en modo prueba: usa una cuenta compradora de prueba del mismo pais que la cuenta vendedora, o pasa Mercado Pago a produccion con credenciales reales.';
+
+  const friendlyMercadoPagoError = (message) => {
+    const text = String(message || '').trim();
+    if (/both payer and collector/i.test(text) || /real or test users/i.test(text)) {
+      return mercadoPagoTestUsersHelp;
+    }
+    return text || 'No se pudo iniciar Mercado Pago.';
+  };
+
+  const mercadoPagoCheckoutUrl = (payload) => {
+    if (!payload) return '';
+    if (payload.checkout_url) return String(payload.checkout_url);
+    if (payload.sandbox && payload.sandbox_init_point) return String(payload.sandbox_init_point);
+    return String(payload.init_point || payload.sandbox_init_point || '');
+  };
 
   const setFeedback = (message, kind) => {
     if (!feedback) return;
@@ -400,11 +416,11 @@
 
     if (method === 'mercadopago') {
       if (!mpUrl) {
-        setFeedback('MercadoPago no está configurado.', 'error');
+        setFeedback('Mercado Pago no esta configurado.', 'error');
         return;
       }
       methodBtn.disabled = true;
-      setFeedback('Abriendo MercadoPago…', 'ok');
+      setFeedback('Abriendo Mercado Pago...', 'ok');
       try {
         const response = await fetch(mpUrl + '?action=create_preapproval', {
           method: 'POST',
@@ -426,16 +442,16 @@
         } catch (_) {
           payload = null;
         }
-        const link = payload && (payload.init_point || payload.sandbox_init_point);
+        const link = mercadoPagoCheckoutUrl(payload);
         if (!response.ok || !payload || payload.ok !== true || !link) {
-          const errMsg = (payload && payload.error) ? String(payload.error) : 'No se pudo iniciar MercadoPago.';
+          const errMsg = friendlyMercadoPagoError(payload && payload.error);
           setFeedback(errMsg, 'error');
           methodBtn.disabled = false;
           return;
         }
         window.location.href = String(link);
       } catch (_) {
-        setFeedback('Error de red al contactar MercadoPago.', 'error');
+        setFeedback('Error de red al contactar Mercado Pago.', 'error');
         methodBtn.disabled = false;
       }
     }

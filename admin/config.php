@@ -202,7 +202,7 @@ require __DIR__ . '/partials/header.php';
                 </div>
                 <div class="field">
                     <label>URL publica de Agendarte</label>
-                    <input type="url" name="public_base_url" value="<?= htmlspecialchars($cfg['public_base_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="https://www.agenduy.uy">
+                    <input type="url" name="public_base_url" value="<?= htmlspecialchars($cfg['public_base_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="https://agendarte.oficiosya.net">
                     <span class="hint">Usala si estas probando en localhost: Mercado Pago no acepta localhost como back_url.</span>
                 </div>
                 <div class="field">
