@@ -222,6 +222,17 @@ if (!$hasConfiguredBusinessType) {
     \Agenduy\Core\CommerceRegistrar::featuresForBusinessType($businessType)
   );
 }
+$infoBarberia['features'] = $funcionesFromCentral;
+$carritoFromLegacy = isset($infoBarberia['carrito']) && is_array($infoBarberia['carrito']) ? $infoBarberia['carrito'] : [];
+try {
+  $infoBarberia['carrito'] = \Agenduy\Core\CommerceSettings::get(
+    (int)\Agenduy\Core\Auth::commerceId(),
+    'carrito',
+    $carritoFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('carrito')
+  );
+} catch (Throwable $e) {
+  $infoBarberia['carrito'] = $carritoFromLegacy ?: \Agenduy\Core\CommerceSettings::defaultsForSection('carrito');
+}
 $isStoreMode = $businessType === 'tienda';
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
@@ -1821,7 +1832,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             $configOptions = [
               ['id' => 'info', 'title' => 'Info. del Negocio', 'icon' => 'bx-buildings'],
               ['id' => 'horarios', 'title' => 'Horarios', 'icon' => 'bx-time-five'],
-              ['id' => 'reservas', 'title' => $isStoreMode ? 'Config. de Carrito / Pedidos' : 'Config. de Reservas', 'icon' => $isStoreMode ? 'bx-cart' : 'bx-calendar-check'],
+              ['id' => $isStoreMode ? 'carrito' : 'reservas', 'title' => $isStoreMode ? 'Config. de Carrito / Pedidos' : 'Config. de Reservas', 'icon' => $isStoreMode ? 'bx-cart' : 'bx-calendar-check'],
               ['id' => 'moneda', 'title' => 'Config. de Moneda', 'icon' => 'bx-money'],
               ['id' => 'fiscal', 'title' => 'Config. Fiscal', 'icon' => 'bx-receipt'],
               ['id' => 'mercadopago', 'title' => 'Mercado Pago', 'icon' => 'bx-credit-card'],
@@ -1914,6 +1925,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         'admin_config_seo_modal.php',
         'admin_config_notifications_modal.php',
         'admin_config_features_modal.php',
+        'admin_config_cart_modal.php',
         'admin_config_mercadopago_modal.php',
         'admin_config_fiscal_modal.php',
         'admin_config_moneda_modal.php',
@@ -2197,6 +2209,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-notificaciones.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-legales.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-features.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-cart.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-theme.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>

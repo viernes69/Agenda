@@ -141,6 +141,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $funciones = CommerceSettings::get($commerceId, 'funciones', $legacyInfo['features'] ?? CommerceSettings::defaultsForSection('funciones'));
         $tema = CommerceSettings::get($commerceId, 'tema', $legacyInfo['temas'] ?? CommerceSettings::defaultsForSection('tema'));
         $reservasCfg = CommerceSettings::get($commerceId, 'reservas', $legacyInfo['reservas'] ?? CommerceSettings::defaultsForSection('reservas'));
+        $carritoCfg = CommerceSettings::get($commerceId, 'carrito', $legacyInfo['carrito'] ?? CommerceSettings::defaultsForSection('carrito'));
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
         $rubroType = trim((string)($commerce['rubro_tipo'] ?? ($legacyInfo['rubro'] ?? '')));
         $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ($legacyInfo['rubro_nombre'] ?? '')));
@@ -154,6 +155,21 @@ if (!function_exists('agenduy_render_commerce')) {
         $showBooking = $showServices && !empty($funciones['reservas']);
         $showProducts = !empty($funciones['productos']) && $localProducts !== [];
         $showCatalogSection = $showProducts || $isStoreMode;
+        $cartEnabled = $showProducts && !empty($carritoCfg['enabled']);
+        $cartWhatsAppEnabled = $cartEnabled && !empty($carritoCfg['whatsapp_enabled']);
+        $cartMpSettingEnabled = $cartEnabled && !empty($carritoCfg['mercado_pago_enabled']);
+        $cartInstructions = trim((string)($carritoCfg['instructions'] ?? ''));
+        if ($cartInstructions === '') {
+            $pickupEnabled = !array_key_exists('pickup_enabled', $carritoCfg) || !empty($carritoCfg['pickup_enabled']);
+            $deliveryEnabled = !array_key_exists('delivery_enabled', $carritoCfg) || !empty($carritoCfg['delivery_enabled']);
+            if ($pickupEnabled && !$deliveryEnabled) {
+                $cartInstructions = 'Coordinamos el retiro por este medio. Gracias!';
+            } elseif (!$pickupEnabled && $deliveryEnabled) {
+                $cartInstructions = 'Coordinamos la entrega por este medio. Gracias!';
+            } else {
+                $cartInstructions = 'Coordinamos entrega o retiro por este medio. Gracias!';
+            }
+        }
         $hasConfiguredSchedule = false;
         foreach (array_keys($horarios) as $dayKey) {
             if (Availability::isWeekdayConfiguredOpen($scheduleRaw, $dayKey)) {
@@ -221,6 +237,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $storePlan = $isStoreMode ? MembershipPlan::forCommerceId($commerceId) : null;
         $storeMpConfig = $isStoreMode ? MercadoPago::commerceConfig($commerceId, $slug) : [];
         $storeMpCheckoutEnabled = $showProducts
+            && $cartMpSettingEnabled
             && $isStoreMode
             && MercadoPago::isStoreCheckoutAllowed($storePlan)
             && !empty($storeMpConfig['enabled'])
@@ -521,7 +538,7 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap">
                 <span class="eyebrow">Productos</span>
                 <h2 class="section-title">Nuestra tienda</h2>
-                <p class="section-sub">Agregá al carrito y enviá tu pedido por WhatsApp. Coordinamos entrega o retiro en el local.</p>
+                <p class="section-sub"><?= htmlspecialchars($cartEnabled ? 'Agrega al carrito y coordina tu pedido en minutos.' : 'Explora los productos disponibles y consulta al comercio para comprar.', ENT_QUOTES, 'UTF-8') ?></p>
                 <?php if (!$showProducts): ?>
                     <p class="section-sub">El catalogo esta en preparacion. Volve pronto o contacta al comercio para consultar productos.</p>
                     <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
@@ -599,9 +616,15 @@ if (!function_exists('agenduy_render_commerce')) {
                             <?php endif; ?>
                             <div class="prod-card__footer">
                                 <div class="prod-card__price"><?= htmlspecialchars($currencySymbol, ENT_QUOTES, 'UTF-8') ?><?= number_format($pPrice, $currencyDecimals, ',', '.') ?></div>
+                                <?php if ($cartEnabled): ?>
                                 <button type="button" class="btn btn--ghost btn--sm" data-add-to-cart>
                                     <i class="bx bx-cart-add" aria-hidden="true"></i> Agregar
                                 </button>
+                                <?php elseif ($cartWhatsAppEnabled && $whatsappDigits !== ''): ?>
+                                <a class="btn btn--ghost btn--sm" href="https://wa.me/<?= htmlspecialchars($whatsappDigits, ENT_QUOTES, 'UTF-8') ?>?text=<?= rawurlencode('Hola! Quiero consultar por ' . $pName . ' en ' . $titulo) ?>" target="_blank" rel="noopener">
+                                    <i class="bx bxl-whatsapp" aria-hidden="true"></i> Consultar
+                                </a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </article>
@@ -881,7 +904,7 @@ if (!function_exists('agenduy_render_commerce')) {
         </div>
         <?php endif; ?>
 
-        <?php if ($showProducts): ?>
+        <?php if ($cartEnabled): ?>
         <!-- Modal carrito -->
         <div class="modal-bg" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-title">
             <div class="modal modal--cart">
@@ -908,9 +931,11 @@ if (!function_exists('agenduy_render_commerce')) {
                         <i class="bx bx-credit-card" aria-hidden="true"></i> Pagar con Mercado Pago
                     </button>
                     <?php endif; ?>
+                    <?php if ($cartWhatsAppEnabled): ?>
                     <button type="button" class="btn btn--primary" id="cart-wa-btn">
                         <i class="bx bxl-whatsapp" aria-hidden="true"></i> Enviar por WhatsApp
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -953,6 +978,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 'legal' => $legal,
                 'funciones' => $funciones,
                 'reservas' => $reservasCfg,
+                'carrito' => $carritoCfg,
                 'redes' => $redes,
                 'tema' => $tema,
                 'payments' => ['mercado_pago_tienda' => $storeMpCheckoutEnabled],
@@ -965,6 +991,9 @@ if (!function_exists('agenduy_render_commerce')) {
             const currencyDecimals = <?= (int)$currencyDecimals ?>;
             const productsCatalog = <?= json_encode($productsForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             const hasProducts = Array.isArray(productsCatalog) && productsCatalog.length > 0;
+            const cartEnabled = <?= $cartEnabled ? 'true' : 'false' ?>;
+            const cartWhatsAppEnabled = <?= $cartWhatsAppEnabled ? 'true' : 'false' ?>;
+            const cartInstructions = <?= json_encode($cartInstructions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             const cartKey = 'agenduy-cart-' + commerceSlug;
             const cartOrderUrl = <?= json_encode($cartOrderApi, JSON_UNESCAPED_SLASHES) ?>;
             const cartMercadoPagoUrl = <?= json_encode($cartMercadoPagoApi, JSON_UNESCAPED_SLASHES) ?>;
@@ -1064,7 +1093,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (mpUrl) {
                     lines.push('', 'Link de pago Mercado Pago:', mpUrl);
                 }
-                lines.push('', 'Coordinamos entrega o retiro por este medio. Gracias!');
+                lines.push('', cartInstructions || 'Coordinamos entrega o retiro por este medio. Gracias!');
                 return lines.join('\n');
             }
 
@@ -1117,7 +1146,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     cliente_telefono: meta.telefono || '',
                     appointment_id: meta.appointment_id || '',
                     note: meta.note || 'Pedido WhatsApp',
-                    address: meta.address || 'Coordinar por WhatsApp',
+                    address: meta.address || cartInstructions || 'Coordinar por WhatsApp',
                     _csrf: csrfToken
                 };
                 const postOnce = async () => {
@@ -1166,7 +1195,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     cliente_email: meta.email || '',
                     cliente_telefono: meta.telefono || '',
                     note: meta.note || 'Pedido Mercado Pago',
-                    address: meta.address || 'Coordinar entrega o retiro',
+                    address: meta.address || cartInstructions || 'Coordinar entrega o retiro',
                     _csrf: csrfToken
                 };
                 const postOnce = async () => {
@@ -1221,13 +1250,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     document.getElementById('booking-upsell-wa')
                 ].filter(Boolean);
                 buttons.forEach(btn => { btn.disabled = true; });
-                const whatsappWindow = waDigits ? window.open('', '_blank') : null;
+                const whatsappWindow = cartWhatsAppEnabled && waDigits ? window.open('', '_blank') : null;
                 if (whatsappWindow) {
                     whatsappWindow.opener = null;
                 }
                 try {
                     const checkout = await createMercadoPagoCheckout(items, opts.meta || {});
-                    if (waDigits && checkout.checkout_url) {
+                    if (cartWhatsAppEnabled && waDigits && checkout.checkout_url) {
                         openWhatsApp(buildStoreWaMessage(items, checkout.checkout_url), whatsappWindow);
                     }
                     saveCart([]);
@@ -1364,7 +1393,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 const items = loadCart();
                 const qty = cartQty(items);
                 if (cartCountEl) cartCountEl.textContent = String(qty);
-                if (cartOpenBtn) cartOpenBtn.hidden = qty === 0;
+                if (cartOpenBtn) cartOpenBtn.hidden = qty === 0 || !cartEnabled;
 
                 if (cartLines) {
                     renderCartLines(cartLines, items, { controls: true });
@@ -1378,9 +1407,12 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (cartEmpty) cartEmpty.hidden = items.length > 0;
                 if (cartContent) cartContent.hidden = items.length === 0;
                 if (cartMpBtn) cartMpBtn.disabled = items.length === 0 || !storeMpCheckoutEnabled;
-                if (cartWaBtn) cartWaBtn.disabled = items.length === 0 || !waDigits;
+                if (cartWaBtn) cartWaBtn.disabled = items.length === 0 || !cartWhatsAppEnabled || !waDigits;
                 if (cartWaHint) {
-                    if (!waDigits) {
+                    if (!cartWhatsAppEnabled) {
+                        cartWaHint.hidden = false;
+                        cartWaHint.textContent = 'WhatsApp para pedidos esta desactivado en esta tienda.';
+                    } else if (!waDigits) {
                         cartWaHint.hidden = false;
                         cartWaHint.textContent = 'WhatsApp no configurado. Contactá al comercio en el local o por teléfono.';
                     } else {
@@ -1396,10 +1428,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     bindCartLineActions(upsellCart);
                 }
                 const upsellWa = document.getElementById('booking-upsell-wa');
-                if (upsellWa) upsellWa.disabled = !waDigits;
+                if (upsellWa) upsellWa.disabled = !cartWhatsAppEnabled || !waDigits;
                 const upsellHint = document.getElementById('booking-upsell-wa-hint');
                 if (upsellHint) {
-                    if (!waDigits) {
+                    if (!cartWhatsAppEnabled) {
+                        upsellHint.hidden = false;
+                        upsellHint.textContent = 'WhatsApp para pedidos esta desactivado en esta tienda.';
+                    } else if (!waDigits) {
                         upsellHint.hidden = false;
                         upsellHint.textContent = 'WhatsApp no configurado. Contactá al comercio en el local o por teléfono.';
                     } else {

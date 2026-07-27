@@ -10,7 +10,7 @@ final class CommerceSettings
 {
     public const SECTIONS = [
         'horarios', 'reservas', 'moneda', 'fiscal', 'redes',
-        'seo', 'legal', 'notificaciones', 'funciones', 'tema', 'email_plantillas',
+        'seo', 'legal', 'notificaciones', 'funciones', 'carrito', 'tema', 'email_plantillas',
     ];
 
     public static function get(int $idCommerce, string $section, array $defaults = []): array
@@ -104,6 +104,14 @@ final class CommerceSettings
                 'barberos' => true,
                 'reservas' => true,
                 'carrito' => true,
+            ],
+            'carrito' => [
+                'enabled' => true,
+                'whatsapp_enabled' => true,
+                'mercado_pago_enabled' => true,
+                'pickup_enabled' => true,
+                'delivery_enabled' => true,
+                'instructions' => 'Coordinamos entrega o retiro por este medio. Gracias!',
             ],
             'tema' => ['publico' => 'claro', 'privado' => 'claro'],
             default => [],

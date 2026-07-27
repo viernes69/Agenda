@@ -3,7 +3,7 @@
   if (!grid) return;
 
   let activeCard = null;
-  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas']);
+  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'carrito']);
   const settingsTier = String(grid.getAttribute('data-settings-tier') || 'full').toLowerCase();
   const isBasicOnly = settingsTier === 'basic';
 
@@ -48,6 +48,8 @@
       window.AdminConfigHoursModal.open();
     } else if (configId === 'reservas' && window.AdminConfigReservasModal && typeof window.AdminConfigReservasModal.open === 'function') {
       window.AdminConfigReservasModal.open();
+    } else if (configId === 'carrito' && window.AdminConfigCartModal && typeof window.AdminConfigCartModal.open === 'function') {
+      window.AdminConfigCartModal.open();
     } else if (configId === 'fiscal' && window.AdminConfigFiscalModal && typeof window.AdminConfigFiscalModal.open === 'function') {
       openWithGuard('Configuración Fiscal', window.AdminConfigFiscalModal.open);
     } else if (configId === 'mercadopago' && window.AdminConfigMercadoPagoModal && typeof window.AdminConfigMercadoPagoModal.open === 'function') {

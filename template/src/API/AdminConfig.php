@@ -185,7 +185,10 @@ function readConfig(string $key, string $slug): array
     $commerce = commerceBySlug($slug);
     $info = array_replace_recursive($legacy, commerceInfo($commerce));
     foreach (sectionMap() as $section => $legacyKey) {
-        $defaults = isset($info[$legacyKey]) && is_array($info[$legacyKey]) ? $info[$legacyKey] : [];
+        $defaults = CommerceSettings::defaultsForSection($section);
+        if (isset($info[$legacyKey]) && is_array($info[$legacyKey])) {
+            $defaults = array_replace_recursive($defaults, $info[$legacyKey]);
+        }
         $info[$legacyKey] = CommerceSettings::get((int)$commerce['id_commerce'], $section, $defaults);
     }
     $mpLegacy = [];
@@ -403,6 +406,7 @@ function sectionMap(): array
         'legal' => 'legales',
         'notificaciones' => 'notificaciones',
         'funciones' => 'features',
+        'carrito' => 'carrito',
         'tema' => 'temas',
     ];
 }
