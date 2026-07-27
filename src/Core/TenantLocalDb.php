@@ -8,6 +8,16 @@ namespace Agenduy\Core;
  */
 final class TenantLocalDb
 {
+    private const CART_PAYMENT_COLUMNS = [
+        'Metodo_Pago' => '',
+        'Payment_Status' => '',
+        'MP_Preference_ID' => '',
+        'MP_Payment_ID' => '',
+        'MP_External_Reference' => '',
+        'MP_Status_Detail' => '',
+        'Total' => '',
+    ];
+
     public static function pathForSlug(string $slug): string
     {
         $slug = trim($slug, '/');
@@ -119,6 +129,75 @@ final class TenantLocalDb
             }
             $db[$table][] = $row;
             return [$db, $row];
+        });
+    }
+
+    /**
+     * @param array<string,mixed> $data
+     * @param array<string,mixed> $paymentData
+     * @return array<string,mixed>
+     */
+    public static function insertCartOrder(string $slug, array $data, array $paymentData = []): array
+    {
+        return self::mutate($slug, static function (array $db) use ($data, $paymentData) {
+            if (!isset($db['carrito']) || !is_array($db['carrito'])) {
+                throw new \InvalidArgumentException('Tabla no encontrada: carrito');
+            }
+            if (!isset($db['carrito'][0]) || !is_array($db['carrito'][0])) {
+                throw new \RuntimeException('La tabla carrito no tiene fila plantilla.');
+            }
+
+            self::ensureColumns($db, 'carrito', self::CART_PAYMENT_COLUMNS);
+            $template = $db['carrito'][0];
+            $pk = self::primaryKey($template);
+            $row = $template;
+            $input = self::normalizeCartInput($template, array_merge($data, $paymentData));
+            foreach ($input as $k => $v) {
+                if (array_key_exists($k, $row)) {
+                    $row[$k] = $v;
+                }
+            }
+            if ($pk !== null && (!isset($row[$pk]) || $row[$pk] === null || $row[$pk] === '')) {
+                $row[$pk] = self::nextId($db['carrito'], $pk);
+            }
+            $db['carrito'][] = $row;
+            return [$db, $row];
+        });
+    }
+
+    /**
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>|null
+     */
+    public static function updateCartOrder(string $slug, int $orderId, array $data): ?array
+    {
+        if ($orderId <= 0) {
+            return null;
+        }
+        return self::mutate($slug, static function (array $db) use ($orderId, $data) {
+            if (!isset($db['carrito']) || !is_array($db['carrito']) || !isset($db['carrito'][0]) || !is_array($db['carrito'][0])) {
+                return [$db, null];
+            }
+
+            self::ensureColumns($db, 'carrito', self::CART_PAYMENT_COLUMNS);
+            $template = $db['carrito'][0];
+            $pk = self::primaryKey($template) ?? 'ID_Carrito';
+            $input = self::normalizeCartInput($template, $data);
+            foreach ($db['carrito'] as $i => $row) {
+                if ($i === 0 || !is_array($row)) {
+                    continue;
+                }
+                if (!isset($row[$pk]) || !is_numeric($row[$pk]) || (int)$row[$pk] !== $orderId) {
+                    continue;
+                }
+                foreach ($input as $k => $v) {
+                    if (array_key_exists($k, $db['carrito'][$i])) {
+                        $db['carrito'][$i][$k] = $v;
+                    }
+                }
+                return [$db, $db['carrito'][$i]];
+            }
+            return [$db, null];
         });
     }
 
@@ -530,6 +609,71 @@ final class TenantLocalDb
             ];
         }
         return $index;
+    }
+
+    /**
+     * @param array<string,mixed> $db
+     * @param array<string,mixed> $columns
+     */
+    private static function ensureColumns(array &$db, string $table, array $columns): void
+    {
+        if (!isset($db[$table]) || !is_array($db[$table]) || !isset($db[$table][0]) || !is_array($db[$table][0])) {
+            return;
+        }
+        foreach ($columns as $column => $default) {
+            if (array_key_exists($column, $db[$table][0])) {
+                continue;
+            }
+            $db[$table][0][$column] = $default;
+            foreach ($db[$table] as $i => $row) {
+                if ($i === 0 || !is_array($row)) {
+                    continue;
+                }
+                if (!array_key_exists($column, $row)) {
+                    $db[$table][$i][$column] = $default;
+                }
+            }
+        }
+    }
+
+    /**
+     * @param array<string,mixed> $template
+     * @param array<string,mixed> $input
+     * @return array<string,mixed>
+     */
+    private static function normalizeCartInput(array $template, array $input): array
+    {
+        if (array_key_exists('Direccion', $input)) {
+            $input[self::cartAddressKey($template)] = $input['Direccion'];
+            unset($input['Direccion']);
+        }
+        return $input;
+    }
+
+    /**
+     * @param array<string,mixed> $template
+     */
+    private static function cartAddressKey(array $template): string
+    {
+        foreach ($template as $key => $_) {
+            if (self::normalizeKey((string)$key) === 'direccion') {
+                return (string)$key;
+            }
+        }
+        return 'Direccion';
+    }
+
+    private static function normalizeKey(string $key): string
+    {
+        $key = function_exists('mb_strtolower') ? mb_strtolower($key, 'UTF-8') : strtolower($key);
+        $key = strtr($key, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            'ñ' => 'n', 'Ñ' => 'n',
+            'Ã¡' => 'a', 'Ã©' => 'e', 'Ã­' => 'i', 'Ã³' => 'o', 'Ãº' => 'u',
+            'Ã±' => 'n',
+        ]);
+        return preg_replace('/[^a-z0-9]+/', '', $key) ?? $key;
     }
 
     /**

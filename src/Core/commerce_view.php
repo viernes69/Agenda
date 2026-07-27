@@ -21,6 +21,8 @@ use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MagicLink;
+use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\MercadoPago;
 
 if (!function_exists('agenduy_render_commerce')) {
     /**
@@ -241,6 +243,14 @@ if (!function_exists('agenduy_render_commerce')) {
         $csrf = CSRF::generate('public_booking');
         $apiBase = url('admin/api/appointments.php');
         $cartOrderApi = url('admin/api/cart_order.php');
+        $cartMercadoPagoApi = url('admin/api/cart_mercadopago.php');
+        $storePlan = $isStoreMode ? MembershipPlan::forCommerceId($commerceId) : null;
+        $storeMpConfig = $isStoreMode ? MercadoPago::commerceConfig($commerceId, $slug) : [];
+        $storeMpCheckoutEnabled = $showProducts
+            && $isStoreMode
+            && MercadoPago::isStoreCheckoutAllowed($storePlan)
+            && !empty($storeMpConfig['enabled'])
+            && trim((string)($storeMpConfig['access_token'] ?? '')) !== '';
         $availabilityApi = url('admin/api/availability.php');
         $maxDiasAdelante = max(0, (int)($reservasCfg['max_dias_adelante'] ?? 60));
         $bookingMinDate = new \DateTimeImmutable('today');
@@ -942,6 +952,11 @@ if (!function_exists('agenduy_render_commerce')) {
                 </div>
                 <div class="modal__foot">
                     <button type="button" class="btn btn--ghost" data-close-cart>Seguir mirando</button>
+                    <?php if ($storeMpCheckoutEnabled): ?>
+                    <button type="button" class="btn btn--primary" id="cart-mp-btn">
+                        <i class="bx bx-credit-card" aria-hidden="true"></i> Pagar con Mercado Pago
+                    </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn--primary" id="cart-wa-btn">
                         <i class="bx bxl-whatsapp" aria-hidden="true"></i> Enviar por WhatsApp
                     </button>
@@ -989,6 +1004,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 'reservas' => $reservasCfg,
                 'redes' => $redes,
                 'tema' => $tema,
+                'payments' => ['mercado_pago_tienda' => $storeMpCheckoutEnabled],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
             const commerceSlug = <?= json_encode($slug, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1000,6 +1016,8 @@ if (!function_exists('agenduy_render_commerce')) {
             const hasProducts = Array.isArray(productsCatalog) && productsCatalog.length > 0;
             const cartKey = 'agenduy-cart-' + commerceSlug;
             const cartOrderUrl = <?= json_encode($cartOrderApi, JSON_UNESCAPED_SLASHES) ?>;
+            const cartMercadoPagoUrl = <?= json_encode($cartMercadoPagoApi, JSON_UNESCAPED_SLASHES) ?>;
+            const storeMpCheckoutEnabled = <?= $storeMpCheckoutEnabled ? 'true' : 'false' ?>;
             let lastBooking = null;
             let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             function syncCsrfToken(token) {
@@ -1174,6 +1192,87 @@ if (!function_exists('agenduy_render_commerce')) {
                 return json;
             }
 
+            async function createMercadoPagoCheckout(items, meta) {
+                meta = meta || {};
+                const body = {
+                    slug: commerceSlug,
+                    items: items.map(i => ({
+                        id: String(i.id),
+                        qty: Math.max(1, Number(i.qty) || 1)
+                    })),
+                    cliente_nombre: meta.nombre || '',
+                    cliente_email: meta.email || '',
+                    cliente_telefono: meta.telefono || '',
+                    note: meta.note || 'Pedido Mercado Pago',
+                    address: meta.address || 'Coordinar entrega o retiro',
+                    _csrf: csrfToken
+                };
+                const postOnce = async () => {
+                    const ctrl = new AbortController();
+                    const timer = setTimeout(() => ctrl.abort(), 20000);
+                    try {
+                        const res = await fetch(cartMercadoPagoUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body),
+                            credentials: 'same-origin',
+                            signal: ctrl.signal
+                        });
+                        let json = null;
+                        try { json = await res.json(); } catch (_) {}
+                        return { res, json: json || { ok: false, error: 'Respuesta invalida del servidor.' } };
+                    } finally {
+                        clearTimeout(timer);
+                    }
+                };
+                let { json } = await postOnce();
+                if (json && json.error === 'csrf_retry' && json.csrf) {
+                    syncCsrfToken(json.csrf);
+                    body._csrf = csrfToken;
+                    ({ json } = await postOnce());
+                }
+                if (!json || !json.ok || !json.checkout_url) {
+                    const msg = (json && json.error && json.error !== 'csrf_retry')
+                        ? String(json.error)
+                        : 'No se pudo iniciar el checkout de Mercado Pago.';
+                    throw new Error(msg);
+                }
+                return json;
+            }
+
+            async function startMercadoPagoCheckout(opts) {
+                opts = opts || {};
+                if (orderSubmitInFlight) return false;
+                if (!storeMpCheckoutEnabled) {
+                    window.alert('Mercado Pago no esta disponible para esta tienda.');
+                    return false;
+                }
+                const items = loadCart();
+                if (!items.length) {
+                    window.alert('Agrega al menos un producto para pagar.');
+                    return false;
+                }
+                orderSubmitInFlight = true;
+                const buttons = [
+                    document.getElementById('cart-mp-btn'),
+                    document.getElementById('cart-wa-btn'),
+                    document.getElementById('booking-upsell-wa')
+                ].filter(Boolean);
+                buttons.forEach(btn => { btn.disabled = true; });
+                try {
+                    const checkout = await createMercadoPagoCheckout(items, opts.meta || {});
+                    saveCart([]);
+                    closeCartModal();
+                    window.location.href = checkout.checkout_url;
+                    return true;
+                } catch (err) {
+                    window.alert(err && err.message ? err.message : 'No se pudo iniciar Mercado Pago.');
+                    orderSubmitInFlight = false;
+                    renderCartUI();
+                    return false;
+                }
+            }
+
             async function finalizePurchase(opts) {
                 opts = opts || {};
                 if (orderSubmitInFlight) return false;
@@ -1190,6 +1289,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 }
                 orderSubmitInFlight = true;
                 const buttons = [
+                    document.getElementById('cart-mp-btn'),
                     document.getElementById('cart-wa-btn'),
                     document.getElementById('booking-upsell-wa')
                 ].filter(Boolean);
@@ -1278,6 +1378,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartEmpty = document.getElementById('cart-empty');
             const cartContent = document.getElementById('cart-content');
             const cartWaBtn = document.getElementById('cart-wa-btn');
+            const cartMpBtn = document.getElementById('cart-mp-btn');
             const cartWaHint = document.getElementById('cart-wa-hint');
 
             function openCartModal() {
@@ -1304,6 +1405,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 }
                 if (cartEmpty) cartEmpty.hidden = items.length > 0;
                 if (cartContent) cartContent.hidden = items.length === 0;
+                if (cartMpBtn) cartMpBtn.disabled = items.length === 0 || !storeMpCheckoutEnabled;
                 if (cartWaBtn) cartWaBtn.disabled = items.length === 0 || !waDigits;
                 if (cartWaHint) {
                     if (!waDigits) {
@@ -1371,6 +1473,13 @@ if (!function_exists('agenduy_render_commerce')) {
                             waText: buildStoreWaMessage(items),
                             meta: { note: 'Pedido WhatsApp (tienda)' },
                             requireItems: true
+                        });
+                    });
+                }
+                if (cartMpBtn) {
+                    cartMpBtn.addEventListener('click', () => {
+                        startMercadoPagoCheckout({
+                            meta: { note: 'Pedido Mercado Pago (tienda)' }
                         });
                     });
                 }

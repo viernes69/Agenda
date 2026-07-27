@@ -177,7 +177,7 @@ $keys = $db->fetchAll('SELECT * FROM api_keys WHERE id_commerce = :c ORDER BY pr
 
     <article class="card">
         <h2>Integraciones (API Keys)</h2>
-        <p class="muted">Estas keys se usan SOLO para tu negocio. Si no las definís, se usan las globales del super admin.</p>
+        <p class="muted">Estas keys se usan SOLO para tu negocio. Mercado Pago de tienda usa tus credenciales; las membresias se cobran con la configuracion global del super admin.</p>
         <form method="post">
             <?= CSRF::field('commerce_settings') ?>
             <input type="hidden" name="action" value="add_key">

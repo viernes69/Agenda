@@ -65,6 +65,7 @@ final class MembershipPlan
             'fiscal',
             'seo',
             'mercadopago',
+            'mercado_pago',
             'legales',
             'legal',
             'notificaciones',

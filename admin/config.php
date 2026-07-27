@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Recolectar campos dinámicos según provider
         $fields = [
-            'mercadopago' => ['public_key','access_token','sandbox'],
+            'mercadopago' => ['public_key','access_token','sandbox','notification_url','integrator_id'],
             'paypal'      => ['client_id','secret','sandbox'],
             'transfer'    => ['banco','titular','cuenta','moneda','instrucciones'],
             'smtp'        => ['host','port','encryption','username','password','from_email','from_name'],
@@ -186,7 +186,7 @@ require __DIR__ . '/partials/header.php';
                 <div class="field">
                     <label>Access Token</label>
                     <input type="text" name="access_token" value="<?= htmlspecialchars($cfg['access_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                    <span class="hint">Guardá el token también en una key por comercio (MP_ACCESS_TOKEN) para overrides.</span>
+                    <span class="hint">Se usa solo para cobrar membresias de la plataforma. Las tiendas usan sus propias credenciales.</span>
                 </div>
                 <div class="field">
                     <label>Modo</label>
@@ -194,6 +194,15 @@ require __DIR__ . '/partials/header.php';
                         <option value="1" <?= !empty($cfg['sandbox']) ? 'selected' : '' ?>>Sandbox (pruebas)</option>
                         <option value="0" <?= empty($cfg['sandbox']) ? 'selected' : '' ?>>Producción</option>
                     </select>
+                </div>
+                <div class="field">
+                    <label>Notification URL</label>
+                    <input type="url" name="notification_url" value="<?= htmlspecialchars($cfg['notification_url'] ?? url('admin/api/webhook_mercadopago.php'), ENT_QUOTES, 'UTF-8') ?>">
+                    <span class="hint">Webhook para cambios de pagos y suscripciones.</span>
+                </div>
+                <div class="field">
+                    <label>Integrator ID</label>
+                    <input type="text" name="integrator_id" value="<?= htmlspecialchars($cfg['integrator_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                 </div>
             <?php elseif ($p['provider'] === 'paypal'): ?>
                 <div class="field">

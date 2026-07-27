@@ -188,10 +188,16 @@ function readConfig(string $key, string $slug): array
         $defaults = isset($info[$legacyKey]) && is_array($info[$legacyKey]) ? $info[$legacyKey] : [];
         $info[$legacyKey] = CommerceSettings::get((int)$commerce['id_commerce'], $section, $defaults);
     }
-    $info['mercadopago'] = array_replace_recursive(
-        is_array($info['mercadopago'] ?? null) ? $info['mercadopago'] : [],
-        mercadopagoPreviews((int)$commerce['id_commerce'])
-    );
+    $mpLegacy = [];
+    if (is_array($info['mercadopago'] ?? null)) {
+        $mpLegacy = array_replace_recursive($mpLegacy, $info['mercadopago']);
+    }
+    if (is_array($info['mercado_pago'] ?? null)) {
+        $mpLegacy = array_replace_recursive($mpLegacy, $info['mercado_pago']);
+    }
+    $mpLegacy = array_replace_recursive($mpLegacy, mercadopagoPreviews((int)$commerce['id_commerce']));
+    $info['mercado_pago'] = $mpLegacy;
+    $info['mercadopago'] = $mpLegacy;
     return $info;
 }
 
@@ -241,15 +247,22 @@ function updateCommerceConfig(string $slug, array $payload): array
             $payload['rubro_nombre'] = (string)$rubro['nombre'];
         }
     }
-    if (isset($payload['mercadopago']) && is_array($payload['mercadopago'])) {
-        storeMercadoPagoSecrets($commerceId, $payload['mercadopago']);
+    $mpPayloadKey = null;
+    if (isset($payload['mercado_pago']) && is_array($payload['mercado_pago'])) {
+        $mpPayloadKey = 'mercado_pago';
+    } elseif (isset($payload['mercadopago']) && is_array($payload['mercadopago'])) {
+        $mpPayloadKey = 'mercadopago';
+    }
+    if ($mpPayloadKey !== null) {
+        storeMercadoPagoSecrets($commerceId, $payload[$mpPayloadKey]);
         // No persistir secretos en claro en el legacy.
-        $safe = $payload['mercadopago'];
-        foreach (['access_token', 'accessToken', 'token', 'public_key', 'publicKey', 'client_secret'] as $secretKey) {
+        $safe = $payload[$mpPayloadKey];
+        foreach (['access_token', 'accessToken', 'token', 'public_key', 'publicKey', 'client_secret', 'integrator_id', 'integratorId'] as $secretKey) {
             if (isset($safe[$secretKey]) && is_string($safe[$secretKey]) && $safe[$secretKey] !== '') {
                 $safe[$secretKey] = keyPreview($safe[$secretKey]);
             }
         }
+        $payload['mercado_pago'] = $safe;
         $payload['mercadopago'] = $safe;
     }
     AutoloadDB::updateConfigSection('info_barberia', $payload);
@@ -328,11 +341,12 @@ function storeMercadoPagoSecrets(int $commerceId, array $mp): void
         'access_token' => $mp['access_token'] ?? $mp['accessToken'] ?? null,
         'public_key'   => $mp['public_key'] ?? $mp['publicKey'] ?? null,
         'client_secret'=> $mp['client_secret'] ?? null,
+        'integrator_id'=> $mp['integrator_id'] ?? $mp['integratorId'] ?? null,
     ];
     $db = Database::getInstance();
     $crypto = new Crypto((string)$db->config()['security']['encryption_key']);
     foreach ($map as $name => $value) {
-        if (!is_string($value) || trim($value) === '' || str_contains($value, '••••')) {
+        if (!is_string($value) || trim($value) === '' || isMaskedSecret($value)) {
             continue;
         }
         $value = trim($value);
@@ -359,6 +373,13 @@ function storeMercadoPagoSecrets(int $commerceId, array $mp): void
             ]));
         }
     }
+}
+
+function isMaskedSecret(string $value): bool
+{
+    return str_contains($value, "\xE2\x80\xA2")
+        || str_contains($value, '*')
+        || preg_match('/x{4,}/i', $value) === 1;
 }
 
 function keyPreview(string $value): string

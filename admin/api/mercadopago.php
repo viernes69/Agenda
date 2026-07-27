@@ -13,8 +13,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
-use Agenduy\Core\Crypto;
-use Agenduy\Core\ProviderConfig;
+use Agenduy\Core\MercadoPago;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -51,12 +50,10 @@ $action = $_GET['action'] ?? $payload['action'] ?? 'create_preapproval';
 
 try {
     $db = Database::getInstance();
-    $encKey = (string)$db->config()['security']['encryption_key'];
-    $crypto = new Crypto($encKey);
+    $mpConfig = MercadoPago::platformConfig();
 
-    $mpGlobal = ProviderConfig::get('mercadopago');
-    if (!$mpGlobal['is_enabled']) {
-        throw new RuntimeException('MercadoPago no está habilitado.');
+    if (empty($mpConfig['enabled']) || trim((string)($mpConfig['access_token'] ?? '')) === '') {
+        throw new RuntimeException('Mercado Pago de membresias no esta configurado por el super admin.');
     }
 
     $idCommerce = (int)Auth::commerceId();
@@ -69,33 +66,6 @@ try {
     $membership = $db->fetchOne('SELECT * FROM memberships WHERE id_membership = :id', [':id' => $idMembership]);
     if (!$commerce) throw new RuntimeException('Comercio inexistente.');
     if (!$membership) throw new RuntimeException('Membresía inexistente.');
-
-    // Resolver credenciales: primero keys del comercio, sino globales.
-    $accessToken = '';
-    $publicKey = '';
-    $sandbox = true;
-
-    $cfgRow = $db->fetchOne('SELECT * FROM payment_provider_config WHERE provider = :p', [':p' => 'mercadopago']);
-    if ($cfgRow) {
-        $cfgJson = json_decode((string)$cfgRow['config_json'], true) ?: [];
-        $accessToken = (string)($cfgJson['access_token'] ?? '');
-        $publicKey = (string)($cfgJson['public_key'] ?? '');
-        $sandbox = !empty($cfgJson['sandbox']);
-    }
-
-    // Override por comercio
-    $rows = $db->fetchAll(
-        "SELECT key_name, key_value FROM api_keys
-         WHERE provider = 'mercadopago' AND id_commerce = :c AND is_active = 1",
-        [':c' => $idCommerce]
-    );
-    foreach ($rows as $r) {
-        $val = $crypto->decrypt((string)$r['key_value']);
-        if ($r['key_name'] === 'MP_ACCESS_TOKEN') $accessToken = $val;
-        if ($r['key_name'] === 'MP_PUBLIC_KEY')  $publicKey = $val;
-    }
-
-    if ($accessToken === '') throw new RuntimeException('Falta ACCESS_TOKEN de MercadoPago. Configuralo en Keys o Config.');
 
     $payerEmail = (string)($payload['payer']['email'] ?? $commerce['email'] ?? '');
     if ($payerEmail === '' || !filter_var($payerEmail, FILTER_VALIDATE_EMAIL)) {
@@ -123,13 +93,18 @@ try {
     }
 
     $ownerEmail = (string)$commerce['email'];
+    $notificationUrl = trim((string)($mpConfig['notification_url'] ?? ''));
+    if ($notificationUrl === '') {
+        $notificationUrl = url('admin/api/webhook_mercadopago.php');
+    }
     $request = [
         'reason'             => 'Suscripción ' . $membership['nombre'] . ' · ' . $commerce['nombre'],
         'external_reference' => sprintf('agenduy_c%d_m%d_%s', $idCommerce, $idMembership, uniqid()),
         'payer_email'        => $payerEmail,
         'auto_recurring'     => $autoRecurring,
         'status'             => $cardToken !== '' ? 'authorized' : 'pending',
-        'back_url'           => ($db->config()['app']['url_base'] ?? '') . '/admin/subscriptions.php',
+        'back_url'           => url('admin/subscriptions.php'),
+        'notification_url'   => $notificationUrl,
     ];
     if (!empty($membership['mp_preapproval_id'])) {
         $request['preapproval_plan_id'] = (string)$membership['mp_preapproval_id'];
@@ -141,37 +116,10 @@ try {
         if ($installments > 0) $request['installments'] = $installments;
     }
 
-    $headers = [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $accessToken,
-    ];
-
-    $baseUrl = $sandbox ? 'https://api.mercadopago.com' : 'https://api.mercadopago.com';
-    $endpoint = $baseUrl . '/preapproval';
-
-    $ch = curl_init($endpoint);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    $response = curl_exec($ch);
-    $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-
-    if ($response === false) {
-        throw new RuntimeException('Error contacting MP: ' . $error);
-    }
-
-    $decoded = json_decode((string)$response, true);
-    if ($statusCode >= 400) {
-        $msg = is_array($decoded) ? ($decoded['message'] ?? 'MP rechazó la solicitud.') : 'MP error.';
-        throw new RuntimeException($msg);
-    }
-
+    $decoded = MercadoPago::createPreapproval($mpConfig, $request);
     // Si quedó autorizada o pending, registramos la subscription local
     $mpStatus = (string)($decoded['status'] ?? 'pending');
-    $localStatus = $mpStatus === 'authorized' ? 'active' : 'pending';
+    $localStatus = $mpStatus === 'authorized' ? 'active' : 'past_due';
     $newEnd = date('Y-m-d', strtotime('+' . (int)$membership['duracion_dias'] . ' days'));
     $trialEnd = $trialDias > 0 ? date('Y-m-d', strtotime("+{$trialDias} days")) : null;
 
@@ -219,7 +167,7 @@ try {
         'status'             => $mpStatus,
         'init_point'         => $decoded['init_point'] ?? null,
         'sandbox_init_point' => $decoded['sandbox_init_point'] ?? null,
-        'public_key'         => $publicKey,
+        'public_key'         => (string)($mpConfig['public_key'] ?? ''),
         'local_status'       => $localStatus,
         'trial_expires_at'   => $trialEnd,
     ], JSON_UNESCAPED_UNICODE);

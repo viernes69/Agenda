@@ -164,7 +164,10 @@ try {
         'Status' => 'Pendiente',
     ];
 
-    $row = TenantLocalDb::insert($slug, 'carrito', $record);
+    $row = TenantLocalDb::insertCartOrder($slug, $record, [
+        'Metodo_Pago' => 'WhatsApp',
+        'Payment_Status' => 'manual',
+    ]);
     $orderId = $row['ID_Carrito'] ?? null;
 
     echo json_encode([

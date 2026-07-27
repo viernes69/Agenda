@@ -118,6 +118,7 @@ final class Database
         $this->ensureOAuthAuth();
         $this->ensureRateLimitsTable();
         $this->ensurePlatformSettingsTable();
+        $this->ensureStoreOrderPaymentsTable();
     }
 
     /**
@@ -204,6 +205,37 @@ final class Database
             )'
         );
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_platform_settings_section ON platform_settings(section)');
+    }
+
+    private function ensureStoreOrderPaymentsTable(): void
+    {
+        $this->pdo->exec(
+            "CREATE TABLE IF NOT EXISTS store_order_payments (
+                id_store_payment  INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce       INTEGER NOT NULL,
+                slug              TEXT    NOT NULL,
+                local_order_id    INTEGER NOT NULL,
+                external_reference TEXT   NOT NULL UNIQUE,
+                preference_id     TEXT    DEFAULT '',
+                payment_id        TEXT    DEFAULT '',
+                merchant_order_id TEXT    DEFAULT '',
+                status            TEXT    NOT NULL DEFAULT 'created'
+                                  CHECK (status IN ('created','pending','approved','rejected','cancelled','refunded','charged_back','unknown')),
+                status_detail     TEXT    DEFAULT '',
+                amount            REAL    NOT NULL DEFAULT 0,
+                currency          TEXT    NOT NULL DEFAULT 'UYU',
+                payer_email       TEXT    DEFAULT '',
+                items_json        TEXT    NOT NULL DEFAULT '[]',
+                checkout_url      TEXT    DEFAULT '',
+                created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE CASCADE
+            )"
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_commerce ON store_order_payments(id_commerce)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_status ON store_order_payments(status)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_payment ON store_order_payments(payment_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_preference ON store_order_payments(preference_id)');
     }
 
     private function ensureRateLimitsTable(): void

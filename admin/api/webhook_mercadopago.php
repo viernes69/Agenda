@@ -1,53 +1,60 @@
 <?php
 /**
- * Agenduy - Webhook: MercadoPago
+ * Agenduy - Webhook: Mercado Pago
  *
- * URL para configurar en el panel de MercadoPago:
+ * URL para configurar en Mercado Pago:
  *   https://www.agenduy.uy/admin/api/webhook_mercadopago.php
  *
- * Recibe notificaciones de pagos y actualiza el estado de la
- * suscripción correspondiente.
+ * Para tiendas, el sistema agrega ?store_slug=... al crear la preferencia.
  */
 declare(strict_types=1);
 
 $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\Database;
+use Agenduy\Core\MercadoPago;
+use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 $raw = file_get_contents('php://input');
-$data = json_decode($raw, true) ?: $_POST;
+$data = json_decode($raw ?: '', true);
+if (!is_array($data)) {
+    $data = $_POST;
+}
 
-$type = $data['type'] ?? $data['topic'] ?? '';
-$id   = $data['data']['id'] ?? $data['id'] ?? null;
+$type = (string)($data['type'] ?? $data['topic'] ?? $_GET['type'] ?? $_GET['topic'] ?? '');
+$id = $data['data']['id']
+    ?? $data['id']
+    ?? $_GET['data_id']
+    ?? $_GET['id']
+    ?? null;
 
-if ($type === '' || $id === null) {
-    echo json_encode(['ok' => false, 'error' => 'Notificación sin tipo/id']);
+if ($type === '' || $id === null || $id === '') {
+    echo json_encode(['ok' => false, 'error' => 'Notificacion sin tipo/id']);
     exit;
 }
 
 try {
     $db = Database::getInstance();
+
+    $storeResult = handleStorePaymentWebhook($db, $type, (string)$id, $data);
+    if ($storeResult !== null) {
+        echo json_encode($storeResult, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     $sub = $db->fetchOne(
         'SELECT * FROM subscriptions WHERE gateway = :g AND gateway_id = :id',
         [':g' => 'mercadopago', ':id' => (string)$id]
     );
     if (!$sub) {
-        // No encontramos la suscripción, aceptamos igual
         echo json_encode(['ok' => true, 'note' => 'no matching subscription']);
         exit;
     }
 
-    $newStatus = 'pending';
-    if ($type === 'preapproval' || $type === 'subscription_authorized_payment') {
-        $newStatus = 'active';
-    } elseif ($type === 'subscription_cancelled' || $type === 'cancelled') {
-        $newStatus = 'cancelled';
-    } elseif ($type === 'subscription_paused') {
-        $newStatus = 'past_due';
-    }
-
+    $newStatus = subscriptionStatusFromNotification($type);
     $db->update('subscriptions', [
         'status' => $newStatus,
         'updated_at' => date('Y-m-d H:i:s'),
@@ -58,18 +65,187 @@ try {
         'updated_at' => date('Y-m-d H:i:s'),
     ], 'id_commerce = :id', [':id' => $sub['id_commerce']]);
 
-    // Audit
     $db->insert('audit_log', [
         'id_user' => null,
-        'action'  => 'mp_webhook',
+        'action' => 'mp_webhook',
         'target_type' => 'subscription',
-        'target_id'   => (int)$sub['id_subscription'],
-        'meta'        => json_encode(['type' => $type, 'mp_id' => $id, 'new_status' => $newStatus], JSON_UNESCAPED_UNICODE),
-        'ip'          => $_SERVER['REMOTE_ADDR'] ?? '',
+        'target_id' => (int)$sub['id_subscription'],
+        'meta' => json_encode(['type' => $type, 'mp_id' => $id, 'new_status' => $newStatus], JSON_UNESCAPED_UNICODE),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     ]);
 
-    echo json_encode(['ok' => true, 'status' => $newStatus]);
+    echo json_encode(['ok' => true, 'status' => $newStatus], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * @param array<string,mixed> $data
+ * @return array<string,mixed>|null
+ */
+function handleStorePaymentWebhook(Database $db, string $type, string $paymentId, array $data): ?array
+{
+    $storeSlug = trim((string)($_GET['store_slug'] ?? $data['store_slug'] ?? ''));
+    $externalReference = trim((string)($data['external_reference'] ?? $data['externalReference'] ?? ''));
+    $typeNorm = strtolower(trim($type));
+    $looksStore = $storeSlug !== ''
+        || str_starts_with($externalReference, 'agenduy_store_')
+        || $typeNorm === 'payment';
+
+    if (!$looksStore) {
+        return null;
+    }
+
+    $payment = [];
+    $row = null;
+    if ($externalReference !== '') {
+        $row = storePaymentByExternalReference($db, $externalReference);
+    }
+    if (!$row && $paymentId !== '') {
+        $row = $db->fetchOne(
+            'SELECT * FROM store_order_payments WHERE payment_id = :p LIMIT 1',
+            [':p' => $paymentId]
+        );
+    }
+    if ($row && $storeSlug === '') {
+        $storeSlug = (string)$row['slug'];
+    }
+    if ($storeSlug !== '') {
+        $commerce = $db->fetchOne('SELECT * FROM commerces WHERE slug = :s LIMIT 1', [':s' => $storeSlug]);
+        if ($commerce) {
+            $mp = MercadoPago::commerceConfig((int)$commerce['id_commerce'], $storeSlug);
+            if (trim((string)($mp['access_token'] ?? '')) !== '') {
+                $payment = MercadoPago::getPayment($mp, $paymentId);
+            }
+        }
+    }
+
+    if ($payment !== []) {
+        $externalReference = trim((string)($payment['external_reference'] ?? $externalReference));
+    }
+    if (!$row && $externalReference !== '') {
+        $row = storePaymentByExternalReference($db, $externalReference);
+    }
+
+    $parsed = parseStoreExternalReference($externalReference);
+    if (!$row && $parsed === null) {
+        return ['ok' => true, 'kind' => 'store_order', 'note' => 'no matching store order'];
+    }
+
+    $commerceId = $row ? (int)$row['id_commerce'] : (int)$parsed['id_commerce'];
+    $orderId = $row ? (int)$row['local_order_id'] : (int)$parsed['local_order_id'];
+    if ($storeSlug === '') {
+        if ($row) {
+            $storeSlug = (string)$row['slug'];
+        } else {
+            $commerce = $db->fetchOne('SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1', [':id' => $commerceId]);
+            $storeSlug = trim((string)($commerce['slug'] ?? ''));
+        }
+    }
+
+    $mpStatus = trim((string)($payment['status'] ?? $data['status'] ?? 'pending'));
+    if ($mpStatus === '') {
+        $mpStatus = 'pending';
+    }
+    $storeStatus = MercadoPago::paymentStatusToStoreStatus($mpStatus);
+    $statusDetail = trim((string)($payment['status_detail'] ?? $data['status_detail'] ?? ''));
+    $merchantOrderId = '';
+    if (isset($payment['order']) && is_array($payment['order'])) {
+        $merchantOrderId = trim((string)($payment['order']['id'] ?? ''));
+    }
+    $amount = isset($payment['transaction_amount']) && is_numeric($payment['transaction_amount'])
+        ? (float)$payment['transaction_amount']
+        : (float)($row['amount'] ?? 0);
+    $currency = trim((string)($payment['currency_id'] ?? $row['currency'] ?? 'UYU')) ?: 'UYU';
+
+    $update = [
+        'payment_id' => $paymentId,
+        'merchant_order_id' => $merchantOrderId,
+        'status' => $storeStatus,
+        'status_detail' => mb_substr($statusDetail, 0, 250, 'UTF-8'),
+        'amount' => $amount,
+        'currency' => $currency,
+        'updated_at' => date('Y-m-d H:i:s'),
+    ];
+    if ($row) {
+        $db->update('store_order_payments', $update, 'id_store_payment = :id', [':id' => $row['id_store_payment']]);
+    } elseif ($externalReference !== '') {
+        $db->insert('store_order_payments', array_merge($update, [
+            'id_commerce' => $commerceId,
+            'slug' => $storeSlug,
+            'local_order_id' => $orderId,
+            'external_reference' => $externalReference,
+            'items_json' => '[]',
+        ]));
+    }
+
+    if ($storeSlug !== '' && $orderId > 0 && TenantLocalDb::exists($storeSlug)) {
+        TenantLocalDb::updateCartOrder($storeSlug, $orderId, [
+            'Status' => MercadoPago::paymentStatusToLocalCartStatus($mpStatus),
+            'Payment_Status' => $storeStatus,
+            'MP_Payment_ID' => $paymentId,
+            'MP_External_Reference' => $externalReference,
+            'MP_Status_Detail' => mb_substr($statusDetail, 0, 250, 'UTF-8'),
+        ]);
+    }
+
+    $db->insert('audit_log', [
+        'id_user' => null,
+        'action' => 'mp_store_webhook',
+        'target_type' => 'store_order',
+        'target_id' => $orderId,
+        'meta' => json_encode([
+            'type' => $type,
+            'mp_id' => $paymentId,
+            'external_reference' => $externalReference,
+            'status' => $storeStatus,
+            'slug' => $storeSlug,
+        ], JSON_UNESCAPED_UNICODE),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+
+    return [
+        'ok' => true,
+        'kind' => 'store_order',
+        'order_id' => $orderId,
+        'status' => $storeStatus,
+    ];
+}
+
+function storePaymentByExternalReference(Database $db, string $externalReference): ?array
+{
+    return $db->fetchOne(
+        'SELECT * FROM store_order_payments WHERE external_reference = :r LIMIT 1',
+        [':r' => $externalReference]
+    );
+}
+
+/**
+ * @return array{id_commerce:int,local_order_id:int}|null
+ */
+function parseStoreExternalReference(string $externalReference): ?array
+{
+    if (!preg_match('/^agenduy_store_c(\d+)_o(\d+)_/i', $externalReference, $matches)) {
+        return null;
+    }
+    return [
+        'id_commerce' => (int)$matches[1],
+        'local_order_id' => (int)$matches[2],
+    ];
+}
+
+function subscriptionStatusFromNotification(string $type): string
+{
+    $type = strtolower(trim($type));
+    if (in_array($type, ['preapproval', 'subscription_authorized_payment'], true)) {
+        return 'active';
+    }
+    if (in_array($type, ['subscription_cancelled', 'cancelled', 'canceled'], true)) {
+        return 'cancelled';
+    }
+    if ($type === 'subscription_paused') {
+        return 'past_due';
+    }
+    return 'pending';
 }
