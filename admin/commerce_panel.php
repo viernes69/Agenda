@@ -10,12 +10,14 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
+use Agenduy\Core\Security;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== Auth::ROLE_LOCAL) {
-    header('Location: login.php');
+    header('Location: ' . Auth::loginUrl());
     exit;
 }
+Security::sendNoStoreHeaders();
 
 $idCommerce = (int)Auth::commerceId();
 if ($idCommerce <= 0) {

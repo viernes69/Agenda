@@ -23,6 +23,14 @@
     menuOpen = false;
   };
   const toggle = () => (menuOpen ? close() : open());
+  const apiUrl = (path) => {
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+    const currentPath = window.location.pathname || '/';
+    const basePath = currentPath.endsWith('/') || /\.[a-z0-9]+$/i.test(currentPath)
+      ? currentPath
+      : `${currentPath}/`;
+    return new URL(cleanPath, `${window.location.origin}${basePath}`).href;
+  };
 
   headerUser.addEventListener('click', (e) => {
     e.preventDefault();
@@ -48,7 +56,7 @@
 
   const getSessionStatus = async () => {
     try {
-      const res = await fetch('/agenda/template/src/API/session_client.php?action=status', { credentials: 'same-origin' });
+      const res = await fetch(apiUrl('src/API/session_client.php?action=status'), { credentials: 'same-origin' });
       const data = await res.json();
       if (data && data.ok && data.data) return data.data;
       return null;
@@ -261,7 +269,7 @@
     if (statusEl) statusEl.textContent = '';
 
     try {
-      const res = await fetch('/agenda/template/src/API/client_purchases.php', { credentials: 'same-origin' });
+      const res = await fetch(apiUrl('src/API/client_purchases.php'), { credentials: 'same-origin' });
       const payload = await res.json();
       if (!res.ok || !payload || payload.ok === false) {
         throw new Error((payload && payload.error) || 'No se pudo obtener el historial');
@@ -700,7 +708,7 @@
         clearBarberUI();
       } else {
         // Logout normal para clientes
-        await fetch('/agenda/template/src/API/session_client.php', {
+        await fetch(apiUrl('src/API/session_client.php'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
@@ -739,7 +747,7 @@
               if (!reservas.length) {
                 // fallback: fetch from DB
                 try {
-                  const res = await fetch('/agenda/template/src/API/Autoload.php?action=list&table=reservas', { credentials: 'same-origin' });
+                  const res = await fetch(apiUrl('src/API/Autoload.php?action=list&table=reservas'), { credentials: 'same-origin' });
                   const payload = await res.json();
                   reservas = Array.isArray(payload && payload.data) ? payload.data : [];
                   const id = session && session.cliente_id;
@@ -750,8 +758,8 @@
               const [servMap, barbMap] = await (async () => {
                 try {
                   const [sv, bb] = await Promise.all([
-                    fetch('/agenda/template/src/API/Autoload.php?action=list&table=servicios', { credentials: 'same-origin' }).then(r=>r.json()),
-                    fetch('/agenda/template/src/API/Autoload.php?action=list&table=barberos', { credentials: 'same-origin' }).then(r=>r.json()),
+                    fetch(apiUrl('src/API/Autoload.php?action=list&table=servicios'), { credentials: 'same-origin' }).then(r=>r.json()),
+                    fetch(apiUrl('src/API/Autoload.php?action=list&table=barberos'), { credentials: 'same-origin' }).then(r=>r.json()),
                   ]);
                   const sMap = {};
                   (Array.isArray(sv && sv.data) ? sv.data : []).forEach(s => { sMap[String(s.ID_Servicio)] = s.Nombre || 'Servicio'; });

@@ -12,7 +12,7 @@ use Agenduy\Core\PlatformTemplates;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'super_admin') {
-    header('Location: login.php');
+    header('Location: ' . Auth::loginUrl());
     exit;
 }
 

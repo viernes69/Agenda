@@ -12,7 +12,7 @@ use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
 
 Auth::start();
-if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: login.php'); exit; }
+if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: ' . Auth::loginUrl()); exit; }
 
 $db = Database::getInstance();
 $flash = ['type' => '', 'msg' => ''];

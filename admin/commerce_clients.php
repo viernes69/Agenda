@@ -9,9 +9,11 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
+use Agenduy\Core\Security;
 
 Auth::start();
-if (!Auth::check() || Auth::role() !== 'commerce_admin') { header('Location: login.php'); exit; }
+if (!Auth::check() || Auth::role() !== 'commerce_admin') { header('Location: ' . Auth::loginUrl()); exit; }
+Security::sendNoStoreHeaders();
 $idCommerce = (int)Auth::commerceId();
 
 $db = Database::getInstance();

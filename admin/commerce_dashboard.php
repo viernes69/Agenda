@@ -11,12 +11,14 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
+use Agenduy\Core\Security;
 
 Auth::start();
-if (!Auth::check()) { header('Location: login.php'); exit; }
+if (!Auth::check()) { header('Location: ' . Auth::loginUrl()); exit; }
 $role = Auth::role();
 if ($role === 'super_admin') { header('Location: index.php'); exit; }
-if ($role !== 'commerce_admin') { header('Location: login.php'); exit; }
+if ($role !== 'commerce_admin') { header('Location: ' . Auth::loginUrl()); exit; }
+Security::sendNoStoreHeaders();
 
 $idCommerce = (int)Auth::commerceId();
 if ($idCommerce <= 0) {

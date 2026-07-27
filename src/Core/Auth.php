@@ -213,12 +213,13 @@ final class Auth
         if ($uid !== null) {
             self::audit('logout', 'user', $uid);
         }
+        $sessionIds = self::knownSessionIds();
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+            self::expireKnownSessionCookies(session_get_cookie_params());
         }
         session_destroy();
+        self::deleteKnownSessionFiles($sessionIds);
     }
 
     public static function check(): bool
@@ -318,5 +319,136 @@ final class Auth
             'ip'          => $ip ?? ($_SERVER['REMOTE_ADDR'] ?? ''),
             'user_agent'  => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
         ]);
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    private static function knownSessionIds(): array
+    {
+        $ids = [];
+        foreach (self::knownSessionCookieNames() as $name) {
+            $value = $_COOKIE[$name] ?? '';
+            if (!is_string($value) || $value === '') {
+                continue;
+            }
+            $ids[$name] = $value;
+        }
+        if (session_id() !== '') {
+            $ids[session_name()] = session_id();
+        }
+        return $ids;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function knownSessionCookieNames(): array
+    {
+        $names = [
+            session_name(),
+            'AGENDUY_SESSID',
+            'PHPSESSID',
+            'agendaSession',
+        ];
+        return array_values(array_unique(array_filter($names, static fn ($name) => is_string($name) && $name !== '')));
+    }
+
+    /**
+     * @param array<string,mixed> $params
+     */
+    private static function expireKnownSessionCookies(array $params): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+
+        $pathCandidates = [
+            (string)($params['path'] ?? '/'),
+            '/',
+            \base_path(),
+        ];
+        $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+        $scriptDir = trim(dirname($scriptName), '.');
+        if ($scriptDir !== '' && $scriptDir !== '/') {
+            $pathCandidates[] = rtrim($scriptDir, '/');
+        }
+
+        $paths = [];
+        foreach ($pathCandidates as $path) {
+            $path = trim((string)$path);
+            if ($path === '') {
+                continue;
+            }
+            $paths[] = str_starts_with($path, '/') ? $path : '/' . $path;
+        }
+        $paths = array_values(array_unique($paths));
+        if ($paths === []) {
+            $paths = ['/'];
+        }
+
+        $domain = (string)($params['domain'] ?? '');
+        $secure = !empty($params['secure']) || Security::isHttpsRequest();
+        $httpOnly = !empty($params['httponly']);
+        $sameSite = (string)($params['samesite'] ?? 'Lax');
+
+        foreach (self::knownSessionCookieNames() as $name) {
+            foreach ($paths as $path) {
+                self::expireSessionCookie($name, $path, $domain, $secure, $httpOnly, $sameSite);
+            }
+        }
+    }
+
+    private static function expireSessionCookie(
+        string $name,
+        string $path,
+        string $domain,
+        bool $secure,
+        bool $httpOnly,
+        string $sameSite
+    ): void {
+        $options = [
+            'expires' => time() - 42000,
+            'path' => $path,
+            'secure' => $secure,
+            'httponly' => $httpOnly,
+            'samesite' => $sameSite !== '' ? $sameSite : 'Lax',
+        ];
+        if ($domain !== '') {
+            $options['domain'] = $domain;
+        }
+        setcookie($name, '', $options);
+    }
+
+    /**
+     * @param array<string,string> $sessionIds
+     */
+    private static function deleteKnownSessionFiles(array $sessionIds): void
+    {
+        if ((string)ini_get('session.save_handler') !== 'files') {
+            return;
+        }
+
+        $savePath = session_save_path();
+        if ($savePath === '') {
+            $savePath = sys_get_temp_dir();
+        }
+        if (str_contains($savePath, ';')) {
+            $parts = explode(';', $savePath);
+            $savePath = (string)end($parts);
+        }
+        if ($savePath === '' || !is_dir($savePath)) {
+            return;
+        }
+
+        foreach ($sessionIds as $id) {
+            if (!preg_match('/^[a-zA-Z0-9,-]{1,128}$/', $id)) {
+                continue;
+            }
+            $file = rtrim($savePath, "\\/") . DIRECTORY_SEPARATOR . 'sess_' . $id;
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
     }
 }

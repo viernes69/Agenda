@@ -10,6 +10,7 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
+use Agenduy\Core\Security;
 
 function agenduy_logout_safe_redirect(string $next): ?string
 {
@@ -34,8 +35,9 @@ function agenduy_logout_safe_redirect(string $next): ?string
 }
 
 Auth::start();
+Security::sendNoStoreHeaders();
 
-$defaultRedirect = 'login.php';
+$defaultRedirect = url('/');
 $user = Auth::user();
 if (is_array($user) && (string)($user['role'] ?? '') === Auth::ROLE_LOCAL) {
     $commerceId = (int)($user['id_commerce'] ?? 0);

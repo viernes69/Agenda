@@ -8,6 +8,7 @@ declare(strict_types=1);
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\Database;
+use Agenduy\Core\Security;
 
 if (defined('PRIVATE_SESSION_GUARD_LOADED')) {
     return;
@@ -83,6 +84,8 @@ if (!is_array($sessionUser)) {
     header('Location: ' . $loginUrl);
     exit;
 }
+
+Security::sendNoStoreHeaders();
 
 $centralRole = strtolower(trim((string)($sessionUser['role'] ?? '')));
 $legacyRole = strtolower(trim((string)($sessionUser['Rol'] ?? $sessionUser['rol'] ?? '')));

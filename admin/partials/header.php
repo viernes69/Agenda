@@ -4,15 +4,18 @@
  * Variables esperadas: $pageTitle, $activeSection
  */
 use Agenduy\Core\Auth;
+use Agenduy\Core\Security;
 
 if (!defined('ADMIN_PANEL')) {
     define('ADMIN_PANEL', true);
 }
 
 if (!Auth::check() || Auth::role() !== 'super_admin') {
-    header('Location: login.php');
+    header('Location: ' . url('admin/login.php'));
     exit;
 }
+
+Security::sendNoStoreHeaders();
 
 $user = Auth::user();
 $active = $activeSection ?? '';
