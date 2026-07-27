@@ -82,7 +82,7 @@ final class MercadoPago
     }
 
     /**
-     * Tienda puede cobrar online desde planes pagos/full (Basico/Intermedio/Pro).
+     * Tienda puede cobrar online solo en planes Intermedio/Pro.
      */
     public static function isStoreCheckoutAllowed(?array $plan): bool
     {
@@ -93,7 +93,13 @@ final class MercadoPago
         if ($name === '' || $name === 'free' || str_contains($name, 'gratis')) {
             return false;
         }
-        return !MembershipPlan::isBasicSettingsOnly($plan);
+        if (MembershipPlan::isBasicSettingsOnly($plan)) {
+            return false;
+        }
+
+        return str_contains($name, 'intermedio')
+            || str_contains($name, 'profesional')
+            || preg_match('/(^|\s|[-_])pro($|\s|[-_])/', $name) === 1;
     }
 
     /**

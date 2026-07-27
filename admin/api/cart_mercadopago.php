@@ -93,7 +93,7 @@ try {
 
     $plan = MembershipPlan::forCommerceId($commerceId);
     if (!MercadoPago::isStoreCheckoutAllowed($plan)) {
-        throw new RuntimeException('Mercado Pago para tiendas esta disponible desde el plan Basico/Intermedio.');
+        throw new RuntimeException('Mercado Pago para tiendas esta disponible desde el plan Intermedio/Pro.');
     }
 
     $mp = MercadoPago::commerceConfig($commerceId, $slug);
