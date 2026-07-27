@@ -16,6 +16,7 @@ use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\MercadoPago;
+use Agenduy\Core\NotificationOutbox;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -297,6 +298,34 @@ try {
             'MP_External_Reference' => $externalReference,
             'Total' => number_format($total, 2, '.', ''),
         ]);
+        try {
+            NotificationOutbox::enqueueStoreOrderNotifications($commerce, array_replace($row, [
+                'ID_Carrito' => $orderId,
+                'Status' => 'Pago pendiente',
+                'Payment_Status' => 'pending',
+                'MP_External_Reference' => $externalReference,
+                'Total' => number_format($total, 2, '.', ''),
+                'currency' => $currency,
+            ]), $mpItems, [
+                'cliente_nombre' => $clienteNombre,
+                'cliente_email' => $clienteEmail,
+                'cliente_telefono' => $clienteTelefono,
+                'direccion' => $address,
+            ], 'created');
+        } catch (Throwable $notifyError) {
+            error_log('[cart_mercadopago] outbox: ' . $notifyError->getMessage());
+        }
+        try {
+            $notifier = dirname(__DIR__, 2) . '/template/src/API/AdminPushNotifier.php';
+            if (is_file($notifier)) {
+                require_once $notifier;
+                if (class_exists('AdminPushNotifier')) {
+                    AdminPushNotifier::notifyOrder(array_replace($row, ['ID_Carrito' => $orderId, 'Status' => 'Pago pendiente']));
+                }
+            }
+        } catch (Throwable $pushError) {
+            error_log('[cart_mercadopago] push: ' . $pushError->getMessage());
+        }
     } catch (Throwable $mpError) {
         markStorePaymentRejected($db, $slug, $orderId, $paymentRowId, $mpError->getMessage());
         throw $mpError;

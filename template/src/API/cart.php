@@ -305,7 +305,6 @@ switch ($action) {
         ];
         try {
             $row = AutoloadDB::insert('carrito', $record);
-            send_order_email($row, $cart, $cliente, $address, $pickup);
         } catch (Throwable $e) {
             json_response(['ok' => false, 'error' => 'No se pudo guardar el pedido'], 500);
         }

@@ -72,25 +72,30 @@ final class CommercePublic
 
     public static function rubroCoverImage(int $idRubro, string $rubroNombre = ''): string
     {
-        $map = [
-            9  => 'clinicas_estetica.jpg',
-            10 => 'barberias.jpg',
-            11 => 'odontologia.jpg',
-        ];
-        $file = $map[$idRubro] ?? null;
-        if ($file === null) {
-            $name = mb_strtolower($rubroNombre, 'UTF-8');
+        $name = self::normalizeLabel($rubroNombre);
+        if ($name !== '') {
             if (str_contains($name, 'barber') || str_contains($name, 'peluqu')) {
-                $file = 'barberias.jpg';
-            } elseif (str_contains($name, 'estet') || str_contains($name, 'belleza')) {
-                $file = 'clinicas_estetica.jpg';
-            } elseif (str_contains($name, 'odont') || str_contains($name, 'dental')) {
-                $file = 'odontologia.jpg';
-            } else {
-                $file = 'profesionales.jpg';
+                return 'src/media/carousel/barberias.jpg';
+            }
+            if (str_contains($name, 'estet') || str_contains($name, 'belleza')) {
+                return 'src/media/carousel/clinicas_estetica.jpg';
+            }
+            if (str_contains($name, 'odont') || str_contains($name, 'dental') || str_contains($name, 'dent')) {
+                return 'src/media/carousel/dentistas.jpg';
+            }
+            if (str_contains($name, 'evento') || str_contains($name, 'fiesta')) {
+                return 'src/media/carousel/fiestas_eventos.jpg';
             }
         }
-        return 'src/media/carousel/' . $file;
+
+        $map = [
+            9  => 'src/media/carousel/clinicas_estetica.jpg',
+            10 => 'src/media/carousel/barberias.jpg',
+            11 => 'src/media/carousel/dentistas.jpg',
+        ];
+        return $rubroNombre === '' && isset($map[$idRubro])
+            ? $map[$idRubro]
+            : 'src/media/logo/og-image.png';
     }
 
     /**
@@ -145,5 +150,15 @@ final class CommercePublic
             'Reservas online sin llamadas',
             'Confirmación por email y WhatsApp',
         ];
+    }
+
+    private static function normalizeLabel(string $value): string
+    {
+        $label = function_exists('mb_strtolower') ? mb_strtolower(trim($value), 'UTF-8') : strtolower(trim($value));
+        $converted = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $label) : false;
+        if (is_string($converted) && $converted !== '') {
+            $label = $converted;
+        }
+        return preg_replace('/[^a-z0-9]+/', ' ', $label) ?? $label;
     }
 }

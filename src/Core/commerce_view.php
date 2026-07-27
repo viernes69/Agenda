@@ -215,6 +215,7 @@ if (!function_exists('agenduy_render_commerce')) {
 
         $csrf = CSRF::generate('public_booking');
         $apiBase = url('admin/api/appointments.php');
+        $cancelAppointmentApi = url('admin/api/cancel_appointment.php');
         $cartOrderApi = url('admin/api/cart_order.php');
         $cartMercadoPagoApi = url('admin/api/cart_mercadopago.php');
         $storePlan = $isStoreMode ? MembershipPlan::forCommerceId($commerceId) : null;
@@ -725,7 +726,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 <span class="eyebrow">Reservar</span>
                 <h2 class="section-title">Listo para reservar</h2>
                 <p class="section-sub" style="margin: 0 auto 1.8rem">Elegí un servicio arriba y hacé clic en "Reservar". Vas a recibir confirmación por email y WhatsApp.</p>
-                <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Ver servicios y reservar</a>
+                <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap">
+                    <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Ver servicios y reservar</a>
+                    <button type="button" class="btn btn--ghost btn--lg" data-open-cancel-appointment><i class="bx bx-calendar-x"></i> Cancelar reserva</button>
+                </div>
             </div>
         </section>
         <?php endif; ?>
@@ -803,7 +807,7 @@ if (!function_exists('agenduy_render_commerce')) {
                                 </div>
                                 <div>
                                     <label for="booking-cedula">Cédula</label>
-                                    <input type="text" id="booking-cedula" name="cliente_cedula" inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" title="Solo números, mínimo 7 dígitos">
+                                    <input type="text" id="booking-cedula" name="cliente_cedula" inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" title="Solo números, mínimo 7 dígitos" required>
                                 </div>
                             </div>
                             <div class="field">
@@ -844,6 +848,38 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($showBooking): ?>
+        <!-- Modal cancelar reserva -->
+        <div class="modal-bg" id="cancel-appointment-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-appointment-title">
+            <div class="modal">
+                <div class="modal__header">
+                    <h3 id="cancel-appointment-title">Cancelar reserva</h3>
+                    <button class="modal__close" type="button" data-close-cancel-appointment aria-label="Cerrar">×</button>
+                </div>
+                <div class="modal__body">
+                    <div id="cancel-appointment-alert" hidden></div>
+                    <form id="cancel-appointment-form" novalidate>
+                        <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="field field--row">
+                            <div>
+                                <label for="cancel-appointment-id">Número de reserva</label>
+                                <input type="text" id="cancel-appointment-id" name="id_appointment" inputmode="numeric" required placeholder="154">
+                            </div>
+                            <div>
+                                <label for="cancel-appointment-cedula">Cédula</label>
+                                <input type="text" id="cancel-appointment-cedula" name="cedula" inputmode="numeric" required placeholder="12345678">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal__foot">
+                    <button type="button" class="btn btn--ghost" data-close-cancel-appointment>Volver</button>
+                    <button type="submit" form="cancel-appointment-form" class="btn btn--primary" id="cancel-appointment-submit">Cancelar reserva</button>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php if ($showProducts): ?>
         <!-- Modal carrito -->
@@ -932,6 +968,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartKey = 'agenduy-cart-' + commerceSlug;
             const cartOrderUrl = <?= json_encode($cartOrderApi, JSON_UNESCAPED_SLASHES) ?>;
             const cartMercadoPagoUrl = <?= json_encode($cartMercadoPagoApi, JSON_UNESCAPED_SLASHES) ?>;
+            const cancelAppointmentUrl = <?= json_encode($cancelAppointmentApi, JSON_UNESCAPED_SLASHES) ?>;
             const storeMpCheckoutEnabled = <?= $storeMpCheckoutEnabled ? 'true' : 'false' ?>;
             let lastBooking = null;
             let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -1883,6 +1920,107 @@ if (!function_exists('agenduy_render_commerce')) {
                 });
             }
 
+            const cancelAppointmentModal = document.getElementById('cancel-appointment-modal');
+            const cancelAppointmentForm = document.getElementById('cancel-appointment-form');
+            const cancelAppointmentAlert = document.getElementById('cancel-appointment-alert');
+            const cancelAppointmentSubmit = document.getElementById('cancel-appointment-submit');
+            const cancelAppointmentId = document.getElementById('cancel-appointment-id');
+            const cancelAppointmentCedula = document.getElementById('cancel-appointment-cedula');
+
+            function openCancelAppointmentModal(prefillId = '') {
+                if (!cancelAppointmentModal) return;
+                if (cancelAppointmentId && prefillId) cancelAppointmentId.value = String(prefillId).replace(/\D/g, '');
+                if (cancelAppointmentAlert) {
+                    cancelAppointmentAlert.hidden = true;
+                    cancelAppointmentAlert.innerHTML = '';
+                }
+                cancelAppointmentModal.classList.add('is-open');
+                setTimeout(() => (cancelAppointmentId || cancelAppointmentCedula)?.focus(), 50);
+            }
+
+            function closeCancelAppointmentModal() {
+                if (cancelAppointmentModal) cancelAppointmentModal.classList.remove('is-open');
+            }
+
+            document.querySelectorAll('[data-open-cancel-appointment]').forEach(btn => {
+                btn.addEventListener('click', () => openCancelAppointmentModal());
+            });
+            document.querySelectorAll('[data-close-cancel-appointment]').forEach(btn => {
+                btn.addEventListener('click', closeCancelAppointmentModal);
+            });
+            if (cancelAppointmentModal) {
+                cancelAppointmentModal.addEventListener('click', e => {
+                    if (e.target === cancelAppointmentModal) closeCancelAppointmentModal();
+                });
+            }
+
+            const cancelFromUrl = new URLSearchParams(window.location.search).get('cancel_reserva') || '';
+            if (cancelFromUrl) {
+                openCancelAppointmentModal(cancelFromUrl);
+            }
+
+            async function submitCancelAppointment() {
+                if (!cancelAppointmentForm) return null;
+                const body = new FormData(cancelAppointmentForm);
+                body.set('_csrf', csrfToken);
+                const res = await fetch(cancelAppointmentUrl, {
+                    method: 'POST',
+                    body,
+                    credentials: 'same-origin'
+                });
+                let json = null;
+                try { json = await res.json(); } catch (_) {}
+                return json || { ok: false, error: 'Respuesta inválida del servidor (' + res.status + ').' };
+            }
+
+            if (cancelAppointmentForm) {
+                cancelAppointmentForm.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const id = String(cancelAppointmentId?.value || '').replace(/\D/g, '');
+                    const cedula = String(cancelAppointmentCedula?.value || '').replace(/\D/g, '');
+                    if (!id || cedula.length < 7) {
+                        if (cancelAppointmentAlert) {
+                            cancelAppointmentAlert.className = 'alert alert--error';
+                            cancelAppointmentAlert.innerHTML = '<i class="bx bx-error-circle"></i> Ingresá número de reserva y cédula.';
+                            cancelAppointmentAlert.hidden = false;
+                        }
+                        return;
+                    }
+                    if (cancelAppointmentSubmit) {
+                        cancelAppointmentSubmit.disabled = true;
+                        cancelAppointmentSubmit.innerHTML = '<span class="spinner"></span> Cancelando...';
+                    }
+                    if (cancelAppointmentAlert) cancelAppointmentAlert.hidden = true;
+                    try {
+                        let json = await submitCancelAppointment();
+                        if (json && json.error === 'csrf_retry' && json.csrf) {
+                            syncCsrfToken(json.csrf);
+                            json = await submitCancelAppointment();
+                        }
+                        if (!json || !json.ok) {
+                            throw new Error((json && json.error) ? json.error : 'No se pudo cancelar la reserva.');
+                        }
+                        cancelAppointmentForm.reset();
+                        if (cancelAppointmentAlert) {
+                            cancelAppointmentAlert.className = 'alert alert--ok';
+                            cancelAppointmentAlert.innerHTML = '<i class="bx bx-check-circle"></i> Reserva cancelada. Te enviamos el aviso por email y WhatsApp si tus datos estaban cargados.';
+                            cancelAppointmentAlert.hidden = false;
+                        }
+                    } catch (err) {
+                        if (cancelAppointmentAlert) {
+                            cancelAppointmentAlert.className = 'alert alert--error';
+                            cancelAppointmentAlert.innerHTML = '<i class="bx bx-error-circle"></i> ' + (err.message || 'No se pudo cancelar la reserva.');
+                            cancelAppointmentAlert.hidden = false;
+                        }
+                    } finally {
+                        if (cancelAppointmentSubmit) {
+                            cancelAppointmentSubmit.disabled = false;
+                            cancelAppointmentSubmit.innerHTML = 'Cancelar reserva';
+                        }
+                    }
+                });
+            }
+
             async function sendBooking() {
                 const data = new FormData(form);
                 data.set('_csrf', csrfToken);
@@ -1912,11 +2050,10 @@ if (!function_exists('agenduy_render_commerce')) {
                     alertBox.hidden = false;
                     return;
                 }
-                const bookingEmail = String(bookingEmailInput?.value || '').trim();
                 const bookingCedula = String(bookingCedulaInput?.value || '').replace(/\D/g, '');
-                if (bookingEmail !== '' && (bookingCedula.length < 7)) {
+                if (bookingCedula.length < 7) {
                     alertBox.className = 'alert alert--error';
-                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresá tu cédula (mínimo 7 dígitos) para acceder a tus reservas después.';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresá tu cédula (mínimo 7 dígitos) para poder cancelar tu reserva si lo necesitás.';
                     alertBox.hidden = false;
                     return;
                 }

@@ -35,6 +35,33 @@ final class AdminPushNotifier
         ]);
     }
 
+    public static function notifyOrder(array $order): void
+    {
+        $title = 'Nuevo pedido';
+        $orderId = trim((string)($order['ID_Carrito'] ?? $order['ID'] ?? ''));
+        $status = trim((string)($order['Status'] ?? 'Pendiente'));
+        $bodyParts = [];
+        if ($orderId !== '') {
+            $bodyParts[] = 'Pedido #' . $orderId;
+        }
+        if ($status !== '') {
+            $bodyParts[] = $status;
+        }
+        $body = $bodyParts ? implode(' - ', $bodyParts) : 'Tienes un nuevo pedido en la tienda.';
+
+        self::broadcast([
+            'title' => $title,
+            'body' => $body,
+            'icon' => '/agenda/src/media/logo/logo.png',
+            'badge' => '/agenda/src/media/logo/logo.png',
+            'data' => [
+                'url' => '/agenda/template/private/dashboard/admin/index.php#reservas',
+                'type' => 'order',
+                'order_id' => $order['ID_Carrito'] ?? null,
+            ],
+        ]);
+    }
+
     private static function broadcast(array $payload): void
     {
         $config = self::getConfig();

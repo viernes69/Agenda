@@ -79,7 +79,7 @@ final class CommerceSettings
                 'requiere_login' => false,
             ],
             'moneda' => ['codigo' => 'UYU', 'simbolo' => '$', 'decimales' => 0],
-            'seo' => ['title' => '', 'description' => '', 'keywords' => [], 'canonical' => '', 'robots' => 'index,follow', 'og_image' => ''],
+            'seo' => ['title' => '', 'description' => '', 'keywords' => [], 'canonical' => '', 'robots' => 'index,follow', 'og_image' => 'src/media/logo/og-image.png'],
             'legal' => ['terminos' => '', 'privacidad' => '', 'cookies' => ''],
             'redes' => ['instagram' => '', 'facebook' => '', 'tiktok' => '', 'whatsapp' => ''],
             'notificaciones' => [

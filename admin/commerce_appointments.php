@@ -9,6 +9,7 @@ $config = require __DIR__ . '/../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
+use Agenduy\Core\NotificationOutbox;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'commerce_admin') { header('Location: login.php'); exit; }
@@ -28,10 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'cancel') {
         $db->update('appointments', ['status' => 'cancelled', 'updated_at' => date('Y-m-d H:i:s')],
             'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
+        NotificationOutbox::enqueueAppointmentStatusNotifications($id, 'cancelled');
         $flash = ['type' => 'ok', 'msg' => 'Turno cancelado.'];
     } elseif ($action === 'done') {
         $db->update('appointments', ['status' => 'done', 'updated_at' => date('Y-m-d H:i:s')],
             'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
+        NotificationOutbox::enqueueAppointmentStatusNotifications($id, 'attended');
         $flash = ['type' => 'ok', 'msg' => 'Turno marcado como atendido.'];
     } elseif ($action === 'delete') {
         $db->delete('appointments', 'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
@@ -66,6 +69,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'timeout' => 5,
                 ]
             ]));
+            $commerceRow = $db->fetchOne('SELECT * FROM commerces WHERE id_commerce = :c LIMIT 1', [':c' => $idCommerce]);
+            if ($commerceRow) {
+                NotificationOutbox::enqueueAppointmentNotifications([
+                    'id_appointment' => $idAppt,
+                    'fecha' => $fecha,
+                    'hora_inicio' => $hora,
+                    'cliente_nombre' => $nombre,
+                    'cliente_email' => $email,
+                    'cliente_telefono' => $tel,
+                    'notas' => $notas,
+                ], $commerceRow, null);
+            }
             $flash = ['type' => 'ok', 'msg' => 'Turno creado.'];
         }
     }

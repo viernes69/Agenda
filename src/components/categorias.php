@@ -37,7 +37,7 @@ $defaultPlan = $planes[0] ?? ['id_membership' => '', 'nombre' => 'Plan', 'precio
         $desc = (string)($r['descripcion'] ?? '');
         $img = trim((string)($r['imagen'] ?? ''));
         if ($img === '' || !is_file(dirname(__DIR__, 2) . '/' . ltrim(str_replace('\\', '/', $img), '/'))) {
-          $img = 'src/media/carousel/profesionales.jpg';
+          $img = 'src/media/logo/og-image.png';
         }
         $planRefId = (string)($r['id_plan_def'] ?? '');
         $planInfo = ($planRefId !== '' && isset($planMap[$planRefId])) ? $planMap[$planRefId] : $defaultPlan;

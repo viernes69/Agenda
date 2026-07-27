@@ -87,8 +87,8 @@ try {
     if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
     }
-    if ($clienteEmail !== '' && $clienteCedula === '') {
-        throw new InvalidArgumentException('Ingresá tu cédula para poder acceder a tus reservas después.');
+    if ($clienteCedula === '') {
+        throw new InvalidArgumentException('Ingresá tu cédula para poder cancelar tu reserva si lo necesitás.');
     }
 
     $horaNormalizada = Availability::normalizeTime($horaInicio);
@@ -141,25 +141,53 @@ try {
         }
     }
 
-    // Insertar cliente (idempotente por email + id_commerce)
+    // Insertar/actualizar cliente. La cedula queda asociada a la reserva
+    // para permitir cancelacion publica sin cuenta.
     $idClient = null;
-    if ($clienteEmail !== '') {
-        $existing = $db->fetchOne(
-            'SELECT id_client FROM clients WHERE id_commerce = :c AND email = :e LIMIT 1',
-            [':c' => $commerce['id_commerce'], ':e' => $clienteEmail]
-        );
+    if ($clienteEmail !== '' || $clienteCedula !== '' || $clienteTelefono !== '') {
+        $existing = null;
+        if ($clienteEmail !== '') {
+            $existing = $db->fetchOne(
+                'SELECT id_client FROM clients WHERE id_commerce = :c AND lower(trim(email)) = :e LIMIT 1',
+                [':c' => $commerce['id_commerce'], ':e' => strtolower($clienteEmail)]
+            );
+        }
+        if (!$existing && $clienteCedula !== '') {
+            $existing = $db->fetchOne(
+                'SELECT id_client FROM clients WHERE id_commerce = :c AND cedula = :ci LIMIT 1',
+                [':c' => $commerce['id_commerce'], ':ci' => $clienteCedula]
+            );
+        }
+        if (!$existing && $clienteTelefono !== '') {
+            $phoneSuffix = substr(preg_replace('/\D+/', '', $clienteTelefono) ?? '', -8);
+            if ($phoneSuffix !== '') {
+                $existing = $db->fetchOne(
+                    "SELECT id_client FROM clients
+                     WHERE id_commerce = :c
+                       AND replace(replace(replace(replace(replace(telefono,' ',''),'-',''),'.',''),'+',''),'(','') LIKE :p
+                     LIMIT 1",
+                    [':c' => $commerce['id_commerce'], ':p' => '%' . $phoneSuffix]
+                );
+            }
+        }
         if ($existing) {
             $idClient = (int)$existing['id_client'];
-            if ($clienteCedula !== '') {
-                $patch = [
-                    'cedula'     => $clienteCedula,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ];
-                if ($clienteTelefono !== '') {
-                    $patch['telefono'] = $clienteTelefono;
-                }
-                $db->update('clients', $patch, 'id_client = :id', [':id' => $idClient]);
+            $parts = explode(' ', $clienteNombre, 2);
+            $patch = ['updated_at' => date('Y-m-d H:i:s')];
+            if ($parts[0] !== '') {
+                $patch['nombre'] = $parts[0];
+                $patch['apellido'] = $parts[1] ?? '';
             }
+            if ($clienteCedula !== '') {
+                $patch['cedula'] = $clienteCedula;
+            }
+            if ($clienteEmail !== '') {
+                $patch['email'] = $clienteEmail;
+            }
+            if ($clienteTelefono !== '') {
+                $patch['telefono'] = $clienteTelefono;
+            }
+            $db->update('clients', $patch, 'id_client = :id', [':id' => $idClient]);
         } else {
             $parts = explode(' ', $clienteNombre, 2);
             $idClient = (int)$db->insert('clients', [
@@ -218,6 +246,17 @@ try {
             ]);
             if (is_array($mirror['row'] ?? null) && isset($mirror['row']['ID_Reserva'])) {
                 $localReservaId = $mirror['row']['ID_Reserva'];
+                try {
+                    $notifier = dirname(__DIR__, 2) . '/template/src/API/AdminPushNotifier.php';
+                    if (is_file($notifier)) {
+                        require_once $notifier;
+                        if (class_exists('AdminPushNotifier')) {
+                            AdminPushNotifier::notifyReservation($mirror['row']);
+                        }
+                    }
+                } catch (Throwable $pushError) {
+                    error_log('[appointments.api] push local: ' . $pushError->getMessage());
+                }
             }
         }
     } catch (Throwable $e) {
@@ -274,98 +313,33 @@ try {
         $googleErr = $e->getMessage();
     }
 
-    // 2) Email al dueño del comercio (nombre del servicio + detalles completos).
-    // Se ENCOLA en notification_outbox (no se envía en este request): el envío
-    // SMTP síncrono bloqueaba la respuesta ~10-25s. bin/process-outbox.php despacha.
-    $owner = $db->fetchOne(
-        'SELECT email, nombre FROM users WHERE id_commerce = :c AND role = :r LIMIT 1',
-        [':c' => $commerce['id_commerce'], ':r' => 'commerce_admin']
-    );
-    if ($owner && !empty($owner['email'])) {
-        // $svcNombre ya está disponible desde arriba
-        $precioLabel = $precio > 0 ? number_format($precio, 2, ',', '.') . ' UYU' : 'A convenir';
-        $subject = 'Nueva reserva - ' . $commerce['nombre'];
-        $body = '<div style="font-family:Arial,sans-serif;max-width:520px">'
-              . '<h2 style="color:#1e293b;margin-bottom:.5rem">Nueva reserva</h2>'
-              . '<p style="color:#475569">Hola <strong>' . htmlspecialchars($owner['nombre']) . '</strong>, recibiste una nueva reserva:</p>'
-              . '<table style="width:100%;border-collapse:collapse;margin:1rem 0">'
-              . '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Servicio</td>'
-              . '<td style="padding:.4rem 0;font-weight:600">' . ($svcNombre !== '' ? htmlspecialchars($svcNombre) : 'No especificado') . '</td></tr>'
-              . '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Cliente</td>'
-              . '<td style="padding:.4rem 0;font-weight:600">' . htmlspecialchars($clienteNombre) . '</td></tr>'
-              . '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Fecha</td>'
-              . '<td style="padding:.4rem 0">' . htmlspecialchars($fecha) . '</td></tr>'
-              . '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Hora</td>'
-              . '<td style="padding:.4rem 0">' . htmlspecialchars(substr($horaInicio,0,5)) . ' - ' . htmlspecialchars(substr($horaFin,0,5)) . '</td></tr>'
-              . ($clienteTelefono !== '' ? '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Teléfono</td><td style="padding:.4rem 0"><a href="tel:' . htmlspecialchars($clienteTelefono) . '">' . htmlspecialchars($clienteTelefono) . '</a></td></tr>' : '')
-              . ($clienteEmail !== '' ? '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Email</td><td style="padding:.4rem 0"><a href="mailto:' . htmlspecialchars($clienteEmail) . '">' . htmlspecialchars($clienteEmail) . '</a></td></tr>' : '')
-              . ($precio > 0 ? '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Precio</td><td style="padding:.4rem 0;font-weight:600">' . $precioLabel . '</td></tr>' : '')
-              . ($notas !== '' ? '<tr><td style="padding:.4rem 0;color:#64748b;font-size:.9rem">Notas</td><td style="padding:.4rem 0">' . nl2br(htmlspecialchars($notas)) . '</td></tr>' : '')
-              . '</table>'
-              . '<p style="color:#64748b;font-size:.85rem">Ingresá a tu panel → <strong>Reservas</strong> para confirmar, rechazar o reprogramar esta reserva.</p>'
-              . '</div>';
-        // Misma idempotency key que enqueueAppointmentNotifications: este
-        // cuerpo (más completo) gana porque se encola primero.
-        NotificationOutbox::enqueue(
-            (int)$commerce['id_commerce'],
-            'email',
-            (string)$owner['email'],
-            'appointment_confirmed_owner',
-            $subject,
-            $body,
-            ['appointment_id' => $idAppt],
-            date('Y-m-d H:i:s'),
-            "appt:{$idAppt}:email:owner:confirm"
-        );
-    }
-
-    // 3) Email al cliente (con link de Google Calendar si existe)
-    if ($clienteEmail !== '') {
-        $subject = 'Reserva recibida - ' . $commerce['nombre'];
-        $body = '<p>Hola ' . htmlspecialchars($clienteNombre) . ',</p>'
-              . '<p>Recibimos tu solicitud de reserva en <strong>' . htmlspecialchars($commerce['nombre']) . '</strong>.</p>'
-              . '<ul><li><strong>Fecha:</strong> ' . htmlspecialchars($fecha) . '</li>'
-              . '<li><strong>Hora:</strong> ' . htmlspecialchars($horaInicio) . '</li></ul>'
-              . ($googleLink !== ''
-                    ? '<p style="margin: 1.2rem 0"><a href="' . htmlspecialchars($googleLink, ENT_QUOTES, 'UTF-8') . '" style="display:inline-block; background:#6366f1; color:#fff; padding:.7rem 1.2rem; border-radius:8px; text-decoration:none; font-weight:600">📅 Agregar a Google Calendar</a></p>'
-                    : '')
-              . '<p style="color:#5b6271; font-size:.9rem">Te adjuntamos un archivo <code>.ics</code> para que puedas agregar la reserva a cualquier calendario (Google, Apple, Outlook). El comercio te confirmará pronto; para cambios o cancelaciones, contactalos directamente.</p>';
-        $clientPayload = ['appointment_id' => $idAppt];
-        if ($icsBase64 !== '') {
-            $clientPayload['attachments'] = [[
-                'name'     => $icsFilename,
-                'data_b64' => $icsBase64,
-                'mime'     => 'text/calendar; method=PUBLISH; charset=UTF-8',
-            ]];
-        }
-        NotificationOutbox::enqueue(
-            (int)$commerce['id_commerce'],
-            'email',
-            $clienteEmail,
-            'appointment_confirmed_client',
-            $subject,
-            $body,
-            $clientPayload,
-            date('Y-m-d H:i:s'),
-            "appt:{$idAppt}:email:client:confirm"
-        );
-    }
-
-    // 4) Encolar el resto (WhatsApp + recordatorios). Todo se despacha desde
+    // 2) Encolar email, WhatsApp y recordatorio. Todo se despacha desde
     // bin/process-outbox.php: NO se envía nada síncronamente en este request
     // para que la respuesta al formulario sea inmediata.
     try {
+        $notificationPayload = [];
+        if ($icsBase64 !== '') {
+            $notificationPayload['attachments'] = [[
+                'name' => $icsFilename,
+                'data_b64' => $icsBase64,
+                'mime' => 'text/calendar; method=PUBLISH; charset=UTF-8',
+            ]];
+        }
         NotificationOutbox::enqueueAppointmentNotifications(
             [
                 'id_appointment'   => $idAppt,
+                'local_reservation_id' => (int)($localReservaId ?? 0),
                 'fecha'            => $fecha,
                 'hora_inicio'      => $horaInicio,
                 'cliente_nombre'   => $clienteNombre,
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
+                'cliente_cedula'   => $clienteCedula,
+                'notas'            => $notas,
             ],
             $commerce,
-            (isset($svc) && is_array($svc)) ? $svc : null
+            (isset($svc) && is_array($svc)) ? $svc : null,
+            $notificationPayload
         );
     } catch (Throwable $e) {
         error_log('[appointments.api] outbox: ' . $e->getMessage());

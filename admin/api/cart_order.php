@@ -17,6 +17,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\NotificationOutbox;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -116,9 +117,22 @@ try {
     }
 
     $pairs = [];
+    $orderItems = [];
+    $orderTotal = 0.0;
     foreach ($qtyByProduct as $pid => $qty) {
+        $product = $catalog[$pid];
+        $price = round((float)($product['price'] ?? 0), 2);
         $pairs[] = '(' . $pid . ' + ' . $qty . ')';
+        $orderItems[] = [
+            'id' => (string)$pid,
+            'name' => trim((string)($product['name'] ?? ('Producto ' . $pid))),
+            'qty' => (int)$qty,
+            'price' => $price,
+            'subtotal' => $price * (int)$qty,
+        ];
+        $orderTotal += $price * (int)$qty;
     }
+    $orderTotal = round($orderTotal, 2);
 
     $clienteNombre = trim((string)($payload['cliente_nombre'] ?? ''));
     $clienteEmail = trim((string)($payload['cliente_email'] ?? ''));
@@ -167,8 +181,32 @@ try {
     $row = TenantLocalDb::insertCartOrder($slug, $record, [
         'Metodo_Pago' => 'WhatsApp',
         'Payment_Status' => 'manual',
+        'Total' => number_format($orderTotal, 2, '.', ''),
     ]);
     $orderId = $row['ID_Carrito'] ?? null;
+
+    try {
+        NotificationOutbox::enqueueStoreOrderNotifications($commerce, $row, $orderItems, [
+            'cliente_nombre' => $clienteNombre,
+            'cliente_email' => $clienteEmail,
+            'cliente_telefono' => $clienteTelefono,
+            'direccion' => $address,
+        ], 'created');
+    } catch (Throwable $e) {
+        error_log('[cart_order] outbox: ' . $e->getMessage());
+    }
+
+    try {
+        $notifier = dirname(__DIR__, 2) . '/template/src/API/AdminPushNotifier.php';
+        if (is_file($notifier)) {
+            require_once $notifier;
+            if (class_exists('AdminPushNotifier')) {
+                AdminPushNotifier::notifyOrder($row);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('[cart_order] push: ' . $e->getMessage());
+    }
 
     echo json_encode([
         'ok' => true,

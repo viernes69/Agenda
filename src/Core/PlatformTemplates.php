@@ -24,29 +24,20 @@ final class PlatformTemplates
             'email' => [
                 'appointment_confirmed_client' => [
                     'label' => 'Reserva confirmada (cliente)',
-                    'hint' => 'Se envía al cliente cuando confirma una reserva.',
+                    'hint' => 'Se envia al cliente cuando confirma una reserva.',
                     'fields' => ['subject', 'body'],
                     'defaults' => [
-                        'subject' => 'Reserva confirmada - {negocio}',
-                        'body' => "{logo}\n\nHola {cliente}, tu reserva en {negocio} quedó confirmada.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                        'subject' => 'Reserva recibida - {negocio}',
+                        'body' => "{logo}\n\nHola {cliente}, recibimos tu reserva #{id_reserva} en {negocio}.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\n\nSi necesitas cancelar, usa tu cedula y el numero de reserva.",
                     ],
                 ],
                 'appointment_confirmed_owner' => [
-                    'label' => 'Nueva reserva (dueño del negocio)',
+                    'label' => 'Nueva reserva (dueno del negocio)',
                     'hint' => 'Aviso al administrador del comercio cuando entra una reserva.',
                     'fields' => ['subject', 'body'],
                     'defaults' => [
                         'subject' => 'Nueva reserva - {cliente}',
-                        'body' => "Nueva reserva en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
-                    ],
-                ],
-                'appointment_reminder_24h' => [
-                    'label' => 'Recordatorio 24 h (cliente)',
-                    'hint' => 'Email de recordatorio un día antes de la cita.',
-                    'fields' => ['subject', 'body'],
-                    'defaults' => [
-                        'subject' => 'Recordatorio de reserva - {negocio}',
-                        'body' => 'Recordatorio: mañana tienes {servicio} en {negocio} a las {hora}.',
+                        'body' => "Nueva reserva #{id_reserva} en {negocio}\nCliente: {cliente}\nCedula: {cedula}\nCelular: {telefono}\nEmail: {email}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\nNotas: {notas}",
                     ],
                 ],
                 'appointment_reminder_2h' => [
@@ -55,32 +46,77 @@ final class PlatformTemplates
                     'fields' => ['subject', 'body'],
                     'defaults' => [
                         'subject' => 'Tu cita es pronto - {negocio}',
-                        'body' => 'Recordatorio: en 2 horas tienes {servicio} en {negocio} ({hora}).',
+                        'body' => "Hola {cliente}, te recordamos que en 2 horas tenes {servicio} en {negocio}.\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'appointment_attended_client' => [
+                    'label' => 'Reserva atendida (cliente)',
+                    'hint' => 'Agradecimiento al cliente cuando el comercio marca la reserva como atendida.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Gracias por venir - {negocio}',
+                        'body' => "Hola {cliente}, gracias por venir a {negocio}.\nEsperamos que hayas tenido una excelente experiencia.",
+                    ],
+                ],
+                'appointment_cancelled_client' => [
+                    'label' => 'Reserva cancelada (cliente)',
+                    'hint' => 'Aviso al cliente cuando una reserva se cancela.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Reserva cancelada - {negocio}',
+                        'body' => "Hola {cliente}, tu reserva #{id_reserva} en {negocio} fue cancelada.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'appointment_cancelled_owner' => [
+                    'label' => 'Reserva cancelada (dueno)',
+                    'hint' => 'Aviso al comercio cuando una reserva se cancela.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Reserva cancelada - {cliente}',
+                        'body' => "Se cancelo la reserva #{id_reserva} en {negocio}.\nCliente: {cliente}\nCedula: {cedula}\nCelular: {telefono}\nEmail: {email}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'store_order_created_owner' => [
+                    'label' => 'Nuevo pedido (tienda)',
+                    'hint' => 'Aviso al comercio cuando entra un pedido de tienda.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Nuevo pedido #{pedido} - {negocio}',
+                        'body' => "Nuevo pedido #{pedido} en {negocio}\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nEmail: {email}\nDireccion: {direccion}\n\nProductos:\n{productos}\n\nTotal: {total}",
+                    ],
+                ],
+                'store_order_paid_owner' => [
+                    'label' => 'Pedido pagado (tienda)',
+                    'hint' => 'Aviso al comercio cuando Mercado Pago confirma un pedido.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Pedido pagado #{pedido} - {negocio}',
+                        'body' => "Mercado Pago confirmo el pedido #{pedido} en {negocio}.\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nEmail: {email}\nDireccion: {direccion}\n\nProductos:\n{productos}\n\nTotal: {total}",
                     ],
                 ],
                 'magic_link_admin' => [
                     'label' => 'Acceso al panel (magic link)',
-                    'hint' => 'Email con link de acceso para administradores. Usá HTML y {link}.',
+                    'hint' => 'Email con link de acceso para administradores. Usa HTML y {link}.',
                     'fields' => ['subject', 'body'],
                     'defaults' => [
                         'subject' => 'Tu acceso a {from_name}',
                         'body' => '<p>{logo}</p>'
                             . '<p>Hola,</p>'
-                            . '<p>Hacé clic para ingresar a tu panel. El link vence en {ttl_minutes} minutos.</p>'
+                            . '<p>Hace clic para ingresar a tu panel. El link vence en {ttl_minutes} minutos.</p>'
                             . '<p style="margin:1.2rem 0"><a href="{link}" '
                             . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ingresar a Agendarte</a></p>'
-                            . '<p style="color:#64748b;font-size:.9rem">Si no pediste este acceso, ignorá este email.</p>',
+                            . '<p style="color:#64748b;font-size:.9rem">Si no pediste este acceso, ignora este email.</p>',
                     ],
                 ],
                 'magic_link_client' => [
                     'label' => 'Portal del cliente (magic link)',
-                    'hint' => 'Email para que el cliente vea sus reservas. Usá HTML y {link}.',
+                    'hint' => 'Email para que el cliente vea sus reservas. Usa HTML y {link}.',
                     'fields' => ['subject', 'body'],
                     'defaults' => [
                         'subject' => 'Acceso a tus reservas - {negocio}',
                         'body' => '<p>{logo}</p>'
                             . '<p>Hola,</p>'
-                            . '<p>Usá este link para ver tus reservas en <strong>{negocio}</strong>.</p>'
+                            . '<p>Usa este link para ver tus reservas en <strong>{negocio}</strong>.</p>'
                             . '<p style="margin:1.2rem 0"><a href="{link}" '
                             . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.75rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:600">Ver mis reservas</a></p>',
                     ],
@@ -94,7 +130,9 @@ final class PlatformTemplates
                         'body' => '<p>{logo}</p>'
                             . '<p>Hola {nombre},</p>'
                             . '<p>Creamos tu cuenta para <strong>{negocio}</strong>.</p>'
-                            . '<p>Prueba gratis hasta <strong>{trial_end}</strong>.</p>',
+                            . '<p>Prueba gratis hasta <strong>{trial_end}</strong>.</p>'
+                            . '<p>Tu sitio: <a href="{site_url}">{site_url}</a></p>'
+                            . '<p>Panel: <a href="{panel_url}">{panel_url}</a></p>',
                     ],
                 ],
             ],
@@ -104,23 +142,15 @@ final class PlatformTemplates
                     'hint' => 'WhatsApp al cliente tras confirmar la reserva.',
                     'fields' => ['body'],
                     'defaults' => [
-                        'body' => "Hola {cliente}, tu reserva en {negocio} quedó confirmada.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                        'body' => "Hola {cliente}, recibimos tu reserva #{id_reserva} en {negocio}.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\nPara cancelar, usa tu cedula y el numero de reserva.",
                     ],
                 ],
                 'appointment_confirmed_owner' => [
-                    'label' => 'Nueva reserva (dueño)',
-                    'hint' => 'WhatsApp al dueño del negocio.',
+                    'label' => 'Nueva reserva (dueno)',
+                    'hint' => 'WhatsApp al dueno del negocio.',
                     'fields' => ['body'],
                     'defaults' => [
-                        'body' => "Nueva reserva en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
-                    ],
-                ],
-                'appointment_reminder_24h' => [
-                    'label' => 'Recordatorio 24 h (cliente)',
-                    'hint' => 'WhatsApp un día antes de la cita.',
-                    'fields' => ['body'],
-                    'defaults' => [
-                        'body' => 'Recordatorio: mañana tienes {servicio} en {negocio} a las {hora}.',
+                        'body' => "Nueva reserva #{id_reserva} en {negocio}\nCliente: {cliente}\nCedula: {cedula}\nCelular: {telefono}\nEmail: {email}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
                     ],
                 ],
                 'appointment_reminder_2h' => [
@@ -128,7 +158,55 @@ final class PlatformTemplates
                     'hint' => 'WhatsApp dos horas antes de la cita.',
                     'fields' => ['body'],
                     'defaults' => [
-                        'body' => 'Recordatorio: en 2 horas tienes {servicio} en {negocio} ({hora}).',
+                        'body' => "Hola {cliente}, te recordamos que en 2 horas tenes {servicio} en {negocio}.\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'appointment_attended_client' => [
+                    'label' => 'Reserva atendida (cliente)',
+                    'hint' => 'WhatsApp de agradecimiento al cliente.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => 'Hola {cliente}, gracias por venir a {negocio}. Esperamos verte pronto.',
+                    ],
+                ],
+                'appointment_cancelled_client' => [
+                    'label' => 'Reserva cancelada (cliente)',
+                    'hint' => 'WhatsApp al cliente cuando una reserva se cancela.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Hola {cliente}, tu reserva #{id_reserva} en {negocio} fue cancelada.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'appointment_cancelled_owner' => [
+                    'label' => 'Reserva cancelada (dueno)',
+                    'hint' => 'WhatsApp al comercio cuando una reserva se cancela.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Reserva cancelada #{id_reserva} en {negocio}\nCliente: {cliente}\nCedula: {cedula}\nCelular: {telefono}\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}",
+                    ],
+                ],
+                'registration_welcome' => [
+                    'label' => 'Bienvenida al registrarse',
+                    'hint' => 'WhatsApp al crear una cuenta de comercio.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Hola {nombre}, creamos tu cuenta para {negocio} en Agendarte UY.\nSitio: {site_url}\nPanel: {panel_url}",
+                    ],
+                ],
+                'store_order_created_owner' => [
+                    'label' => 'Nuevo pedido (tienda)',
+                    'hint' => 'WhatsApp al comercio cuando entra un pedido.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Nuevo pedido #{pedido} en {negocio}\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nDireccion: {direccion}\nProductos:\n{productos}\nTotal: {total}",
+                    ],
+                ],
+                'store_order_paid_owner' => [
+                    'label' => 'Pedido pagado (tienda)',
+                    'hint' => 'WhatsApp al comercio cuando Mercado Pago confirma el pago.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Pedido pagado #{pedido} en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nProductos:\n{productos}\nTotal: {total}",
                     ],
                 ],
             ],
@@ -138,7 +216,7 @@ final class PlatformTemplates
     /** Placeholders disponibles en la UI del super admin. */
     public static function placeholderHelp(): string
     {
-        return '{cliente}, {telefono}, {servicio}, {negocio}, {fecha}, {hora}, {link}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}, {cedula}';
+        return '{cliente}, {telefono}, {email}, {cedula}, {servicio}, {negocio}, {fecha}, {hora}, {id_reserva}, {pedido}, {productos}, {total}, {direccion}, {estado}, {notas}, {cancel_url}, {link}, {site_url}, {panel_url}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}';
     }
 
     /**
@@ -151,14 +229,25 @@ final class PlatformTemplates
         }
         $cfg = Database::getInstance()->config();
         self::$sampleVarsCache = [
-            'cliente' => 'María García',
+            'cliente' => 'Maria Garcia',
             'telefono' => '099 123 456',
+            'email' => 'maria@example.com',
             'cedula' => '12345678',
             'servicio' => 'Corte de pelo',
-            'negocio' => 'Barbería Centro',
+            'negocio' => 'Barberia Centro',
             'fecha' => date('Y-m-d', strtotime('+3 days')),
             'hora' => '10:30',
+            'id_reserva' => '154',
+            'pedido' => '87',
+            'productos' => "- Shampoo x2 - UYU 900\n- Gel x1 - UYU 350",
+            'total' => 'UYU 1.250',
+            'direccion' => 'Av. Italia 1234',
+            'estado' => 'Pendiente',
+            'notas' => 'Sin preferencia de profesional',
+            'cancel_url' => url('demo/?cancel_reserva=154'),
             'link' => url('demo/?client_token=ejemplo'),
+            'site_url' => url('demo/'),
+            'panel_url' => url('admin/login.php'),
             'nombre' => 'Juan',
             'trial_end' => date('Y-m-d', strtotime('+30 days')),
             'from_name' => (string)($cfg['mail']['from_name'] ?? 'Agendarte'),
@@ -362,9 +451,8 @@ final class PlatformTemplates
             }
         }
 
-        $db = Database::getInstance();
         $json = json_encode($clean, JSON_UNESCAPED_UNICODE);
-        self::persistSection(self::SECTION, $json);
+        self::persistSection(self::SECTION, is_string($json) ? $json : '{}');
     }
 
     private static function persistSection(string $section, string $json): void
@@ -377,12 +465,12 @@ final class PlatformTemplates
         if ($existing) {
             $db->update('platform_settings', [
                 'config_json' => $json,
-                'updated_at'  => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ], 'id_setting = :id', [':id' => (int)$existing['id_setting']]);
             return;
         }
         $db->insert('platform_settings', [
-            'section'     => $section,
+            'section' => $section,
             'config_json' => $json,
         ]);
     }
@@ -393,7 +481,7 @@ final class PlatformTemplates
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6"><tr><td align="center" style="padding:28px 12px">'
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.08)">'
             . '<tr><td style="padding:28px 24px 24px;font-size:15px;line-height:1.55">' . $innerHtml . '</td></tr></table>'
-            . '<p style="margin:16px 0 0;font-size:12px;color:#9ca3af">Agendarte UY · Vista previa</p>'
+            . '<p style="margin:16px 0 0;font-size:12px;color:#9ca3af">Agendarte UY - Vista previa</p>'
             . '</td></tr></table></body></html>';
     }
 

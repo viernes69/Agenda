@@ -16,7 +16,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Keys;
-use Agenduy\Core\Mail;
+use Agenduy\Core\NotificationOutbox;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -56,6 +56,7 @@ $tel   = trim((string)($business['telefono'] ?? ''));
 $rut   = trim((string)($business['rut'] ?? ''));
 $rubroId= (int)($business['rubroId'] ?? 0);
 $tz    = trim((string)($schedule['timezone'] ?? 'America/Montevideo'));
+$db = Database::getInstance();
 
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
@@ -80,8 +81,6 @@ if ($rubroId <= 0) {
         exit;
     }
 }
-
-$db = Database::getInstance();
 
 // ¿Email ya registrado?
 $exists = $db->fetchOne('SELECT id_user FROM users WHERE email = :e', [':e' => $email]);
@@ -167,15 +166,12 @@ $db->transaction(function () use (&$idCommerce, $db, $slug, $rubroId, $planId, $
     return $idCommerce;
 });
 
-// Email de bienvenida
-$cfg = $db->config();
-$subject = 'Bienvenido a Agenduy';
-$body = '<p>Hola ' . htmlspecialchars($name) . ',</p>'
-      . '<p>Creamos tu cuenta para <strong>' . htmlspecialchars($bizName) . '</strong>.</p>'
-      . '<p>Tu URL: <a href="' . htmlspecialchars($cfg['app']['url_base'] . '/' . $slug, ENT_QUOTES) . '">' . htmlspecialchars($slug) . '</a></p>'
-      . '<p>Tu prueba gratis está activa hasta el <strong>' . htmlspecialchars($trialEnd) . '</strong>.</p>'
-      . '<p>Accedé a tu panel desde: ' . htmlspecialchars($cfg['app']['url_base'] . '/admin/login.php?as=' . urlencode($email), ENT_QUOTES) . '</p>';
-Mail::send($email, $subject, $body, null, $idCommerce);
+NotificationOutbox::enqueueRegistrationNotifications((int)$idCommerce, $email, $tel, [
+    'nombre' => $name,
+    'negocio' => $bizName,
+    'trial_end' => $trialEnd,
+    'slug' => $slug,
+]);
 
 echo json_encode([
     'ok' => true,

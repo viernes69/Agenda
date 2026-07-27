@@ -64,20 +64,46 @@ class AutoloadDB {
     }
 
     private static function afterInsertHook(string $table, array $row): void {
-        if ($table !== 'reservas') {
+        if (!in_array($table, ['reservas', 'carrito'], true)) {
             return;
         }
         $notifierPath = __DIR__ . '/AdminPushNotifier.php';
-        if (!is_file($notifierPath)) {
-            return;
-        }
-        require_once $notifierPath;
-        if (class_exists('AdminPushNotifier')) {
+        if (is_file($notifierPath)) {
+            require_once $notifierPath;
             try {
-                AdminPushNotifier::notifyReservation($row);
+                if (class_exists('AdminPushNotifier')) {
+                    if ($table === 'reservas') {
+                        AdminPushNotifier::notifyReservation($row);
+                    } elseif ($table === 'carrito') {
+                        AdminPushNotifier::notifyOrder($row);
+                    }
+                }
             } catch (\Throwable $e) {
-                // Silenciar errores de notificación para no afectar la escritura.
+                // Silenciar errores de notificacion para no afectar la escritura.
             }
+        }
+
+        try {
+            $projectRoot = dirname(__DIR__, 3);
+            $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+            if (!is_file($bootstrap)) {
+                return;
+            }
+            require_once $bootstrap;
+            if (!class_exists(\Agenduy\Core\NotificationOutbox::class)) {
+                return;
+            }
+            $slug = self::effectiveTenantSlug();
+            if ($slug === '' || $slug === 'template') {
+                return;
+            }
+            if ($table === 'reservas') {
+                \Agenduy\Core\NotificationOutbox::enqueueLocalReservaCreated($slug, $row);
+            } elseif ($table === 'carrito') {
+                \Agenduy\Core\NotificationOutbox::enqueueLocalCartOrderCreated($slug, $row);
+            }
+        } catch (\Throwable $e) {
+            error_log('[AutoloadDB] outbox insert: ' . $e->getMessage());
         }
     }
 
@@ -105,11 +131,8 @@ class AutoloadDB {
         return $resolved;
     }
 
-    private static function afterReservaUpdateHook(array $row): void {
+    private static function afterReservaUpdateHook(array $previousRow, array $row): void {
         $appointmentId = $row['ID_Appointment'] ?? null;
-        if ($appointmentId === null || $appointmentId === '' || !is_numeric($appointmentId)) {
-            return;
-        }
         try {
             $projectRoot = dirname(__DIR__, 3);
             $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
@@ -124,7 +147,12 @@ class AutoloadDB {
             if ($slug === '' || $slug === 'template') {
                 return;
             }
-            \Agenduy\Core\TenantLocalDb::pushReservaToCentral($slug, $row);
+            if ($appointmentId !== null && $appointmentId !== '' && is_numeric($appointmentId)) {
+                \Agenduy\Core\TenantLocalDb::pushReservaToCentral($slug, $row);
+            }
+            if (class_exists(\Agenduy\Core\NotificationOutbox::class)) {
+                \Agenduy\Core\NotificationOutbox::enqueueLocalReservaStatusNotifications($slug, $previousRow, $row);
+            }
         } catch (\Throwable $e) {
             error_log('[AutoloadDB] push reserva→central: ' . $e->getMessage());
         }
@@ -160,8 +188,8 @@ class AutoloadDB {
                       self::applyCartCompletionPoints($db, $previousRow, $updated);
                   }
                   self::writeDb($fh, $db);
-                  if ($table === 'reservas') {
-                      self::afterReservaUpdateHook($updated);
+                  if ($table === 'reservas' && $previousRow !== null) {
+                      self::afterReservaUpdateHook($previousRow, $updated);
                   }
               }
               return $updated;

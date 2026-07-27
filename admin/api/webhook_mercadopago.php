@@ -13,6 +13,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\Database;
 use Agenduy\Core\MercadoPago;
+use Agenduy\Core\NotificationOutbox;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -99,6 +100,7 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
 
     $payment = [];
     $row = null;
+    $commerce = null;
     if ($externalReference !== '') {
         $row = storePaymentByExternalReference($db, $externalReference);
     }
@@ -139,8 +141,8 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
         if ($row) {
             $storeSlug = (string)$row['slug'];
         } else {
-            $commerce = $db->fetchOne('SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1', [':id' => $commerceId]);
-            $storeSlug = trim((string)($commerce['slug'] ?? ''));
+            $slugRow = $db->fetchOne('SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1', [':id' => $commerceId]);
+            $storeSlug = trim((string)($slugRow['slug'] ?? ''));
         }
     }
 
@@ -180,8 +182,9 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
         ]));
     }
 
+    $localOrderRow = null;
     if ($storeSlug !== '' && $orderId > 0 && TenantLocalDb::exists($storeSlug)) {
-        TenantLocalDb::updateCartOrder($storeSlug, $orderId, [
+        $localOrderRow = TenantLocalDb::updateCartOrder($storeSlug, $orderId, [
             'Status' => MercadoPago::paymentStatusToLocalCartStatus($mpStatus),
             'Payment_Status' => $storeStatus,
             'MP_Payment_ID' => $paymentId,
@@ -204,6 +207,43 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
         ], JSON_UNESCAPED_UNICODE),
         'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     ]);
+
+    if ($storeStatus === 'approved') {
+        try {
+            if (!$commerce && $storeSlug !== '') {
+                $commerce = $db->fetchOne('SELECT * FROM commerces WHERE slug = :s LIMIT 1', [':s' => $storeSlug]);
+            }
+            if ($commerce) {
+                $paymentRow = is_array($row) ? $row : [];
+                $items = json_decode((string)($paymentRow['items_json'] ?? '[]'), true);
+                if (!is_array($items)) {
+                    $items = [];
+                }
+                $payerEmail = '';
+                if (isset($payment['payer']) && is_array($payment['payer'])) {
+                    $payerEmail = trim((string)($payment['payer']['email'] ?? ''));
+                }
+                if ($payerEmail === '') {
+                    $payerEmail = trim((string)($paymentRow['payer_email'] ?? ''));
+                }
+                $orderForNotify = is_array($localOrderRow) ? $localOrderRow : [];
+                $orderForNotify = array_replace($orderForNotify, [
+                    'ID_Carrito' => $orderId,
+                    'Status' => MercadoPago::paymentStatusToLocalCartStatus($mpStatus),
+                    'Payment_Status' => $storeStatus,
+                    'MP_Payment_ID' => $paymentId,
+                    'MP_External_Reference' => $externalReference,
+                    'Total' => number_format($amount, 2, '.', ''),
+                    'currency' => $currency,
+                ]);
+                NotificationOutbox::enqueueStoreOrderNotifications($commerce, $orderForNotify, $items, [
+                    'cliente_email' => $payerEmail,
+                ], 'paid');
+            }
+        } catch (Throwable $notifyError) {
+            error_log('[webhook_mercadopago] outbox paid: ' . $notifyError->getMessage());
+        }
+    }
 
     return [
         'ok' => true,

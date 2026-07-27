@@ -249,8 +249,6 @@ try {
     $_SESSION['cliente']['reservas'][] = $row;
     $_SESSION['cliente']['cliente_id'] = $_SESSION['cliente']['cliente_id'] ?? (int)$clienteId;
 
-    sendReservationEmail($row, $_SESSION['cliente'], (int)$serviceId);
-
     $payload = ['ok' => true, 'data' => $row, 'session' => $_SESSION['cliente'] ?? null];
     if ($waitlist) {
         $payload['waitlist'] = true;

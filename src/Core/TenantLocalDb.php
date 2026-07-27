@@ -503,7 +503,7 @@ final class TenantLocalDb
         return match ($s) {
             'aprobado', 'approved', 'confirmed', 'confirmado' => 'confirmed',
             'cancelado', 'cancelled', 'canceled', 'rechazado', 'rejected' => 'cancelled',
-            'finalizado', 'completed', 'done' => 'completed',
+            'finalizado', 'completed', 'done' => 'done',
             'en progreso', 'in_progress' => 'confirmed',
             default => 'pending',
         };

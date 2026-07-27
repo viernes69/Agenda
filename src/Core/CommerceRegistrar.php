@@ -234,21 +234,12 @@ final class CommerceRegistrar
                 Auth::establishSessionFromRow($userRow, $_SERVER['REMOTE_ADDR'] ?? null, 'register');
             }
 
-            Mail::send(
-                $email,
-                PlatformTemplates::render('email', 'registration_welcome', [
-                    'nombre' => $name,
-                    'negocio' => $bizName,
-                    'trial_end' => $trialEnd,
-                ], 'subject', 'Bienvenido a Agendarte'),
-                PlatformTemplates::renderHtml('email', 'registration_welcome', [
-                    'nombre' => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
-                    'negocio' => htmlspecialchars($bizName, ENT_QUOTES, 'UTF-8'),
-                    'trial_end' => htmlspecialchars($trialEnd, ENT_QUOTES, 'UTF-8'),
-                ], ''),
-                null,
-                $idCommerce
-            );
+            NotificationOutbox::enqueueRegistrationNotifications($idCommerce, $email, $tel, [
+                'nombre' => $name,
+                'negocio' => $bizName,
+                'trial_end' => $trialEnd,
+                'slug' => $slug,
+            ]);
 
             return [
                 'ok'          => true,
@@ -572,6 +563,21 @@ final class CommerceRegistrar
                     'descripcion' => 'Mostrá productos, recibí pedidos por WhatsApp y gestioná ventas desde tu panel.',
                     'seo' => ['title' => 'Tienda online', 'description' => 'Explorá el catálogo y pedí por WhatsApp.', 'keywords' => ['tienda','catalogo','productos']],
                 ];
+            }
+            if (str_contains($label, 'barber') || str_contains($label, 'peluqu')) {
+                return ['slogan' => 'Tu corte perfecto comienza aquí.', 'descripcion' => 'Barbería y peluquería profesional.', 'seo' => ['title' => 'Barbería', 'description' => 'Reserva tu corte online.', 'keywords' => ['barberia','corte']]];
+            }
+            if (str_contains($label, 'estet') || str_contains($label, 'belleza')) {
+                return ['slogan' => 'Bienestar y belleza a tu medida.', 'descripcion' => 'Tratamientos y servicios de belleza.', 'seo' => ['title' => 'Belleza y estética', 'description' => 'Reserva tratamientos online.', 'keywords' => ['estetica','belleza']]];
+            }
+            if (str_contains($label, 'odont') || str_contains($label, 'dental') || str_contains($label, 'dent')) {
+                return ['slogan' => 'Tu sonrisa en manos de expertos.', 'descripcion' => 'Atención odontológica integral.', 'seo' => ['title' => 'Odontología', 'description' => 'Reserva tu consulta dental.', 'keywords' => ['odontologia','dental']]];
+            }
+            if (str_contains($label, 'evento') || str_contains($label, 'fiesta')) {
+                return ['slogan' => 'Todo listo para tu próximo evento.', 'descripcion' => 'Consulta disponibilidad, productos y servicios para coordinar tu evento.', 'seo' => ['title' => 'Eventos', 'description' => 'Coordina productos y servicios para eventos.', 'keywords' => ['eventos','fiestas']]];
+            }
+            if ($label !== '') {
+                return $defaults;
             }
         } catch (\Throwable $e) {
             // Usar defaults si SQLite no está disponible.
