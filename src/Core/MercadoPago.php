@@ -11,6 +11,7 @@ use RuntimeException;
 final class MercadoPago
 {
     private const PROVIDER = 'mercadopago';
+    private const DEFAULT_PUBLIC_BASE_URL = 'https://www.agenduy.uy';
 
     /**
      * Credenciales globales del super admin. Se usan para cobrar membresias.
@@ -162,6 +163,84 @@ final class MercadoPago
     }
 
     /**
+     * Mercado Pago rechaza localhost/IPs privadas en back_url y notification_url.
+     * Construye una URL publica usando config/env y, como ultimo recurso,
+     * el dominio canonico de Agendarte UY.
+     *
+     * @param array<string,mixed> $config
+     * @param array<string,string|int|float|bool|null> $query
+     */
+    public static function callbackUrl(array $config, string $path, array $query = []): string
+    {
+        foreach (self::callbackBaseCandidates($config) as $base) {
+            $url = self::joinUrl($base, $path);
+            if ($query !== []) {
+                $url = self::appendQuery($url, $query);
+            }
+            if (self::isPublicCallbackUrl($url)) {
+                return $url;
+            }
+        }
+
+        throw new RuntimeException(
+            'Mercado Pago necesita una URL publica para volver del pago. '
+            . 'Configura AGENDUY_URL_BASE o la URL publica en Config > Mercado Pago.'
+        );
+    }
+
+    /**
+     * @param array<string,mixed> $config
+     * @param array<string,string|int|float|bool|null> $fallbackQuery
+     */
+    public static function preferredCallbackUrl(
+        array $config,
+        string $key,
+        string $fallbackPath,
+        array $fallbackQuery = []
+    ): string {
+        $candidate = trim((string)($config[$key] ?? ''));
+        if ($candidate !== '') {
+            if (!self::isPublicCallbackUrl($candidate) || stripos($candidate, '/template/') !== false) {
+                throw new RuntimeException(
+                    'La URL configurada para Mercado Pago no es publica o no es valida: ' . $key
+                );
+            }
+            return $candidate;
+        }
+
+        return self::callbackUrl($config, $fallbackPath, $fallbackQuery);
+    }
+
+    public static function isPublicCallbackUrl(string $url): bool
+    {
+        $url = trim($url);
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        $parts = parse_url($url);
+        $scheme = strtolower((string)($parts['scheme'] ?? ''));
+        $host = strtolower((string)($parts['host'] ?? ''));
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+            return false;
+        }
+        if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'], true)
+            || str_ends_with($host, '.local')
+            || str_ends_with($host, '.test')
+            || str_ends_with($host, '.localhost')) {
+            return false;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            ) !== false;
+        }
+
+        return true;
+    }
+
+    /**
      * @param array<string,mixed> $cfg
      * @return array<string,mixed>
      */
@@ -197,6 +276,117 @@ final class MercadoPago
             'currency' => $currency,
             'statement_descriptor' => trim((string)($cfg['statement_descriptor'] ?? '')),
         ]);
+    }
+
+    /**
+     * @param array<string,mixed> $config
+     * @return list<string>
+     */
+    private static function callbackBaseCandidates(array $config): array
+    {
+        $candidates = [];
+        foreach ([
+            'public_base_url',
+            'back_url_base',
+            'site_url',
+            'url_base',
+            'app_url',
+            'base_url',
+        ] as $key) {
+            $candidates[] = (string)($config[$key] ?? '');
+        }
+
+        foreach ([
+            'AGENDUY_MP_PUBLIC_BASE_URL',
+            'AGENDUY_PUBLIC_URL',
+            'APP_URL',
+            'AGENDUY_URL_BASE',
+        ] as $envKey) {
+            $env = getenv($envKey);
+            if (is_string($env) && trim($env) !== '') {
+                $candidates[] = $env;
+            }
+        }
+
+        try {
+            $appUrl = (string)(Database::getInstance()->config()['app']['url_base'] ?? '');
+            if ($appUrl !== '') {
+                $candidates[] = $appUrl;
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        if (function_exists('url_base')) {
+            $candidates[] = (string)url_base();
+        }
+
+        foreach (['notification_url', 'success_url', 'failure_url', 'pending_url'] as $key) {
+            $known = trim((string)($config[$key] ?? ''));
+            $base = self::baseFromKnownPublicUrl($known);
+            if ($base !== '') {
+                $candidates[] = $base;
+            }
+        }
+
+        $candidates[] = self::DEFAULT_PUBLIC_BASE_URL;
+
+        $out = [];
+        foreach ($candidates as $candidate) {
+            $candidate = rtrim(trim((string)$candidate), '/');
+            if ($candidate === '') {
+                continue;
+            }
+            $key = strtolower($candidate);
+            if (!isset($out[$key])) {
+                $out[$key] = $candidate;
+            }
+        }
+        return array_values($out);
+    }
+
+    private static function baseFromKnownPublicUrl(string $url): string
+    {
+        if (!self::isPublicCallbackUrl($url)) {
+            return '';
+        }
+        $parts = parse_url($url);
+        $scheme = (string)($parts['scheme'] ?? '');
+        $host = (string)($parts['host'] ?? '');
+        if ($scheme === '' || $host === '') {
+            return '';
+        }
+        $port = isset($parts['port']) ? ':' . (int)$parts['port'] : '';
+        $path = (string)($parts['path'] ?? '');
+        $basePath = '';
+        $adminPos = stripos($path, '/admin/');
+        if ($adminPos !== false) {
+            $basePath = substr($path, 0, $adminPos);
+        }
+        return rtrim($scheme . '://' . $host . $port . $basePath, '/');
+    }
+
+    private static function joinUrl(string $base, string $path): string
+    {
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * @param array<string,string|int|float|bool|null> $params
+     */
+    private static function appendQuery(string $url, array $params): string
+    {
+        $filtered = [];
+        foreach ($params as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $filtered[(string)$key] = is_bool($value) ? ($value ? '1' : '0') : (string)$value;
+        }
+        if ($filtered === []) {
+            return $url;
+        }
+        return $url . (str_contains($url, '?') ? '&' : '?') . http_build_query($filtered);
     }
 
     private static function cleanSecret(mixed $value): string
@@ -350,6 +540,16 @@ final class MercadoPago
             $message = trim((string)($decoded['message'] ?? $decoded['error'] ?? 'Mercado Pago rechazo la solicitud.'));
             if (isset($decoded['cause'][0]['description'])) {
                 $message .= ': ' . (string)$decoded['cause'][0]['description'];
+            }
+            $lowerMessage = strtolower($message);
+            if (str_contains($lowerMessage, 'back_url')
+                || str_contains($lowerMessage, 'back_urls')
+                || str_contains($lowerMessage, 'notification_url')
+                || str_contains($lowerMessage, 'valid url')) {
+                throw new RuntimeException(
+                    'Mercado Pago rechazo la URL de retorno. Configura una URL publica de Agendarte '
+                    . '(por ejemplo https://www.agenduy.uy) o usa un tunel publico si estas en localhost.'
+                );
             }
             throw new RuntimeException($message);
         }

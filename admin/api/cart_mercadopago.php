@@ -245,11 +245,11 @@ try {
         'items_json' => $itemsJson,
     ]);
 
-    $storeUrl = url($slug . '/');
-    $successUrl = preferredReturnUrl($mp, 'success_url', appendQuery($storeUrl, ['mp_order' => $orderId, 'mp_status' => 'success']));
-    $failureUrl = preferredReturnUrl($mp, 'failure_url', appendQuery($storeUrl, ['mp_order' => $orderId, 'mp_status' => 'failure']));
-    $pendingUrl = preferredReturnUrl($mp, 'pending_url', appendQuery($storeUrl, ['mp_order' => $orderId, 'mp_status' => 'pending']));
-    $notificationUrl = appendQuery(url('admin/api/webhook_mercadopago.php'), ['store_slug' => $slug]);
+    $storePath = trim($slug, '/') . '/';
+    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'success']);
+    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'failure']);
+    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'pending']);
+    $notificationUrl = MercadoPago::callbackUrl($mp, 'admin/api/webhook_mercadopago.php', ['store_slug' => $slug]);
 
     $preferencePayload = [
         'items' => $mpItems,
@@ -362,30 +362,6 @@ function cartOrderId(array $row): int
         }
     }
     return 0;
-}
-
-/**
- * @param array<string,mixed> $mp
- */
-function preferredReturnUrl(array $mp, string $key, string $fallback): string
-{
-    $candidate = trim((string)($mp[$key] ?? ''));
-    if ($candidate !== ''
-        && filter_var($candidate, FILTER_VALIDATE_URL)
-        && stripos($candidate, '/template/') === false
-    ) {
-        return $candidate;
-    }
-    return $fallback;
-}
-
-/**
- * @param array<string,string|int> $params
- */
-function appendQuery(string $url, array $params): string
-{
-    $separator = str_contains($url, '?') ? '&' : '?';
-    return $url . $separator . http_build_query($params);
 }
 
 function statementDescriptor(string $value): string

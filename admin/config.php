@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Recolectar campos dinámicos según provider
         $fields = [
-            'mercadopago' => ['public_key','access_token','sandbox','notification_url','integrator_id'],
+            'mercadopago' => ['public_key','access_token','sandbox','notification_url','public_base_url','integrator_id'],
             'paypal'      => ['client_id','secret','sandbox'],
             'transfer'    => ['banco','titular','cuenta','moneda','instrucciones'],
             'smtp'        => ['host','port','encryption','username','password','from_email','from_name'],
@@ -199,6 +199,11 @@ require __DIR__ . '/partials/header.php';
                     <label>Notification URL</label>
                     <input type="url" name="notification_url" value="<?= htmlspecialchars($cfg['notification_url'] ?? url('admin/api/webhook_mercadopago.php'), ENT_QUOTES, 'UTF-8') ?>">
                     <span class="hint">Webhook para cambios de pagos y suscripciones.</span>
+                </div>
+                <div class="field">
+                    <label>URL publica de Agendarte</label>
+                    <input type="url" name="public_base_url" value="<?= htmlspecialchars($cfg['public_base_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="https://www.agenduy.uy">
+                    <span class="hint">Usala si estas probando en localhost: Mercado Pago no acepta localhost como back_url.</span>
                 </div>
                 <div class="field">
                     <label>Integrator ID</label>

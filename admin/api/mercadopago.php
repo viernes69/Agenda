@@ -92,18 +92,21 @@ try {
         ];
     }
 
-    $ownerEmail = (string)$commerce['email'];
     $notificationUrl = trim((string)($mpConfig['notification_url'] ?? ''));
-    if ($notificationUrl === '') {
-        $notificationUrl = url('admin/api/webhook_mercadopago.php');
+    if ($notificationUrl === '' || !MercadoPago::isPublicCallbackUrl($notificationUrl)) {
+        $notificationUrl = MercadoPago::callbackUrl($mpConfig, 'admin/api/webhook_mercadopago.php');
     }
+    $backPath = trim((string)($commerce['slug'] ?? '')) !== ''
+        ? trim((string)$commerce['slug'], '/') . '/private/dashboard/admin/'
+        : 'admin/commerce_plan.php';
+    $backUrl = MercadoPago::callbackUrl($mpConfig, $backPath, ['pay' => 'mercadopago']);
     $request = [
         'reason'             => 'Suscripción ' . $membership['nombre'] . ' · ' . $commerce['nombre'],
         'external_reference' => sprintf('agenduy_c%d_m%d_%s', $idCommerce, $idMembership, uniqid()),
         'payer_email'        => $payerEmail,
         'auto_recurring'     => $autoRecurring,
         'status'             => $cardToken !== '' ? 'authorized' : 'pending',
-        'back_url'           => url('admin/subscriptions.php'),
+        'back_url'           => $backUrl,
         'notification_url'   => $notificationUrl,
     ];
     if (!empty($membership['mp_preapproval_id'])) {

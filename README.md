@@ -96,7 +96,10 @@ AGENDUY_SMTP_PORT=465
 AGENDUY_SMTP_ENCRYPTION=ssl
 AGENDUY_SMTP_USER=...
 AGENDUY_SESSION_SECURE=true
+AGENDUY_URL_BASE=https://www.agenduy.uy
 ```
+
+`AGENDUY_URL_BASE` debe ser una URL publica cuando uses Mercado Pago o PayPal. En sandbox desde localhost, usa el dominio publico configurado o un tunel tipo ngrok/Cloudflare Tunnel.
 
 ## Seguridad implementada
 
@@ -130,7 +133,7 @@ Al confirmar un turno → se crea evento en Calendar y se envía email a ambas p
 
 ## Notificaciones
 
-Las reservas encolan emails (SMTP) y WhatsApp (UltraMsg) en `notification_outbox`; las inmediatas se despachan al crear la reserva y los recordatorios (24h / 2h) quedan agendados. Todo envío se registra en `notifications_log`.
+Las reservas encolan emails (SMTP) y WhatsApp (UltraMsg) en `notification_outbox`; las inmediatas se despachan al crear la reserva y el recordatorio de 2 horas queda agendado. Todo envío se registra en `notifications_log`.
 
 **Configuración** (super admin → `/admin/config.php`):
 - **SMTP**: host, puerto, cifrado (ssl/tls), usuario, contraseña, email y nombre remitente. Habilitar el provider.
