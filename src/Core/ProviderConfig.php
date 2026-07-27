@@ -66,6 +66,8 @@ final class ProviderConfig
         if ($password === '') {
             $password = (string)($cfg['password'] ?? '');
         }
+        $enabled = (int)($global['is_enabled'] ?? 0) === 1;
+
         return [
             'host'       => (string)($smtp['host'] ?? $cfg['host'] ?? ''),
             'port'       => (int)($smtp['port'] ?? $cfg['port'] ?? 465),
@@ -75,16 +77,19 @@ final class ProviderConfig
             'from_email' => (string)($smtp['from_email'] ?? $cfg['from_email'] ?? ''),
             'from_name'  => (string)($smtp['from_name'] ?? $cfg['from_name'] ?? 'Agenduy'),
             'timeout'    => (int)($smtp['timeout'] ?? $cfg['timeout'] ?? 15),
-            'enabled'    => (int)($global['is_enabled'] ?? 0) === 1 || $password !== '',
+            'enabled'    => $enabled,
         ];
     }
 
-    /** @return array{ok:bool, host:string, username:string, from_email:string, has_password:bool, phpmailer:bool} */
+    /** @return array{ok:bool, configured:bool, enabled:bool, host:string, username:string, from_email:string, has_password:bool, phpmailer:bool} */
     public static function mailDiagnostics(): array
     {
         $mail = self::mailConfig();
+        $configured = self::mailHasRequiredConfig($mail);
         return [
-            'ok'           => self::mailIsConfigured($mail),
+            'ok'           => !empty($mail['enabled']) && $configured,
+            'configured'   => $configured,
+            'enabled'      => !empty($mail['enabled']),
             'host'         => $mail['host'],
             'username'     => $mail['username'],
             'from_email'   => $mail['from_email'],
@@ -96,6 +101,14 @@ final class ProviderConfig
     public static function mailIsConfigured(?array $mail = null): bool
     {
         $mail ??= self::mailConfig();
+        if (empty($mail['enabled'])) {
+            return false;
+        }
+        return self::mailHasRequiredConfig($mail);
+    }
+
+    private static function mailHasRequiredConfig(array $mail): bool
+    {
         if (($mail['from_email'] ?? '') === '') {
             return false;
         }

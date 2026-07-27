@@ -33,6 +33,12 @@ final class Mail
         $fromEmail = $mailCfg['from_email'];
         $fromName = $mailCfg['from_name'];
 
+        if (empty($mailCfg['enabled'])) {
+            self::$lastError = 'SMTP esta deshabilitado en Configuracion global.';
+            self::log($to, $subject, 'failed', self::$lastError, $idCommerce);
+            return false;
+        }
+
         if ($fromEmail === '') {
             self::$lastError = 'Falta el email remitente (From).';
             self::log($to, $subject, 'failed', self::$lastError, $idCommerce);

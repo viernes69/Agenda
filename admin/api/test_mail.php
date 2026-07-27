@@ -55,6 +55,16 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 $diag = ProviderConfig::mailDiagnostics();
+if (empty($diag['enabled'])) {
+    http_response_code(400);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'SMTP esta deshabilitado. Marca "SMTP habilitado", guarda y volve a probar.',
+        'diagnostics' => $diag,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if (!$diag['ok']) {
     http_response_code(400);
     echo json_encode([

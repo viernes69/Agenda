@@ -251,7 +251,13 @@ require __DIR__ . '/partials/header.php';
                     <textarea name="instrucciones" placeholder="Transferí a la cuenta X y subí el comprobante."><?= htmlspecialchars($cfg['instrucciones'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
             <?php elseif ($p['provider'] === 'smtp'): ?>
-                <?php if (!$mailDiagnostics['ok']): ?>
+                <?php if (empty($mailDiagnostics['enabled']) && !empty($mailDiagnostics['configured'])): ?>
+                <div class="field col-2">
+                    <div class="alert" style="border-color:#854d0e;background:#422006;color:#fde68a">
+                        SMTP configurado pero deshabilitado. Marca <strong>SMTP habilitado</strong> y guarda para que se envien emails.
+                    </div>
+                </div>
+                <?php elseif (!$mailDiagnostics['configured']): ?>
                 <div class="field col-2">
                     <div class="alert alert-error">
                         SMTP incompleto: faltan datos o PHPMailer no está instalado (<code>composer install</code>).
@@ -260,7 +266,7 @@ require __DIR__ . '/partials/header.php';
                 </div>
                 <?php else: ?>
                 <div class="field col-2">
-                    <div class="alert alert-ok">SMTP listo: <?= htmlspecialchars($mailDiagnostics['host'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($mailDiagnostics['from_email'], ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="alert alert-ok">SMTP listo y habilitado: <?= htmlspecialchars($mailDiagnostics['host'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($mailDiagnostics['from_email'], ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
                 <?php endif; ?>
                 <div class="field">
