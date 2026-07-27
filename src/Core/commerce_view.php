@@ -20,7 +20,6 @@ use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\CommerceStorage;
-use Agenduy\Core\MagicLink;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\MercadoPago;
 
@@ -50,15 +49,6 @@ if (!function_exists('agenduy_render_commerce')) {
             return;
         }
 
-        $clientToken = trim((string)($_GET['client_token'] ?? ''));
-        if ($clientToken !== '') {
-            $consume = MagicLink::consume($clientToken, $_SERVER['REMOTE_ADDR'] ?? null);
-            if ($consume['ok'] && !empty($consume['redirect'])) {
-                header('Location: ' . (string)$consume['redirect'] . '#mis-reservas', true, 303);
-                exit;
-            }
-        }
-
         Auth::start();
         $commerceIdEarly = (int)$commerce['id_commerce'];
         $isCommerceOwner = Auth::check()
@@ -67,23 +57,6 @@ if (!function_exists('agenduy_render_commerce')) {
         $ownerDashboardUrl = $isCommerceOwner
             ? CommercePanel::urlForSlug($slug)
             : null;
-        $clientSession = $_SESSION['client'] ?? null;
-        $clientLoggedIn = is_array($clientSession)
-            && (int)($clientSession['id_commerce'] ?? 0) === $commerceIdEarly
-            && trim((string)($clientSession['email'] ?? '')) !== '';
-        $clientEmail = $clientLoggedIn ? strtolower(trim((string)$clientSession['email'])) : '';
-        $clientAppointments = [];
-        if ($clientLoggedIn) {
-            $clientAppointments = $db->fetchAll(
-                'SELECT a.*, s.nombre AS servicio_nombre
-                 FROM appointments a
-                 LEFT JOIN services s ON s.id_service = a.id_service
-                 WHERE a.id_commerce = :c AND lower(a.cliente_email) = :e
-                 ORDER BY a.fecha DESC, a.hora_inicio DESC
-                 LIMIT 30',
-                [':c' => $commerceIdEarly, ':e' => $clientEmail]
-            );
-        }
 
         $services = $db->fetchAll(
             'SELECT * FROM services WHERE id_commerce = :c AND estado = :a ORDER BY nombre',
@@ -351,14 +324,6 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bx bx-grid-alt"></i> Panel
                     </a>
-                    <?php elseif (!$isStoreMode && $clientLoggedIn): ?>
-                    <a class="client-auth-btn client-auth-btn--profile" href="#mis-reservas" id="client-profile-link">
-                        <i class="bx bx-user"></i> Perfil
-                    </a>
-                    <?php elseif (!$isStoreMode): ?>
-                    <button class="client-auth-btn" type="button" id="client-auth-toggle" aria-expanded="false">
-                        <i class="bx bx-log-in"></i> Iniciar sesión
-                    </button>
                     <?php endif; ?>
                     <?php if ($showBooking): ?>
                     <a href="#reservar" class="btn btn--primary">Reservar</a>
@@ -736,10 +701,9 @@ if (!function_exists('agenduy_render_commerce')) {
             </div>
         </section>
 
-        <?php if (!$isStoreMode || $isCommerceOwner): ?>
-        <section id="mis-reservas" class="alt">
+        <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
+        <section id="panel-negocio" class="alt">
             <div class="wrap">
-                <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                 <span class="eyebrow">Panel del negocio</span>
                 <h2 class="section-title">Administrá tu negocio</h2>
                 <p class="section-sub"><?= $isStoreMode ? 'Estas logueado como dueno. Gestiona catalogo, pedidos y configuracion desde tu panel.' : 'Estás logueado como dueño. Gestioná reservas, servicios y horarios desde tu panel.' ?></p>
@@ -751,55 +715,6 @@ if (!function_exists('agenduy_render_commerce')) {
                     <i class="bx bx-cog"></i> Configuración
                 </a>
                 </div>
-                <?php else: ?>
-                <span class="eyebrow">Tu cuenta</span>
-                <h2 class="section-title">Mis reservas</h2>
-                <?php if ($clientLoggedIn): ?>
-                <p class="section-sub">Sesión iniciada como <strong><?= htmlspecialchars($clientEmail, ENT_QUOTES, 'UTF-8') ?></strong></p>
-                <?php if ($clientAppointments === []): ?>
-                    <p>No encontramos reservas con ese email en este negocio.</p>
-                <?php else: ?>
-                    <div style="overflow-x:auto">
-                    <table style="width:100%; border-collapse:collapse; font-size:.92rem">
-                        <thead>
-                            <tr style="text-align:left; border-bottom:1px solid var(--border,#e2e8f0)">
-                                <th style="padding:.6rem">Fecha</th>
-                                <th style="padding:.6rem">Hora</th>
-                                <th style="padding:.6rem">Servicio</th>
-                                <th style="padding:.6rem">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($clientAppointments as $ap): ?>
-                            <tr style="border-bottom:1px solid var(--border,#e2e8f0)">
-                                <td style="padding:.6rem"><?= htmlspecialchars((string)($ap['fecha'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                                <td style="padding:.6rem"><?= htmlspecialchars(substr((string)($ap['hora_inicio'] ?? ''), 0, 5), ENT_QUOTES, 'UTF-8') ?></td>
-                                <td style="padding:.6rem"><?= htmlspecialchars((string)($ap['servicio_nombre'] ?? 'Reserva'), ENT_QUOTES, 'UTF-8') ?></td>
-                                <td style="padding:.6rem"><?= htmlspecialchars((string)($ap['estado'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    </div>
-                <?php endif; ?>
-                <?php else: ?>
-                <p class="section-sub">Ingresá el email y la cédula con los que reservaste. Te enviamos un link seguro para ver tus turnos.</p>
-                <div class="client-auth-panel" id="client-auth-panel">
-                    <form id="client-magic-form" novalidate style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:flex-end">
-                        <label style="flex:1; min-width:200px">
-                            <span style="display:block; font-size:.85rem; margin-bottom:.25rem">Email</span>
-                            <input type="email" name="email" required placeholder="tu@email.com" style="width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--border,#e2e8f0)">
-                        </label>
-                        <label style="flex:1; min-width:160px">
-                            <span style="display:block; font-size:.85rem; margin-bottom:.25rem">Cédula</span>
-                            <input type="text" name="cedula" required inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" title="Solo números, mínimo 7 dígitos" style="width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--border,#e2e8f0)">
-                        </label>
-                        <button type="submit" class="btn btn--primary">Enviame el link</button>
-                    </form>
-                    <p class="client-auth-panel__msg" id="client-magic-msg" role="status"></p>
-                </div>
-                <?php endif; ?>
-                <?php endif; ?>
             </div>
         </section>
         <?php endif; ?>
@@ -1502,7 +1417,6 @@ if (!function_exists('agenduy_render_commerce')) {
             const bookingLookupHint = document.getElementById('booking-lookup-hint');
             const clientLookupUrl = <?= json_encode(url('src/API/client_lookup.php'), JSON_UNESCAPED_SLASHES) ?>;
             const bookingGuestKey = 'agenduy-booking-guest-' + commerceSlug;
-            const clientLoggedInEmail = <?= json_encode($clientLoggedIn ? $clientEmail : '', JSON_UNESCAPED_UNICODE) ?>;
             let lookupTimer = null;
             let lookupInFlight = false;
             let lastLookupKey = '';
@@ -1858,11 +1772,6 @@ if (!function_exists('agenduy_render_commerce')) {
 
             function prefillBookingGuest() {
                 applyGuestFields(loadSavedGuest(), 'local');
-                if (clientLoggedInEmail && bookingEmailInput) {
-                    bookingEmailInput.value = clientLoggedInEmail;
-                    lastLookupKey = '';
-                    lookupClient();
-                }
             }
 
             if (bookingEmailInput) {
@@ -2056,78 +1965,6 @@ if (!function_exists('agenduy_render_commerce')) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = 'Confirmar reserva';
                 }
-            });
-        })();
-        </script>
-        <script>
-        (function(){
-            var toggle = document.getElementById('client-auth-toggle');
-            var panel = document.getElementById('client-auth-panel');
-            var form = document.getElementById('client-magic-form');
-            var msg = document.getElementById('client-magic-msg');
-            var csrf = document.querySelector('meta[name="csrf-token"]');
-            var csrfToken = csrf ? csrf.content : '';
-            var slug = <?= json_encode($slug, JSON_UNESCAPED_UNICODE) ?>;
-            var commerceId = <?= (int)$commerceIdEarly ?>;
-
-            if (toggle) {
-                toggle.addEventListener('click', function(){
-                    var target = document.getElementById('mis-reservas');
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    if (panel) {
-                        panel.hidden = false;
-                        toggle.setAttribute('aria-expanded', 'true');
-                    }
-                });
-            }
-
-            if (!form) return;
-            form.addEventListener('submit', function(e){
-                e.preventDefault();
-                var emailInput = form.querySelector('input[name="email"]');
-                var cedulaInput = form.querySelector('input[name="cedula"]');
-                var email = emailInput ? String(emailInput.value || '').trim() : '';
-                var cedula = cedulaInput ? String(cedulaInput.value || '').replace(/\D/g, '') : '';
-                if (!email || !cedula || cedula.length < 7) {
-                    if (msg) {
-                        msg.textContent = 'Ingresá email y cédula válidos (mínimo 7 dígitos).';
-                        msg.className = 'client-auth-panel__msg is-error';
-                    }
-                    return;
-                }
-                if (msg) {
-                    msg.textContent = 'Enviando link...';
-                    msg.className = 'client-auth-panel__msg';
-                }
-                fetch(<?= json_encode(url('src/API/client_magic_link.php'), JSON_UNESCAPED_SLASHES) ?>, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ email: email, cedula: cedula, slug: slug, id_commerce: commerceId, _csrf: csrfToken }),
-                }).then(function(res){
-                    return res.json().catch(function(){ return null; }).then(function(data){
-                        if (!res.ok || !data || !data.ok) {
-                            if (msg) {
-                                msg.textContent = (data && data.error) || 'No se pudo enviar el link.';
-                                msg.className = 'client-auth-panel__msg is-error';
-                            }
-                            return;
-                        }
-                        if (msg) {
-                            msg.textContent = data.message || 'Revisá tu correo.';
-                            msg.className = 'client-auth-panel__msg is-success';
-                        }
-                        if (emailInput) emailInput.value = '';
-                    });
-                }).catch(function(){
-                    if (msg) {
-                        msg.textContent = 'Error de conexión. Intentá de nuevo.';
-                        msg.className = 'client-auth-panel__msg is-error';
-                    }
-                });
             });
         })();
         </script>
