@@ -144,16 +144,24 @@
         }
 
         var params = new URLSearchParams(window.location.search);
-        if (params.get('login_error') === '1') {
+        var loginError = params.get('login_error');
+        if (loginError) {
             open();
             var magicErr = params.get('magic');
             if (magicErr) {
                 showMsg(decodeURIComponent(magicErr), true);
+            } else if (loginError === 'csrf') {
+                showMsg('Sesion expirada. Volve a intentar desde este formulario.', true);
+            } else if (loginError === 'missing') {
+                showMsg('Ingresa email y contrasena.', true);
             } else {
                 showMsg('Email o contrasena incorrectos.', true);
             }
             if (window.history && window.history.replaceState) {
-                window.history.replaceState({}, document.title, window.location.pathname);
+                params.delete('login_error');
+                params.delete('magic');
+                var cleanQuery = params.toString();
+                window.history.replaceState({}, document.title, window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash);
             }
         }
     });

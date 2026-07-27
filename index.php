@@ -228,6 +228,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
             </div>
             <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" data-login-panel="password" novalidate>
               <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
+              <p class="site-login-form__hint">El usuario es el email del administrador o del comercio.</p>
               <label class="site-login-form__field">
                 <span>Email</span>
                 <input type="email" name="email" required autocomplete="username" placeholder="tu@email.com">

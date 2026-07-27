@@ -24,12 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-CSRF::checkRequest('admin_login');
+$csrf = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'admin_login', false)) {
+    header('Location: ' . url('/?login_error=csrf'), true, 303);
+    exit;
+}
+
 $email    = trim((string)($_POST['email'] ?? ''));
 $password = (string)($_POST['password'] ?? '');
 
 if ($email === '' || $password === '') {
-    header('Location: ' . url('/?login_error=1'));
+    header('Location: ' . url('/?login_error=missing'), true, 303);
     exit;
 }
 
@@ -38,12 +43,12 @@ if ($result['ok']) {
     $destination = Auth::dashboardUrl($result['user']);
     if ($destination === null) {
         Auth::logout();
-        header('Location: ' . url('/?login_error=1'));
+        header('Location: ' . url('/?login_error=1'), true, 303);
         exit;
     }
     header('Location: ' . $destination, true, 303);
     exit;
 }
 
-header('Location: ' . url('/?login_error=1'));
+header('Location: ' . url('/?login_error=1'), true, 303);
 exit;
