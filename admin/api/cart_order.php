@@ -137,8 +137,13 @@ try {
     $clienteNombre = trim((string)($payload['cliente_nombre'] ?? ''));
     $clienteEmail = trim((string)($payload['cliente_email'] ?? ''));
     $clienteTelefono = trim((string)($payload['cliente_telefono'] ?? ''));
-    if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
+    if ($clienteEmail === '' || !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
+    }
+
+    $phoneDigits = preg_replace('/\D+/', '', $clienteTelefono) ?? '';
+    if (strlen($phoneDigits) < 7) {
+        throw new InvalidArgumentException('Telefono invalido.');
     }
 
     $address = trim((string)($payload['address'] ?? ''));

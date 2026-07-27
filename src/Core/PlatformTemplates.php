@@ -28,7 +28,7 @@ final class PlatformTemplates
                     'fields' => ['subject', 'body'],
                     'defaults' => [
                         'subject' => 'Reserva recibida - {negocio}',
-                        'body' => "{logo}\n\nHola {cliente}, recibimos tu reserva #{id_reserva} en {negocio}.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\n\nSi necesitas cancelar, usa tu cedula y el numero de reserva.",
+                        'body' => "{logo}\n\nHola {cliente}, recibimos tu reserva #{id_reserva} en {negocio}.\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\n\nAgregar a Google Calendar: {google_calendar_url}\n\nSi necesitas cancelar, usa tu cedula y el numero de reserva.",
                     ],
                 ],
                 'appointment_confirmed_owner' => [
@@ -85,6 +85,15 @@ final class PlatformTemplates
                         'body' => "Nuevo pedido #{pedido} en {negocio}\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nEmail: {email}\nDireccion: {direccion}\n\nProductos:\n{productos}\n\nTotal: {total}",
                     ],
                 ],
+                'store_order_created_client' => [
+                    'label' => 'Pedido recibido (cliente)',
+                    'hint' => 'Confirmacion al comprador cuando realiza un pedido de tienda.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Pedido recibido #{pedido} - {negocio}',
+                        'body' => "{logo}\n\nHola {cliente}, recibimos tu pedido #{pedido} en {negocio}.\nEstado: {estado}\n\nProductos:\n{productos}\n\nTotal: {total}\n\nTe vamos a contactar si falta coordinar entrega, retiro o pago.",
+                    ],
+                ],
                 'store_order_paid_owner' => [
                     'label' => 'Pedido pagado (tienda)',
                     'hint' => 'Aviso al comercio cuando Mercado Pago confirma un pedido.',
@@ -92,6 +101,15 @@ final class PlatformTemplates
                     'defaults' => [
                         'subject' => 'Pedido pagado #{pedido} - {negocio}',
                         'body' => "Mercado Pago confirmo el pedido #{pedido} en {negocio}.\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nEmail: {email}\nDireccion: {direccion}\n\nProductos:\n{productos}\n\nTotal: {total}",
+                    ],
+                ],
+                'store_order_paid_client' => [
+                    'label' => 'Compra pagada (cliente)',
+                    'hint' => 'Agradecimiento al comprador cuando Mercado Pago confirma el pago.',
+                    'fields' => ['subject', 'body'],
+                    'defaults' => [
+                        'subject' => 'Gracias por tu compra #{pedido} - {negocio}',
+                        'body' => "{logo}\n\nHola {cliente}, gracias por tu compra en {negocio}.\nTu pago del pedido #{pedido} fue confirmado.\n\nProductos:\n{productos}\n\nTotal: {total}",
                     ],
                 ],
                 'magic_link_admin' => [
@@ -201,12 +219,28 @@ final class PlatformTemplates
                         'body' => "Nuevo pedido #{pedido} en {negocio}\nEstado: {estado}\nCliente: {cliente}\nCelular: {telefono}\nDireccion: {direccion}\nProductos:\n{productos}\nTotal: {total}",
                     ],
                 ],
+                'store_order_created_client' => [
+                    'label' => 'Pedido recibido (cliente)',
+                    'hint' => 'WhatsApp al comprador cuando realiza un pedido.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Hola {cliente}, recibimos tu pedido #{pedido} en {negocio}.\nEstado: {estado}\nProductos:\n{productos}\nTotal: {total}",
+                    ],
+                ],
                 'store_order_paid_owner' => [
                     'label' => 'Pedido pagado (tienda)',
                     'hint' => 'WhatsApp al comercio cuando Mercado Pago confirma el pago.',
                     'fields' => ['body'],
                     'defaults' => [
                         'body' => "Pedido pagado #{pedido} en {negocio}\nCliente: {cliente}\nCelular: {telefono}\nProductos:\n{productos}\nTotal: {total}",
+                    ],
+                ],
+                'store_order_paid_client' => [
+                    'label' => 'Compra pagada (cliente)',
+                    'hint' => 'WhatsApp de agradecimiento al comprador cuando Mercado Pago confirma el pago.',
+                    'fields' => ['body'],
+                    'defaults' => [
+                        'body' => "Hola {cliente}, gracias por tu compra en {negocio}. Tu pago del pedido #{pedido} fue confirmado.\nProductos:\n{productos}\nTotal: {total}",
                     ],
                 ],
             ],
@@ -216,7 +250,7 @@ final class PlatformTemplates
     /** Placeholders disponibles en la UI del super admin. */
     public static function placeholderHelp(): string
     {
-        return '{cliente}, {telefono}, {email}, {cedula}, {servicio}, {negocio}, {fecha}, {hora}, {id_reserva}, {pedido}, {productos}, {total}, {direccion}, {estado}, {pago_url}, {notas}, {cancel_url}, {link}, {site_url}, {panel_url}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}';
+        return '{cliente}, {telefono}, {email}, {cedula}, {servicio}, {negocio}, {fecha}, {hora}, {id_reserva}, {pedido}, {productos}, {total}, {direccion}, {estado}, {pago_url}, {google_calendar_url}, {calendar_url}, {notas}, {cancel_url}, {link}, {site_url}, {panel_url}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}';
     }
 
     /**
@@ -244,6 +278,8 @@ final class PlatformTemplates
             'direccion' => 'Av. Italia 1234',
             'estado' => 'Pendiente',
             'pago_url' => url('demo/?mp_order=87&mp_status=pending'),
+            'google_calendar_url' => 'https://calendar.google.com/calendar/render?action=TEMPLATE',
+            'calendar_url' => 'https://calendar.google.com/calendar/render?action=TEMPLATE',
             'notas' => 'Sin preferencia de profesional',
             'cancel_url' => url('demo/?cancel_reserva=154'),
             'link' => url('demo/?client_token=ejemplo'),

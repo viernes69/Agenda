@@ -84,8 +84,12 @@ try {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) throw new InvalidArgumentException('Fecha inválida.');
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $horaInicio)) throw new InvalidArgumentException('Hora inválida.');
     if ($clienteNombre === '') throw new InvalidArgumentException('Falta el nombre del cliente.');
-    if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
+    if ($clienteEmail === '' || !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
+    }
+    $phoneDigits = preg_replace('/\D+/', '', $clienteTelefono) ?? '';
+    if (strlen($phoneDigits) < 7) {
+        throw new InvalidArgumentException('Teléfono inválido.');
     }
     if ($clienteCedula === '') {
         throw new InvalidArgumentException('Ingresá tu cédula para poder cancelar tu reserva si lo necesitás.');
@@ -331,6 +335,7 @@ try {
                 'local_reservation_id' => (int)($localReservaId ?? 0),
                 'fecha'            => $fecha,
                 'hora_inicio'      => $horaInicio,
+                'hora_fin'         => $horaFin,
                 'cliente_nombre'   => $clienteNombre,
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,

@@ -826,7 +826,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             <div class="field field--row">
                                 <div>
                                     <label for="booking-email">Email</label>
-                                    <input type="email" id="booking-email" name="cliente_email" autocomplete="email">
+                                    <input type="email" id="booking-email" name="cliente_email" autocomplete="email" required>
                                 </div>
                                 <div>
                                     <label for="booking-cedula">Cédula</label>
@@ -835,7 +835,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             </div>
                             <div class="field">
                                 <label for="booking-phone">Teléfono</label>
-                                <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456">
+                                <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456" required>
                             </div>
                             <p class="hint" id="booking-lookup-hint" hidden role="status"></p>
                             <div class="field">
@@ -847,7 +847,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     <?php if ($showProducts): ?>
                     <div id="booking-step-upsell" hidden>
                         <div class="alert alert--ok" id="booking-upsell-ok">
-                            <i class="bx bx-check-circle"></i> ¡Reserva confirmada! Te enviamos un email.
+                            <i class="bx bx-check-circle"></i> ¡Reserva confirmada! Te enviamos email y WhatsApp.
                         </div>
                         <p class="upsell-lead" id="booking-upsell-lead">¿Desea alguno de nuestros productos?</p>
                         <p class="section-sub" style="margin:0 0 1rem">Podés agregarlos al carrito y coordinar todo por WhatsApp junto con tu reserva.</p>
@@ -921,6 +921,24 @@ if (!function_exists('agenduy_render_commerce')) {
                     <div id="cart-content">
                         <div class="cart-lines" id="cart-lines"></div>
                         <div class="cart-total" id="cart-total"></div>
+                        <div class="cart-contact" id="cart-contact">
+                            <p class="cart-contact__title">Datos para confirmarte el pedido</p>
+                            <div class="cart-contact__grid">
+                                <label for="cart-customer-name">
+                                    Nombre
+                                    <input type="text" id="cart-customer-name" autocomplete="name" placeholder="Tu nombre">
+                                </label>
+                                <label for="cart-customer-email">
+                                    Email
+                                    <input type="email" id="cart-customer-email" autocomplete="email" placeholder="tu@email.com">
+                                </label>
+                                <label for="cart-customer-phone">
+                                    Telefono
+                                    <input type="tel" id="cart-customer-phone" autocomplete="tel" placeholder="099 123 456">
+                                </label>
+                            </div>
+                            <p class="cart-contact__hint">Te enviamos la confirmacion por email y WhatsApp.</p>
+                        </div>
                         <p class="hint" id="cart-wa-hint" hidden></p>
                     </div>
                 </div>
@@ -1381,8 +1399,50 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartWaBtn = document.getElementById('cart-wa-btn');
             const cartMpBtn = document.getElementById('cart-mp-btn');
             const cartWaHint = document.getElementById('cart-wa-hint');
+            const cartCustomerName = document.getElementById('cart-customer-name');
+            const cartCustomerEmail = document.getElementById('cart-customer-email');
+            const cartCustomerPhone = document.getElementById('cart-customer-phone');
+
+            function isValidEmail(value) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+            }
+
+            function prefillCartContact() {
+                const guest = typeof loadSavedGuest === 'function' ? loadSavedGuest() : null;
+                if (!guest) return;
+                if (cartCustomerName && !String(cartCustomerName.value || '').trim()) {
+                    cartCustomerName.value = String(guest.nombre || '').trim();
+                }
+                if (cartCustomerEmail && !String(cartCustomerEmail.value || '').trim()) {
+                    cartCustomerEmail.value = String(guest.email || '').trim();
+                }
+                if (cartCustomerPhone && !String(cartCustomerPhone.value || '').trim()) {
+                    cartCustomerPhone.value = String(guest.telefono || '').trim();
+                }
+            }
+
+            function collectCartCustomerMeta() {
+                const nombre = String(cartCustomerName?.value || '').trim();
+                const email = String(cartCustomerEmail?.value || '').trim();
+                const telefono = String(cartCustomerPhone?.value || '').trim();
+                if (!isValidEmail(email)) {
+                    window.alert('Ingresa un email valido para enviarte la confirmacion.');
+                    cartCustomerEmail?.focus();
+                    return null;
+                }
+                if ((telefono.replace(/\D/g, '')).length < 7) {
+                    window.alert('Ingresa un telefono valido para enviarte WhatsApp.');
+                    cartCustomerPhone?.focus();
+                    return null;
+                }
+                if (typeof saveGuest === 'function') {
+                    saveGuest({ nombre, email, telefono });
+                }
+                return { nombre, email, telefono };
+            }
 
             function openCartModal() {
+                prefillCartContact();
                 if (cartModal) cartModal.classList.add('is-open');
             }
             function closeCartModal() {
@@ -1476,17 +1536,21 @@ if (!function_exists('agenduy_render_commerce')) {
                     cartWaBtn.addEventListener('click', () => {
                         const items = loadCart();
                         if (!items.length) return;
+                        const customerMeta = collectCartCustomerMeta();
+                        if (!customerMeta) return;
                         finalizePurchase({
                             waText: buildStoreWaMessage(items),
-                            meta: { note: 'Pedido WhatsApp (tienda)' },
+                            meta: Object.assign({ note: 'Pedido WhatsApp (tienda)' }, customerMeta),
                             requireItems: true
                         });
                     });
                 }
                 if (cartMpBtn) {
                     cartMpBtn.addEventListener('click', () => {
+                        const customerMeta = collectCartCustomerMeta();
+                        if (!customerMeta) return;
                         startMercadoPagoCheckout({
-                            meta: { note: 'Pedido Mercado Pago (tienda)' }
+                            meta: Object.assign({ note: 'Pedido Mercado Pago (tienda)' }, customerMeta)
                         });
                     });
                 }
@@ -1879,7 +1943,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
                     alertBox.className = 'alert alert--ok';
-                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Listo! Te enviamos un email con la confirmación.';
+                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Listo! Te enviamos email y WhatsApp con la confirmación.';
                     alertBox.hidden = false;
                     setTimeout(closeModal, 2500);
                     return;
@@ -2110,6 +2174,22 @@ if (!function_exists('agenduy_render_commerce')) {
                     alertBox.className = 'alert alert--error';
                     alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresá tu cédula (mínimo 7 dígitos) para poder cancelar tu reserva si lo necesitás.';
                     alertBox.hidden = false;
+                    return;
+                }
+                const bookingEmail = String(bookingEmailInput?.value || '').trim();
+                if (!isValidEmail(bookingEmail)) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa un email valido para enviarte la confirmacion.';
+                    alertBox.hidden = false;
+                    bookingEmailInput?.focus();
+                    return;
+                }
+                const bookingPhoneDigits = String(bookingPhoneInput?.value || '').replace(/\D/g, '');
+                if (bookingPhoneDigits.length < 7) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa un telefono valido para enviarte WhatsApp.';
+                    alertBox.hidden = false;
+                    bookingPhoneInput?.focus();
                     return;
                 }
                 submitBtn.disabled = true;

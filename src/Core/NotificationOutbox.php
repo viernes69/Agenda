@@ -217,6 +217,7 @@ final class NotificationOutbox
             return;
         }
         $event = strtolower(trim($event)) === 'paid' ? 'paid' : 'created';
+        $customer = self::mergeStoreOrderCustomer($commerce, $order, $customer);
         if ($items === []) {
             $items = self::itemsFromOrderPairs((string)($commerce['slug'] ?? ''), $order);
         }
@@ -258,6 +259,35 @@ final class NotificationOutbox
             $payload,
             date('Y-m-d H:i:s'),
             "order:{$idCommerce}:{$orderKey}:{$event}:wa:owner"
+        );
+
+        $clientTemplateKey = $event === 'paid' ? 'store_order_paid_client' : 'store_order_created_client';
+        $clientLabel = $event === 'paid' ? 'Compra confirmada' : 'Pedido recibido';
+        $clientFallback = $event === 'paid'
+            ? "Hola {$vars['cliente']}, gracias por tu compra #{$orderKey} en {$vars['negocio']}.\nTu pago fue confirmado.\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}"
+            : "Hola {$vars['cliente']}, recibimos tu pedido #{$orderKey} en {$vars['negocio']}.\nEstado: {$vars['estado']}\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}";
+
+        self::enqueueEmail(
+            $idCommerce,
+            (string)$vars['email'],
+            $clientTemplateKey,
+            $vars,
+            "{$clientLabel} #{$orderKey} - {$vars['negocio']}",
+            $clientFallback,
+            $payload,
+            date('Y-m-d H:i:s'),
+            "order:{$idCommerce}:{$orderKey}:{$event}:email:client"
+        );
+
+        self::enqueueWhatsApp(
+            $idCommerce,
+            (string)$vars['telefono'],
+            $clientTemplateKey,
+            $vars,
+            $clientFallback,
+            $payload,
+            date('Y-m-d H:i:s'),
+            "order:{$idCommerce}:{$orderKey}:{$event}:wa:client"
         );
     }
 
@@ -515,6 +545,7 @@ final class NotificationOutbox
         $subject = EmailTemplates::render($idCommerce, $templateKey, $vars, 'subject', $fallbackSubject);
         $bodyText = EmailTemplates::render($idCommerce, $templateKey, $vars, 'body', $fallbackBody);
         $bodyText = self::appendStorePaymentLink($bodyText, $vars, $templateKey);
+        $bodyText = self::appendAppointmentCalendarLink($bodyText, $vars, $templateKey);
         return self::enqueue(
             $idCommerce,
             'email',
@@ -569,6 +600,25 @@ final class NotificationOutbox
         return rtrim($body) . "\nLink de pago Mercado Pago: " . $paymentUrl;
     }
 
+    private static function appendAppointmentCalendarLink(string $body, array $vars, string $templateKey): string
+    {
+        if ($templateKey !== 'appointment_confirmed_client') {
+            return $body;
+        }
+        $calendarUrl = trim((string)($vars['google_calendar_url'] ?? $vars['calendar_url'] ?? ''));
+        if ($calendarUrl === '' || str_contains($body, $calendarUrl)) {
+            return $body;
+        }
+        if (str_contains($body, '<')) {
+            $safeUrl = htmlspecialchars($calendarUrl, ENT_QUOTES, 'UTF-8');
+            return rtrim($body) . "\n\n"
+                . '<p style="margin:1rem 0 0"><a href="' . $safeUrl . '" '
+                . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:.72rem 1rem;border-radius:8px;text-decoration:none;font-weight:700">'
+                . 'Agregar a Google Calendar</a></p>';
+        }
+        return rtrim($body) . "\n\nAgregar a Google Calendar: " . $calendarUrl;
+    }
+
     private static function appointmentContextFromRows(array $appointment, array $commerce, ?array $service): ?array
     {
         $idCommerce = (int)($commerce['id_commerce'] ?? $appointment['id_commerce'] ?? 0);
@@ -583,6 +633,7 @@ final class NotificationOutbox
         $phone = trim((string)($appointment['cliente_telefono'] ?? '')) ?: trim((string)($appointment['client_telefono_db'] ?? ''));
         $cedula = trim((string)($appointment['cliente_cedula'] ?? $appointment['client_cedula_db'] ?? ''));
         $slug = trim((string)($commerce['slug'] ?? ''));
+        $duration = self::appointmentDurationMinutes($appointment, $service);
 
         return [
             'id_commerce' => $idCommerce,
@@ -599,8 +650,11 @@ final class NotificationOutbox
             'service_name' => trim((string)($service['nombre'] ?? $appointment['servicio_nombre'] ?? 'Servicio')) ?: 'Servicio',
             'fecha' => trim((string)($appointment['fecha'] ?? '')),
             'hora' => self::normalizeTimeLabel((string)($appointment['hora_inicio'] ?? '')),
+            'hora_fin' => self::normalizeTimeLabel((string)($appointment['hora_fin'] ?? '')),
+            'duration_min' => $duration,
             'notas' => trim((string)($appointment['notas'] ?? '')),
             'timezone' => trim((string)($commerce['timezone'] ?? 'America/Montevideo')) ?: 'America/Montevideo',
+            'location' => self::commerceLocationLabel($commerce),
             'site_url' => $slug !== '' ? CommercePanel::publicUrlForSlug($slug) : url(''),
             'panel_url' => $slug !== '' ? CommercePanel::dashboardUrlForSlug($slug, 'reservas') : url('admin/login.php'),
             'cancel_url' => $slug !== '' ? CommercePanel::publicUrlForSlug($slug) . '?cancel_reserva=' . rawurlencode((string)$idAppointment) : '',
@@ -668,8 +722,11 @@ final class NotificationOutbox
             'service_name' => self::firstNonEmpty($service, ['Nombre', 'nombre']) ?: 'Servicio',
             'fecha' => trim((string)($reservation['Fecha_Reserva'] ?? '')),
             'hora' => self::normalizeTimeLabel((string)($reservation['Hora_Reserva'] ?? '')),
+            'hora_fin' => self::normalizeTimeLabel(self::firstNonEmpty($reservation, ['Hora_Fin', 'Hora_Fin_Reserva', 'hora_fin'])),
+            'duration_min' => self::appointmentDurationMinutes($reservation, $service),
             'notas' => '',
             'timezone' => trim((string)($commerce['timezone'] ?? 'America/Montevideo')) ?: 'America/Montevideo',
+            'location' => self::commerceLocationLabel($commerce),
             'site_url' => CommercePanel::publicUrlForSlug($slug),
             'panel_url' => CommercePanel::dashboardUrlForSlug($slug, 'reservas'),
             'cancel_url' => CommercePanel::publicUrlForSlug($slug) . '?cancel_reserva=' . rawurlencode((string)$displayId),
@@ -682,6 +739,7 @@ final class NotificationOutbox
         if ($id <= 0) {
             $id = (int)($ctx['local_reservation_id'] ?? 0);
         }
+        $calendarUrl = self::appointmentCalendarUrl($ctx);
         return self::stringVars([
             'cliente' => $ctx['client_name'] ?? 'Cliente',
             'telefono' => $ctx['client_phone'] ?? '',
@@ -696,6 +754,8 @@ final class NotificationOutbox
             'site_url' => $ctx['site_url'] ?? '',
             'panel_url' => $ctx['panel_url'] ?? '',
             'cancel_url' => $ctx['cancel_url'] ?? '',
+            'google_calendar_url' => $calendarUrl,
+            'calendar_url' => $calendarUrl,
             'logo' => PlatformTemplates::logoHtml(),
         ]);
     }
@@ -707,7 +767,127 @@ final class NotificationOutbox
             'local_reservation_id' => (int)($ctx['local_reservation_id'] ?? 0) ?: null,
             'slug' => (string)($ctx['slug'] ?? ''),
             'cancel_url' => (string)($ctx['cancel_url'] ?? ''),
+            'google_calendar_url' => self::appointmentCalendarUrl($ctx),
         ];
+    }
+
+    private static function appointmentCalendarUrl(array $ctx): string
+    {
+        $start = self::appointmentDateTime($ctx);
+        if ($start === null) {
+            return '';
+        }
+        $end = self::appointmentEndDateTime($ctx, $start);
+        $id = (int)($ctx['appointment_id'] ?? 0);
+        if ($id <= 0) {
+            $id = (int)($ctx['local_reservation_id'] ?? 0);
+        }
+        $description = "Reserva en " . (string)($ctx['business_name'] ?? 'Negocio') . "\n"
+            . "Servicio: " . (string)($ctx['service_name'] ?? 'Servicio') . "\n";
+        if ($id > 0) {
+            $description .= "Numero de reserva: " . $id . "\n";
+        }
+        if (trim((string)($ctx['cancel_url'] ?? '')) !== '') {
+            $description .= "Cancelar: " . (string)$ctx['cancel_url'] . "\n";
+        }
+
+        return IcsHelper::googleLink([
+            'title' => 'Reserva: ' . (string)($ctx['service_name'] ?? 'Servicio') . ' - ' . (string)($ctx['business_name'] ?? 'Negocio'),
+            'description' => trim($description),
+            'start' => $start,
+            'end' => $end,
+            'location' => (string)($ctx['location'] ?? ''),
+        ]);
+    }
+
+    private static function appointmentDateTime(array $ctx): ?\DateTimeImmutable
+    {
+        $date = self::normalizeCalendarDate((string)($ctx['fecha'] ?? ''));
+        $time = self::normalizeCalendarTime((string)($ctx['hora'] ?? ''));
+        if ($date === '' || $time === '') {
+            return null;
+        }
+        try {
+            return new \DateTimeImmutable($date . ' ' . $time, self::timezone((string)($ctx['timezone'] ?? '')));
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function appointmentEndDateTime(array $ctx, \DateTimeImmutable $start): \DateTimeImmutable
+    {
+        $endTime = self::normalizeCalendarTime((string)($ctx['hora_fin'] ?? ''));
+        if ($endTime !== '') {
+            try {
+                $end = new \DateTimeImmutable($start->format('Y-m-d') . ' ' . $endTime, $start->getTimezone());
+                if ($end > $start) {
+                    return $end;
+                }
+            } catch (\Throwable) {
+                // Fallback to duration below.
+            }
+        }
+        $duration = max(5, (int)($ctx['duration_min'] ?? 30));
+        return $start->modify('+' . $duration . ' minutes');
+    }
+
+    private static function normalizeCalendarDate(string $date): string
+    {
+        $date = trim($date);
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date)) {
+            return $date;
+        }
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $date, $m)) {
+            return $m[3] . '-' . $m[2] . '-' . $m[1];
+        }
+        return '';
+    }
+
+    private static function normalizeCalendarTime(string $time): string
+    {
+        $time = self::normalizeTimeLabel($time);
+        if (preg_match('/^(\d{2}):(\d{2})$/', $time)) {
+            return $time . ':00';
+        }
+        if (preg_match('/^(\d{2}):(\d{2}):(\d{2})$/', $time)) {
+            return $time;
+        }
+        return '';
+    }
+
+    private static function timezone(string $timezone): \DateTimeZone
+    {
+        $timezone = trim($timezone) ?: 'America/Montevideo';
+        try {
+            return new \DateTimeZone($timezone);
+        } catch (\Throwable) {
+            return new \DateTimeZone('America/Montevideo');
+        }
+    }
+
+    private static function appointmentDurationMinutes(array $appointment, ?array $service): int
+    {
+        $rows = [$service ?: [], $appointment];
+        foreach ($rows as $row) {
+            foreach (['duracion_min', 'duration_min', 'Duracion', 'duracion', 'duration'] as $key) {
+                if (isset($row[$key]) && is_numeric($row[$key]) && (int)$row[$key] > 0) {
+                    return max(5, (int)$row[$key]);
+                }
+            }
+        }
+        return 30;
+    }
+
+    private static function commerceLocationLabel(array $commerce): string
+    {
+        $parts = [];
+        foreach (['calle', 'ciudad', 'pais'] as $key) {
+            $value = trim((string)($commerce[$key] ?? ''));
+            if ($value !== '' && !in_array($value, $parts, true)) {
+                $parts[] = $value;
+            }
+        }
+        return implode(', ', $parts);
     }
 
     private static function appointmentReminderAt(array $ctx): ?string
@@ -841,6 +1021,33 @@ final class NotificationOutbox
             'telefono' => self::firstNonEmpty($client, ['Telefono']),
             'email' => self::firstNonEmpty($client, ['Email']),
         ];
+    }
+
+    private static function mergeStoreOrderCustomer(array $commerce, array $order, array $customer): array
+    {
+        $slug = trim((string)($commerce['slug'] ?? ''));
+        if ($slug === '') {
+            return $customer;
+        }
+
+        $needsName = self::firstNonEmpty($customer, ['cliente_nombre', 'nombre', 'Nombre', 'display_name']) === '';
+        $needsPhone = self::firstNonEmpty($customer, ['cliente_telefono', 'telefono', 'Telefono']) === '';
+        $needsEmail = self::firstNonEmpty($customer, ['cliente_email', 'email', 'Email']) === '';
+        if (!$needsName && !$needsPhone && !$needsEmail) {
+            return $customer;
+        }
+
+        $local = self::localCustomerForOrder($slug, $order);
+        if ($needsName && trim((string)($local['nombre'] ?? '')) !== '') {
+            $customer['nombre'] = (string)$local['nombre'];
+        }
+        if ($needsPhone && trim((string)($local['telefono'] ?? '')) !== '') {
+            $customer['telefono'] = (string)$local['telefono'];
+        }
+        if ($needsEmail && trim((string)($local['email'] ?? '')) !== '') {
+            $customer['email'] = (string)$local['email'];
+        }
+        return $customer;
     }
 
     private static function formatOrderItems(array $items, string $currency): string

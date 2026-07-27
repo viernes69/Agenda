@@ -181,8 +181,12 @@ try {
     $clienteNombre = trim((string)($payload['cliente_nombre'] ?? ''));
     $clienteEmail = strtolower(trim((string)($payload['cliente_email'] ?? '')));
     $clienteTelefono = trim((string)($payload['cliente_telefono'] ?? ''));
-    if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException('Email invalido.');
+    if ($clienteEmail === '' || !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Ingresa un email valido para enviarte la confirmacion.');
+    }
+    $phoneDigits = preg_replace('/\D+/', '', $clienteTelefono) ?? '';
+    if (strlen($phoneDigits) < 7) {
+        throw new InvalidArgumentException('Ingresa un telefono valido para enviarte WhatsApp.');
     }
 
     $address = trim((string)($payload['address'] ?? ''));
