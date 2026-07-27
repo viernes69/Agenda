@@ -914,6 +914,34 @@ if (!function_exists('admin_panel_href')) {
         return \Agenduy\Core\CommercePanel::dashboardAssetUrl($relative);
     }
 }
+if (!function_exists('admin_tenant_asset_url')) {
+    function admin_tenant_asset_url(string $storedPath): string {
+        $storedPath = ltrim(str_replace('\\', '/', trim($storedPath)), '/');
+        if ($storedPath === '') {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $storedPath)) {
+            return $storedPath;
+        }
+
+        $idCommerce = (int)($GLOBALS['commerceIdForPanel'] ?? \Agenduy\Core\Auth::commerceId() ?? 0);
+        $tenantSlugForAsset = trim((string)($GLOBALS['tenantSlug'] ?? ''), '/');
+        if ($idCommerce > 0) {
+            $resolved = \Agenduy\Core\CommerceStorage::publicUrl($idCommerce, $tenantSlugForAsset, $storedPath);
+            if ($resolved !== '') {
+                return $resolved;
+            }
+            if (\Agenduy\Core\CommerceStorage::isCentralPath($storedPath)) {
+                return '';
+            }
+        }
+
+        if ($tenantSlugForAsset !== '' && $tenantSlugForAsset !== 'template') {
+            return url($tenantSlugForAsset . '/' . $storedPath);
+        }
+        return url($storedPath);
+    }
+}
 $panelApiEndpoints = $isCentralPanelEmbed ? \Agenduy\Core\CommercePanel::dashboardApiEndpoints() : [];
 $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
@@ -1607,14 +1635,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               $precio = $srv['Precio'] ?? '';
               $puntos = $srv['Puntos'] ?? '';
               $imgRel = trim((string)($srv['Img_Link'] ?? ''));
-              $imgUrl = '';
-              if ($imgRel !== '') {
-                if (preg_match('/^https?:\\/\\//i', $imgRel)) {
-                  $imgUrl = $imgRel;
-                } else {
-                  $imgUrl = '../../../' . ltrim($imgRel, '/');
-                }
-              }
+              $imgUrl = $imgRel !== '' ? admin_tenant_asset_url($imgRel) : '';
               $statusClass = 'admin-service-status--' . (strtolower($estado) === 'activo' ? 'active' : 'inactive');
               $precioFmt = is_numeric($precio) ? number_format((float)$precio, 0, ',', '.') : trim((string)$precio);
               $puntosFmt = ($puntos === null || $puntos === '' || !is_numeric($puntos))
@@ -1743,14 +1764,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               $descripcion = trim((string)($prod['Descripcion'] ?? ''));
               $puntos = $prod['Puntos'] ?? '';
               $imgRel = trim((string)($prod['Img_src'] ?? ''));
-              $imgUrl = '';
-              if ($imgRel !== '') {
-                if (preg_match('/^https?:\\/\\//i', $imgRel)) {
-                  $imgUrl = $imgRel;
-                } else {
-                  $imgUrl = '../../../' . ltrim($imgRel, '/');
-                }
-              }
+              $imgUrl = $imgRel !== '' ? admin_tenant_asset_url($imgRel) : '';
               $precioFmt = is_numeric($precio) ? number_format((float)$precio, 0, ',', '.') : trim((string)$precio);
               $puntosFmt = ($puntos === null || $puntos === '' || !is_numeric($puntos))
                 ? 'Sin puntos'

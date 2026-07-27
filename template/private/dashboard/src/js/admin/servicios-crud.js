@@ -61,13 +61,36 @@
     if (idx <= 0) return '';
     return '/' + parts.slice(0, idx).join('/');
   };
+  const appPublicBase = () => {
+    const meta = document.querySelector('meta[name="url-base"]');
+    const slug = String(document.querySelector('meta[name="tenant-slug"]')?.content || '').trim().replace(/^\/+|\/+$/g, '');
+    const raw = String(meta?.content || '').trim();
+    if (!raw) return '';
+    try {
+      let path = new URL(raw, window.location.origin).pathname.replace(/\/+$/, '');
+      if (slug && path.endsWith(`/${slug}`)) {
+        path = path.slice(0, -(slug.length + 1));
+      }
+      return path;
+    } catch (_) {
+      let path = raw.replace(/\/+$/, '');
+      if (slug && path.endsWith(`/${slug}`)) {
+        path = path.slice(0, -(slug.length + 1));
+      }
+      return path;
+    }
+  };
   const resolveImageUrl = (value) => {
     const ref = String(value || '').trim();
     if (!ref) return '';
     if (/^(https?:|blob:|data:)/i.test(ref)) return ref;
     if (ref.startsWith('/')) return ref;
-    const base = tenantPublicBase();
     const rel = ref.replace(/^\/+/, '');
+    if (rel.startsWith('src/media/commerce/')) {
+      const appBase = appPublicBase();
+      return appBase ? `${appBase}/${rel}` : `/${rel}`;
+    }
+    const base = tenantPublicBase();
     return base ? `${base}/${rel}` : `../../../${rel}`;
   };
   const showPreview = (url, alt) => {
@@ -393,4 +416,3 @@
   updateCount();
   updateEmptyState();
 })();
-

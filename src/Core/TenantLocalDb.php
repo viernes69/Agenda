@@ -4,7 +4,10 @@ declare(strict_types=1);
 namespace Agenduy\Core;
 
 /**
- * Lectura/escritura con flock de {slug}/src/db/database.php (legado AutoloadDB).
+ * Lectura/escritura con flock de la base local del comercio.
+ *
+ * Prioriza src/media/commerce/{id}/database.php y mantiene compatibilidad con
+ * {slug}/src/db/database.php para comercios legacy.
  */
 final class TenantLocalDb
 {
@@ -20,15 +23,56 @@ final class TenantLocalDb
 
     public static function pathForSlug(string $slug): string
     {
+        $slug = self::normalizeSlug($slug);
+        $central = self::centralPathForSlug($slug);
+        if ($central !== null) {
+            return $central;
+        }
+
+        return self::legacyPathForSlug($slug);
+    }
+
+    private static function normalizeSlug(string $slug): string
+    {
         $slug = trim($slug, '/');
         if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
-            throw new \InvalidArgumentException('Slug de comercio inválido.');
+            throw new \InvalidArgumentException('Slug de comercio invalido.');
         }
+        return $slug;
+    }
+
+    private static function legacyPathForSlug(string $slug): string
+    {
         $root = dirname(__DIR__, 2);
         return $root . DIRECTORY_SEPARATOR . $slug
             . DIRECTORY_SEPARATOR . 'src'
             . DIRECTORY_SEPARATOR . 'db'
             . DIRECTORY_SEPARATOR . 'database.php';
+    }
+
+    private static function centralPathForSlug(string $slug): ?string
+    {
+        try {
+            $commerce = Database::getInstance()->fetchOne(
+                'SELECT id_commerce FROM commerces WHERE slug = :slug LIMIT 1',
+                [':slug' => $slug]
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $idCommerce = (int)($commerce['id_commerce'] ?? 0);
+        if ($idCommerce <= 0) {
+            return null;
+        }
+
+        $root = dirname(__DIR__, 2);
+        $path = $root . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, CommerceStorage::WEB_PREFIX)
+            . DIRECTORY_SEPARATOR . (string)$idCommerce
+            . DIRECTORY_SEPARATOR . 'database.php';
+
+        return is_file($path) ? $path : null;
     }
 
     public static function lockPathForSlug(string $slug): string

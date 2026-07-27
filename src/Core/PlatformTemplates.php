@@ -216,7 +216,7 @@ final class PlatformTemplates
     /** Placeholders disponibles en la UI del super admin. */
     public static function placeholderHelp(): string
     {
-        return '{cliente}, {telefono}, {email}, {cedula}, {servicio}, {negocio}, {fecha}, {hora}, {id_reserva}, {pedido}, {productos}, {total}, {direccion}, {estado}, {notas}, {cancel_url}, {link}, {site_url}, {panel_url}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}';
+        return '{cliente}, {telefono}, {email}, {cedula}, {servicio}, {negocio}, {fecha}, {hora}, {id_reserva}, {pedido}, {productos}, {total}, {direccion}, {estado}, {pago_url}, {notas}, {cancel_url}, {link}, {site_url}, {panel_url}, {nombre}, {trial_end}, {from_name}, {ttl_minutes}, {logo}';
     }
 
     /**
@@ -243,6 +243,7 @@ final class PlatformTemplates
             'total' => 'UYU 1.250',
             'direccion' => 'Av. Italia 1234',
             'estado' => 'Pendiente',
+            'pago_url' => url('demo/?mp_order=87&mp_status=pending'),
             'notas' => 'Sin preferencia de profesional',
             'cancel_url' => url('demo/?cancel_reserva=154'),
             'link' => url('demo/?client_token=ejemplo'),

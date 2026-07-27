@@ -235,9 +235,11 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
                     'MP_External_Reference' => $externalReference,
                     'Total' => number_format($amount, 2, '.', ''),
                     'currency' => $currency,
+                    'checkout_url' => trim((string)($paymentRow['checkout_url'] ?? '')),
                 ]);
                 NotificationOutbox::enqueueStoreOrderNotifications($commerce, $orderForNotify, $items, [
                     'cliente_email' => $payerEmail,
+                    'pago_url' => trim((string)($paymentRow['checkout_url'] ?? '')),
                 ], 'paid');
             }
         } catch (Throwable $notifyError) {

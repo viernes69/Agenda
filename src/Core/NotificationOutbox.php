@@ -225,11 +225,14 @@ final class NotificationOutbox
         $orderKey = $vars['pedido'] !== '' ? $vars['pedido'] : substr(hash('sha1', json_encode($order) ?: serialize($order)), 0, 12);
         $templateKey = $event === 'paid' ? 'store_order_paid_owner' : 'store_order_created_owner';
         $label = $event === 'paid' ? 'Pedido pagado' : 'Nuevo pedido';
+        $paymentUrl = trim((string)($vars['pago_url'] ?? ''));
+        $paymentLine = $paymentUrl !== '' ? "\nLink de pago Mercado Pago: {$paymentUrl}" : '';
         $payload = [
             'order_id' => $orderKey,
             'event' => $event,
             'slug' => (string)($commerce['slug'] ?? ''),
             'items' => $items,
+            'checkout_url' => $paymentUrl,
         ];
 
         $ownerEmail = EmailTemplates::ownerEmail($idCommerce, $commerce);
@@ -239,7 +242,7 @@ final class NotificationOutbox
             $templateKey,
             $vars,
             "{$label} #{$orderKey} - {$vars['negocio']}",
-            "{$label} #{$orderKey} en {$vars['negocio']}\nCliente: {$vars['cliente']}\nCelular: {$vars['telefono']}\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}",
+            "{$label} #{$orderKey} en {$vars['negocio']}\nCliente: {$vars['cliente']}\nCelular: {$vars['telefono']}\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}{$paymentLine}",
             $payload,
             date('Y-m-d H:i:s'),
             "order:{$idCommerce}:{$orderKey}:{$event}:email:owner"
@@ -251,7 +254,7 @@ final class NotificationOutbox
             $ownerWhatsApp,
             $templateKey,
             $vars,
-            "{$label} #{$orderKey} en {$vars['negocio']}\nCliente: {$vars['cliente']}\nCelular: {$vars['telefono']}\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}",
+            "{$label} #{$orderKey} en {$vars['negocio']}\nCliente: {$vars['cliente']}\nCelular: {$vars['telefono']}\nProductos:\n{$vars['productos']}\nTotal: {$vars['total']}{$paymentLine}",
             $payload,
             date('Y-m-d H:i:s'),
             "order:{$idCommerce}:{$orderKey}:{$event}:wa:owner"
@@ -511,6 +514,7 @@ final class NotificationOutbox
         }
         $subject = EmailTemplates::render($idCommerce, $templateKey, $vars, 'subject', $fallbackSubject);
         $bodyText = EmailTemplates::render($idCommerce, $templateKey, $vars, 'body', $fallbackBody);
+        $bodyText = self::appendStorePaymentLink($bodyText, $vars, $templateKey);
         return self::enqueue(
             $idCommerce,
             'email',
@@ -539,6 +543,7 @@ final class NotificationOutbox
             return null;
         }
         $body = PlatformTemplates::render('ultramsg', $templateKey, $vars, 'body', $fallbackBody);
+        $body = self::appendStorePaymentLink($body, $vars, $templateKey);
         return self::enqueue(
             $idCommerce,
             'whatsapp',
@@ -550,6 +555,18 @@ final class NotificationOutbox
             $scheduledAt,
             $idempotencyKey
         );
+    }
+
+    private static function appendStorePaymentLink(string $body, array $vars, string $templateKey): string
+    {
+        if (!str_starts_with($templateKey, 'store_order_')) {
+            return $body;
+        }
+        $paymentUrl = trim((string)($vars['pago_url'] ?? ''));
+        if ($paymentUrl === '' || str_contains($body, $paymentUrl)) {
+            return $body;
+        }
+        return rtrim($body) . "\nLink de pago Mercado Pago: " . $paymentUrl;
     }
 
     private static function appointmentContextFromRows(array $appointment, array $commerce, ?array $service): ?array
@@ -745,6 +762,10 @@ final class NotificationOutbox
         if ($client === '') {
             $client = 'Cliente';
         }
+        $paymentUrl = self::firstNonEmpty($customer, ['pago_url', 'payment_url', 'checkout_url']);
+        if ($paymentUrl === '') {
+            $paymentUrl = self::firstNonEmpty($order, ['pago_url', 'payment_url', 'checkout_url']);
+        }
 
         return self::stringVars([
             'pedido' => $orderId > 0 ? (string)$orderId : '',
@@ -753,6 +774,7 @@ final class NotificationOutbox
             'telefono' => self::firstNonEmpty($customer, ['cliente_telefono', 'telefono', 'Telefono']),
             'email' => self::firstNonEmpty($customer, ['cliente_email', 'email', 'Email']) ?: self::firstNonEmpty($order, ['payer_email']),
             'direccion' => $address,
+            'pago_url' => $paymentUrl,
             'productos' => $products !== '' ? $products : '- Sin detalle disponible',
             'total' => $total,
             'estado' => $status,

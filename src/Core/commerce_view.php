@@ -1054,14 +1054,18 @@ if (!function_exists('agenduy_render_commerce')) {
                 return lines.join('\n');
             }
 
-            function buildStoreWaMessage(items) {
-                return [
+            function buildStoreWaMessage(items, paymentUrl) {
+                const lines = [
                     'Hola! Quiero pedir estos productos de ' + commerceName + ':',
                     '',
                     buildProductsMessage(items),
-                    '',
-                    'Coordinamos entrega o retiro por este medio. Gracias!'
-                ].join('\n');
+                ];
+                const mpUrl = String(paymentUrl || '').trim();
+                if (mpUrl) {
+                    lines.push('', 'Link de pago Mercado Pago:', mpUrl);
+                }
+                lines.push('', 'Coordinamos entrega o retiro por este medio. Gracias!');
+                return lines.join('\n');
             }
 
             function buildBookingWaMessage(booking, items) {
@@ -1081,12 +1085,18 @@ if (!function_exists('agenduy_render_commerce')) {
                 return parts.join('\n');
             }
 
-            function openWhatsApp(text) {
+            function openWhatsApp(text, targetWindow) {
                 if (!waDigits) {
                     window.alert('Este comercio aún no tiene WhatsApp configurado. Contactalo en el local o por teléfono.');
                     return false;
                 }
                 const url = 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent(text);
+                if (targetWindow && !targetWindow.closed) {
+                    try {
+                        targetWindow.location.href = url;
+                        return true;
+                    } catch (_) {}
+                }
                 window.open(url, '_blank', 'noopener');
                 return true;
             }
@@ -1211,13 +1221,23 @@ if (!function_exists('agenduy_render_commerce')) {
                     document.getElementById('booking-upsell-wa')
                 ].filter(Boolean);
                 buttons.forEach(btn => { btn.disabled = true; });
+                const whatsappWindow = waDigits ? window.open('', '_blank') : null;
+                if (whatsappWindow) {
+                    whatsappWindow.opener = null;
+                }
                 try {
                     const checkout = await createMercadoPagoCheckout(items, opts.meta || {});
+                    if (waDigits && checkout.checkout_url) {
+                        openWhatsApp(buildStoreWaMessage(items, checkout.checkout_url), whatsappWindow);
+                    }
                     saveCart([]);
                     closeCartModal();
                     window.location.href = checkout.checkout_url;
                     return true;
                 } catch (err) {
+                    if (whatsappWindow && !whatsappWindow.closed) {
+                        whatsappWindow.close();
+                    }
                     window.alert(err && err.message ? err.message : 'No se pudo iniciar Mercado Pago.');
                     orderSubmitInFlight = false;
                     renderCartUI();

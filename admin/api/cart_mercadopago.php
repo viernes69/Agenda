@@ -306,11 +306,14 @@ try {
                 'MP_External_Reference' => $externalReference,
                 'Total' => number_format($total, 2, '.', ''),
                 'currency' => $currency,
+                'checkout_url' => $checkoutUrl,
             ]), $mpItems, [
                 'cliente_nombre' => $clienteNombre,
                 'cliente_email' => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
                 'direccion' => $address,
+                'pago_url' => $checkoutUrl,
+                'checkout_url' => $checkoutUrl,
             ], 'created');
         } catch (Throwable $notifyError) {
             error_log('[cart_mercadopago] outbox: ' . $notifyError->getMessage());
