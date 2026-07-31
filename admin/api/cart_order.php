@@ -80,10 +80,9 @@ try {
         }
         $uniqueCount = count($uniqueProductIds);
         if ($uniqueCount > $maxProducts) {
+            error_log('[cart_order] Plan limit exceeded: commerce ' . (int)$commerce['id_commerce'] . ' tried ' . $uniqueCount . ' unique products (max ' . $maxProducts . ')');
             throw new InvalidArgumentException(
-                'El plan de este comercio permite hasta ' . $maxProducts . ' productos distintos por pedido. ' .
-                'Este pedido contiene ' . $uniqueCount . ' productos distintos. ' .
-                'Mejorá la membresía para incluir más productos.'
+                'No se pudo procesar el pedido. Intentá con menos productos.'
             );
         }
     }
@@ -172,7 +171,19 @@ try {
         }
     }
 
-    $clienteId = TenantLocalDb::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail);
+    // Avatar del cliente (registro con Google) para la DB local del tenant.
+    $clienteAvatar = '';
+    try {
+        $avatarRow = $db->fetchOne(
+            'SELECT avatar FROM clients WHERE id_commerce = :c AND lower(trim(email)) = :e LIMIT 1',
+            [':c' => (int)$commerce['id_commerce'], ':e' => strtolower($clienteEmail)]
+        );
+        $clienteAvatar = trim((string)($avatarRow['avatar'] ?? ''));
+    } catch (Throwable $e) {
+        $clienteAvatar = '';
+    }
+
+    $clienteId = TenantLocalDb::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar);
 
     $record = [
         'ID_Cliente' => $clienteId,

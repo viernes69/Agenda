@@ -935,3 +935,116 @@ body[data-theme="dark"] .prod-gallery__dot.is-active {
   height: 100%;
   object-fit: contain;
 }
+
+/* Google "Continuar con Google" en el modal de reserva */
+#booking-google-wrap {
+  margin-bottom: 1rem;
+}
+#booking-google-btn {
+  display: flex;
+  justify-content: center;
+}
+#booking-google-btn iframe {
+  max-width: 100%;
+}
+.booking-or-divider {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.booking-or-divider::before,
+.booking-or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, #e5e7eb);
+}
+.cart-google {
+  margin-bottom: 1rem;
+}
+#cart-google-btn {
+  display: flex;
+  justify-content: center;
+}
+#cart-google-btn iframe {
+  max-width: 100%;
+}
+
+/* Historial del cliente tras iniciar sesión con Google */
+.client-history {
+  margin: 0 0 1rem;
+  padding: .85rem .95rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.client-history__title {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: 0 0 .6rem;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.client-history__title i {
+  font-size: 1rem;
+  color: var(--primary);
+}
+.client-history__group {
+  margin: .4rem 0 .3rem;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.client-history__list {
+  list-style: none;
+  margin: 0 0 .25rem;
+  padding: 0;
+  display: grid;
+  gap: .4rem;
+}
+.client-history__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.client-history__when {
+  font-size: .74rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.client-history__what {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-history__badge {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: .16rem .5rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-2);
+  white-space: nowrap;
+}
+.client-history__empty {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--muted);
+}

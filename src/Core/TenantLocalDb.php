@@ -252,16 +252,18 @@ final class TenantLocalDb
         string $slug,
         string $nombre,
         string $telefono = '',
-        string $email = ''
+        string $email = '',
+        string $perfil = ''
     ): ?int {
         $nombre = trim($nombre);
         $telefono = trim($telefono);
         $email = trim($email);
+        $perfil = trim($perfil);
         if ($nombre === '' && $telefono === '' && $email === '') {
             return null;
         }
 
-        return self::mutate($slug, static function (array $db) use ($nombre, $telefono, $email) {
+        return self::mutate($slug, static function (array $db) use ($nombre, $telefono, $email, $perfil) {
             if (!isset($db['clientes']) || !is_array($db['clientes']) || !isset($db['clientes'][0])) {
                 return [$db, null];
             }
@@ -278,6 +280,11 @@ final class TenantLocalDb
                 $matchEmail = $emailNorm !== '' && $rowEmail !== '' && $rowEmail === $emailNorm;
                 $matchPhone = $phoneDigits !== '' && $rowPhone !== '' && $rowPhone === $phoneDigits;
                 if ($matchEmail || $matchPhone) {
+                    // Backfill del avatar de Google si el registro local todavía no tiene Perfil.
+                    if ($perfil !== '' && array_key_exists('Perfil', $db['clientes'][$idx])
+                        && trim((string)($db['clientes'][$idx]['Perfil'] ?? '')) === '') {
+                        $db['clientes'][$idx]['Perfil'] = $perfil;
+                    }
                     $id = $row['ID_Cliente'] ?? null;
                     return [$db, ($id !== null && is_numeric($id)) ? (int)$id : null];
                 }
@@ -300,7 +307,7 @@ final class TenantLocalDb
                 $row['Cedula'] = '';
             }
             if (array_key_exists('Perfil', $row) && ($row['Perfil'] === null || $row['Perfil'] === '')) {
-                $row['Perfil'] = '';
+                $row['Perfil'] = $perfil;
             }
             $db['clientes'][] = $row;
             return [$db, (int)$row[$pk]];
@@ -337,7 +344,8 @@ final class TenantLocalDb
         $clienteNombre = trim((string)($appointment['cliente_nombre'] ?? ''));
         $clienteEmail = trim((string)($appointment['cliente_email'] ?? ''));
         $clienteTelefono = trim((string)($appointment['cliente_telefono'] ?? ''));
-        $clienteId = self::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail);
+        $clienteAvatar = trim((string)($appointment['cliente_avatar'] ?? ''));
+        $clienteId = self::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar);
 
         $idLocalService = null;
         if (isset($appointment['id_local']) && is_numeric($appointment['id_local'])) {
