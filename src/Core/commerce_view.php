@@ -18,6 +18,7 @@ use Agenduy\Core\CommercePublic;
 use Agenduy\Core\CommerceRegistrar;
 use Agenduy\Core\Database;
 use Agenduy\Core\CSRF;
+use Agenduy\Core\GoogleAuth;
 use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
@@ -230,6 +231,8 @@ if (!function_exists('agenduy_render_commerce')) {
         };
 
         $csrf = CSRF::generate('public_booking');
+        $googleClientId = GoogleAuth::isEnabled() ? GoogleAuth::clientId() : '';
+        $clientGoogleAuthApi = url('src/API/client_google_auth.php');
         $apiBase = url('admin/api/appointments.php');
         $cancelAppointmentApi = url('admin/api/cancel_appointment.php');
         $cartOrderApi = url('admin/api/cart_order.php');
@@ -799,6 +802,16 @@ if (!function_exists('agenduy_render_commerce')) {
                 <div class="modal__body">
                     <div id="booking-step-form">
                         <div id="booking-alert" hidden></div>
+                        <?php if ($googleClientId !== ''): ?>
+                        <div id="booking-google-wrap" hidden>
+                            <div id="booking-google-btn"></div>
+                            <div class="booking-or-divider"><span>o completá tus datos</span></div>
+                        </div>
+                        <div class="client-history" id="booking-history" hidden>
+                            <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
+                            <div class="client-history__body" id="booking-history-body"></div>
+                        </div>
+                        <?php endif; ?>
                         <form id="booking-form" novalidate>
                             <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="id_service" id="booking-svc-id" value="">
@@ -921,6 +934,17 @@ if (!function_exists('agenduy_render_commerce')) {
                     <div id="cart-content">
                         <div class="cart-lines" id="cart-lines"></div>
                         <div class="cart-total" id="cart-total"></div>
+                        <?php if ($googleClientId !== ''): ?>
+                        <div class="cart-google" id="cart-google-wrap" hidden>
+                            <div id="cart-google-btn"></div>
+                            <p class="hint" id="cart-google-hint" hidden role="status"></p>
+                            <div class="booking-or-divider"><span>o completá tus datos</span></div>
+                        </div>
+                        <div class="client-history" id="cart-history" hidden>
+                            <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
+                            <div class="client-history__body" id="cart-history-body"></div>
+                        </div>
+                        <?php endif; ?>
                         <div class="cart-contact" id="cart-contact">
                             <p class="cart-contact__title">Datos para confirmarte el pedido</p>
                             <div class="cart-contact__grid">
@@ -1443,7 +1467,9 @@ if (!function_exists('agenduy_render_commerce')) {
 
             function openCartModal() {
                 prefillCartContact();
+                hideClientHistory();
                 if (cartModal) cartModal.classList.add('is-open');
+                renderGoogleAuthButtons();
             }
             function closeCartModal() {
                 if (cartModal) cartModal.classList.remove('is-open');
@@ -1572,6 +1598,8 @@ if (!function_exists('agenduy_render_commerce')) {
             const bookingPhoneInput = document.getElementById('booking-phone');
             const bookingLookupHint = document.getElementById('booking-lookup-hint');
             const clientLookupUrl = <?= json_encode(url('src/API/client_lookup.php'), JSON_UNESCAPED_SLASHES) ?>;
+            const clientGoogleAuthUrl = <?= json_encode($clientGoogleAuthApi, JSON_UNESCAPED_SLASHES) ?>;
+            const googleClientId = <?= json_encode($googleClientId, JSON_UNESCAPED_SLASHES) ?>;
             const bookingGuestKey = 'agenduy-booking-guest-' + commerceSlug;
             let lookupTimer = null;
             let lookupInFlight = false;
@@ -1926,6 +1954,197 @@ if (!function_exists('agenduy_render_commerce')) {
                 lookupTimer = setTimeout(() => lookupClient(), 450);
             }
 
+            // --- Google "Continuar con Google" (clientes de tiendas) ---
+            let googleAuthInited = false;
+
+            function initGoogleClientAuth() {
+                if (!googleClientId || !window.google || !window.google.accounts || !window.google.accounts.id) {
+                    return;
+                }
+                if (googleAuthInited) {
+                    renderGoogleAuthButtons();
+                    return;
+                }
+                googleAuthInited = true;
+                window.google.accounts.id.initialize({
+                    client_id: googleClientId,
+                    callback: handleGoogleCredential,
+                    auto_select: false,
+                    cancel_on_tap_outside: true,
+                    context: 'signin',
+                    ux_mode: 'popup',
+                    itp_support: true,
+                });
+                renderGoogleAuthButtons();
+            }
+
+            function renderGoogleAuthButtons() {
+                renderGoogleButtonInto(document.getElementById('booking-google-wrap'), document.getElementById('booking-google-btn'));
+                renderGoogleButtonInto(document.getElementById('cart-google-wrap'), document.getElementById('cart-google-btn'));
+            }
+
+            function renderGoogleButtonInto(wrap, container) {
+                if (!wrap || !container || !googleClientId) return;
+                if (!window.google || !window.google.accounts || !window.google.accounts.id) return;
+                wrap.hidden = false;
+                if (container.dataset.rendered === '1') return;
+                container.dataset.rendered = '1';
+                window.google.accounts.id.renderButton(container, {
+                    type: 'standard',
+                    theme: 'outline',
+                    size: 'large',
+                    text: 'continue_with',
+                    width: Math.min(container.offsetWidth || 300, 340),
+                    locale: 'es',
+                });
+            }
+
+            const cartGoogleHint = document.getElementById('cart-google-hint');
+
+            function setGoogleStatus(text, isError) {
+                const bookingHint = document.getElementById('booking-lookup-hint');
+                if (cartModal && cartModal.classList.contains('is-open') && cartGoogleHint) {
+                    cartGoogleHint.textContent = String(text || '');
+                    cartGoogleHint.hidden = !text;
+                    cartGoogleHint.className = isError ? 'hint hint--error' : 'hint hint--ok';
+                } else if (bookingHint) {
+                    setLookupHint(text, !!isError);
+                }
+            }
+
+            async function handleGoogleCredential(response) {
+                const token = response && response.credential ? response.credential : '';
+                if (!token) {
+                    setGoogleStatus('No se recibió respuesta de Google.', true);
+                    return;
+                }
+                setGoogleStatus('Verificando tu cuenta de Google...', false);
+                try {
+                    const res = await fetch(clientGoogleAuthUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ credential: token, slug: commerceSlug, _csrf: csrfToken }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data || data.ok === false) {
+                        setGoogleStatus((data && data.error) || 'No se pudo iniciar sesión con Google.', true);
+                        return;
+                    }
+                    const profile = data.profile || {};
+                    const fillIfEmpty = (el, value) => {
+                        if (!el || !value) return;
+                        if (!String(el.value || '').trim()) el.value = value;
+                    };
+                    fillIfEmpty(bookingNameInput, profile.nombre);
+                    fillIfEmpty(bookingEmailInput, profile.email);
+                    fillIfEmpty(bookingPhoneInput, profile.telefono);
+                    fillIfEmpty(cartCustomerName, profile.nombre);
+                    fillIfEmpty(cartCustomerEmail, profile.email);
+                    fillIfEmpty(cartCustomerPhone, profile.telefono);
+                    setGoogleStatus(
+                        data.found
+                            ? '¡Hola de nuevo! Cargamos tu historial de reservas y pedidos.'
+                            : '¡Registrado con Google! Datos cargados automáticamente.',
+                        false
+                    );
+                    if (data.found) {
+                        renderClientHistory(data.historial || null);
+                    }
+                    if (!(cartModal && cartModal.classList.contains('is-open'))) {
+                        scheduleClientLookup();
+                    }
+                } catch (e) {
+                    setGoogleStatus('Error de conexión. Intentá de nuevo.', true);
+                }
+            }
+
+            const APPT_STATUS_LABELS = {
+                pending: 'Pendiente',
+                confirmed: 'Confirmada',
+                cancelled: 'Cancelada',
+                done: 'Realizada',
+                no_show: 'No asistió',
+            };
+
+            function formatHistDate(v) {
+                const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                return m ? m[3] + '/' + m[2] + '/' + m[1] : String(v || '');
+            }
+
+            function renderClientHistory(historial) {
+                const bookingPanel = document.getElementById('booking-history');
+                const cartPanel = document.getElementById('cart-history');
+                if (!bookingPanel && !cartPanel) return;
+                const data = historial || {};
+                const reservas = Array.isArray(data.reservas) ? data.reservas : [];
+                const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+                const hasAny = reservas.length > 0 || pedidos.length > 0;
+                let html = '';
+                if (reservas.length) {
+                    html += '<p class="client-history__group">Reservas</p><ul class="client-history__list">';
+                    reservas.forEach(r => {
+                        const when = formatHistDate(r.fecha) + (r.hora ? ' · ' + String(r.hora).slice(0, 5) : '');
+                        const label = APPT_STATUS_LABELS[r.status] || r.status || '';
+                        html += '<li class="client-history__item">'
+                            + '<span class="client-history__when">' + escapeHtml(when) + '</span>'
+                            + '<span class="client-history__what">' + escapeHtml(r.servicio || 'Turno') + '</span>'
+                            + '<span class="client-history__badge">' + escapeHtml(label) + '</span>'
+                            + '</li>';
+                    });
+                    html += '</ul>';
+                }
+                if (pedidos.length) {
+                    html += '<p class="client-history__group">Pedidos</p><ul class="client-history__list">';
+                    pedidos.forEach(p => {
+                        const when = formatHistDate(p.fecha) + (p.hora ? ' · ' + String(p.hora).slice(0, 5) : '');
+                        const total = p.total ? ' · $' + escapeHtml(p.total) : '';
+                        html += '<li class="client-history__item">'
+                            + '<span class="client-history__when">' + escapeHtml(when) + '</span>'
+                            + '<span class="client-history__what">Pedido #' + escapeHtml(String(p.id ?? '')) + total + '</span>'
+                            + '<span class="client-history__badge">' + escapeHtml(p.status || '') + '</span>'
+                            + '</li>';
+                    });
+                    html += '</ul>';
+                }
+                if (!hasAny) {
+                    html = '<p class="client-history__empty">Todavía no tenés reservas ni pedidos en este negocio.</p>';
+                }
+                if (bookingPanel) {
+                    const body = document.getElementById('booking-history-body');
+                    if (body) body.innerHTML = html;
+                    bookingPanel.hidden = false;
+                }
+                if (cartPanel) {
+                    const body = document.getElementById('cart-history-body');
+                    if (body) body.innerHTML = html;
+                    cartPanel.hidden = false;
+                }
+            }
+
+            function hideClientHistory() {
+                ['booking-history', 'cart-history'].forEach(id => {
+                    const panel = document.getElementById(id);
+                    if (panel) panel.hidden = true;
+                });
+            }
+
+            function loadGoogleClientScript() {
+                if (!googleClientId || (window.google && window.google.accounts && window.google.accounts.id)) {
+                    initGoogleClientAuth();
+                    return;
+                }
+                if (document.querySelector('script[data-storefront-gis]')) return;
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                script.setAttribute('data-storefront-gis', '1');
+                script.onload = initGoogleClientAuth;
+                document.head.appendChild(script);
+            }
+            loadGoogleClientScript();
+
             function prefillBookingGuest() {
                 applyGuestFields(loadSavedGuest(), 'local');
             }
@@ -1977,8 +2196,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 lastBooking = null;
                 lastLookupKey = '';
                 setLookupHint('');
+                hideClientHistory();
                 prefillBookingGuest();
                 modal.classList.add('is-open');
+                renderGoogleAuthButtons();
                 loadSlots();
                 const focusEl = (bookingEmailInput && bookingEmailInput.value)
                     ? bookingEmailInput

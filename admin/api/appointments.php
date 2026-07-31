@@ -226,6 +226,17 @@ try {
         'status'           => 'pending',
     ]);
 
+    // Avatar del cliente (registro con Google) para espejarlo en la DB local.
+    $clienteAvatar = '';
+    if ($idClient) {
+        try {
+            $avatarRow = $db->fetchOne('SELECT avatar FROM clients WHERE id_client = :id', [':id' => $idClient]);
+            $clienteAvatar = trim((string)($avatarRow['avatar'] ?? ''));
+        } catch (Throwable $e) {
+            $clienteAvatar = '';
+        }
+    }
+
     // Espejar en database.php del tenant (admin Reservas / dashboard resumen).
     // Misma estrategia que cart_order.php → carrito local.
     $localReservaId = null;
@@ -245,6 +256,7 @@ try {
                 'cliente_nombre'   => $clienteNombre,
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
+                'cliente_avatar'   => $clienteAvatar,
                 'status'           => 'pending',
                 'precio'           => $precio,
             ]);

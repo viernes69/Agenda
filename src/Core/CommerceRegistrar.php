@@ -668,4 +668,74 @@ final class CommerceRegistrar
         CommerceSetup::markGoogleSignup((int)($result['id_commerce'] ?? 0));
         return $result;
     }
+
+    /**
+     * Alta express con link por email (registro rápido): crea comercio trial + panel
+     * con datos mínimos. El dueño completa el negocio desde el onboarding.
+     *
+     * @return array{ok:bool, slug:string, redirect:string, id_commerce:int, trial_expires_at:string}
+     */
+    public static function registerQuickEmail(string $email, ?string $ip = null): array
+    {
+        $email = strtolower(trim($email));
+        self::assert($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL), 'Email inválido.');
+
+        // Derivar nombre de la parte local del email.
+        $local = strstr($email, '@', true);
+        $local = $local !== false ? preg_replace('/[^a-zA-Z0-9 ]+/', ' ', $local) : '';
+        $name = trim(ucwords((string)$local));
+        if ($name === '') {
+            $name = 'Usuario';
+        }
+        // register() exige apellido no vacío: usar fallback igual que el flujo Google.
+        $last = 'Email';
+
+        $bizLabel = trim($name . ($last !== '' ? ' ' . $last : ''));
+        $bizName = ($bizLabel !== '' ? $bizLabel : 'Mi Negocio') . ' - Negocio';
+
+        $db = Database::getInstance();
+        $rubroId = (int)$db->fetchValue(
+            'SELECT id_rubro FROM rubros WHERE activo = 1 ORDER BY orden ASC, id_rubro ASC LIMIT 1'
+        );
+        self::assert($rubroId > 0, 'No hay rubros activos para registrar.');
+        $planId = (int)$db->fetchValue(
+            'SELECT id_membership FROM memberships WHERE activo = 1 ORDER BY precio ASC, id_membership ASC LIMIT 1'
+        );
+
+        $schedule = CommerceSettings::defaultsForSection('horarios');
+        foreach (['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as $day) {
+            $schedule[$day] = [
+                'abierto'         => true,
+                'inicio'          => '09:00',
+                'fin'             => '18:00',
+                'descanso_inicio' => '',
+                'descanso_fin'    => '',
+            ];
+        }
+
+        $result = self::register([
+            'planId'  => $planId,
+            'rubroId' => $rubroId,
+            'owner'   => [
+                'nombre'   => $name,
+                'apellido' => $last,
+                'email'    => $email,
+                'password' => bin2hex(random_bytes(16)),
+            ],
+            'negocio' => [
+                'rubroId'  => (string)$rubroId,
+                'nombre'   => $bizName,
+                'pais'     => 'UY',
+                'ciudad'   => 'Montevideo',
+                'calle'    => CommerceSetup::DEFAULT_PLACEHOLDER_STREET,
+                'telefono' => CommerceSetup::DEFAULT_PLACEHOLDER_PHONE,
+            ],
+            'servicios' => [
+                ['nombre' => 'Consulta', 'duracion' => 30, 'precio' => 0],
+            ],
+            'horarios' => $schedule,
+        ]);
+        CommerceSetup::markGoogleSignup((int)($result['id_commerce'] ?? 0));
+        return $result;
+    }
 }

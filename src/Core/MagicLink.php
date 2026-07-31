@@ -14,8 +14,12 @@ final class MagicLink
 
     /**
      * Envía link mágico a un usuario del panel (commerce_admin / super_admin).
+     *
+     * Con $createIfMissing=true funciona como registro rápido: si el email no tiene
+     * cuenta, el token se marca como quick_register y la cuenta (usuario + comercio
+     * trial) se crea al abrir el link, validando la propiedad del email.
      */
-    public static function sendAdminLogin(string $email, ?string $ip = null): array
+    public static function sendAdminLogin(string $email, ?string $ip = null, bool $createIfMissing = false): array
     {
         $email = strtolower(trim($email));
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -27,12 +31,19 @@ final class MagicLink
             'SELECT id_user, role, activo FROM users WHERE email = :e LIMIT 1',
             [':e' => $email]
         );
-        // Respuesta genérica para no filtrar emails existentes.
-        if (!$user || (int)$user['activo'] !== 1) {
+        $active = $user && (int)$user['activo'] === 1;
+        // Si ya existe una fila (activa o no) no prometer creación: una cuenta deshabilitada
+        // no puede volver a registrarse y el alta fallaría con 'Ese email ya tiene una cuenta.'
+        if ($user && !$active) {
+            return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
+        }
+        // Respuesta genérica para no filtrar emails existentes (solo si no es registro rápido).
+        if (!$active && !$createIfMissing) {
             return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
         }
 
-        $token = self::createToken($email, self::PURPOSE_ADMIN, null, [], $ip);
+        $meta = $active ? [] : ['quick_register' => true];
+        $token = self::createToken($email, self::PURPOSE_ADMIN, null, $meta, $ip);
         $link = url('admin/auth/magic.php?token=' . rawurlencode($token));
         $cfg = $db->config();
         $fromName = (string)($cfg['mail']['from_name'] ?? 'Agendarte');
@@ -56,7 +67,12 @@ final class MagicLink
                 'error' => 'No se pudo enviar el email. Intentá de nuevo más tarde.',
             ];
         }
-        return ['ok' => true, 'message' => 'Si el email existe, te enviamos un link de acceso.'];
+        return [
+            'ok' => true,
+            'message' => $active
+                ? 'Te enviamos un link de acceso al email.'
+                : 'Te enviamos un link al email. Si es la primera vez, tu cuenta se crea al abrirlo.',
+        ];
     }
 
     public static function normalizeCedula(?string $cedula): string
@@ -175,7 +191,20 @@ final class MagicLink
         if ($purpose === self::PURPOSE_ADMIN) {
             $user = $db->fetchOne('SELECT * FROM users WHERE email = :e AND activo = 1 LIMIT 1', [':e' => $email]);
             if (!$user) {
-                return ['ok' => false, 'error' => 'Cuenta no encontrada.'];
+                $meta = json_decode((string)($row['meta_json'] ?? '{}'), true);
+                $quickRegister = is_array($meta) && !empty($meta['quick_register']);
+                if ($quickRegister) {
+                    try {
+                        CommerceRegistrar::registerQuickEmail($email, $ip);
+                        $user = $db->fetchOne('SELECT * FROM users WHERE email = :e AND activo = 1 LIMIT 1', [':e' => $email]);
+                    } catch (\Throwable $e) {
+                        error_log('[MagicLink.quick_register] ' . $e->getMessage());
+                        return ['ok' => false, 'error' => 'No se pudo crear la cuenta. Intentá de nuevo.'];
+                    }
+                }
+                if (!$user) {
+                    return ['ok' => false, 'error' => 'Cuenta no encontrada.'];
+                }
             }
             Auth::establishSessionFromRow($user, $ip);
             return ['ok' => true, 'redirect' => Auth::dashboardUrl(Auth::user() ?? []) ?? url('/')];

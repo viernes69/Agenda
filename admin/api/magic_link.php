@@ -44,7 +44,8 @@ $email = strtolower(trim((string)($payload['email'] ?? '')));
 if ($email !== '') {
     RateLimiter::enforce('admin_magic_email', hash('sha256', $email), 3600, 6);
 }
-$result = MagicLink::sendAdminLogin($email, $_SERVER['REMOTE_ADDR'] ?? null);
+// Registro rápido: si el email no tiene cuenta, se crea al abrir el link.
+$result = MagicLink::sendAdminLogin($email, $_SERVER['REMOTE_ADDR'] ?? null, true);
 
 if (!$result['ok']) {
     http_response_code(400);
