@@ -223,12 +223,12 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
           </button>
           <div class="site-login-dropdown" id="site-login-dropdown" role="dialog" aria-label="Iniciar sesion" hidden>
             <div class="site-login-tabs" role="tablist">
-              <button type="button" class="site-login-tabs__btn is-active" data-login-tab="password" role="tab" aria-selected="true">Contrasena</button>
+              <button type="button" class="site-login-tabs__btn is-active" data-login-tab="password" role="tab" aria-selected="true">Login</button>
               <button type="button" class="site-login-tabs__btn" data-login-tab="magic" role="tab" aria-selected="false">Registro r&aacute;pido</button>
             </div>
             <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" data-login-panel="password" novalidate>
               <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
-              <p class="site-login-form__hint">El usuario es el email del administrador o del comercio.</p>
+              <p class="site-login-form__hint">Ingresa el Email y contraseña para ingresar a tu cuenta.</p>
               <label class="site-login-form__field">
                 <span>Email</span>
                 <input type="email" name="email" required autocomplete="username" placeholder="tu@email.com">
