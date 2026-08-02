@@ -55,8 +55,14 @@ if (is_array($user) && (string)($user['role'] ?? '') === Auth::ROLE_LOCAL) {
 
 $next = isset($_GET['next']) ? (string)$_GET['next'] : '';
 $redirect = agenduy_logout_safe_redirect($next) ?? $defaultRedirect;
+if ($redirect === '') {
+    $redirect = url('/');
+}
+if (Security::isHttpsRequest() && str_starts_with($redirect, 'http://')) {
+    $redirect = 'https://' . substr($redirect, 7);
+}
 
 Auth::logout();
 
-header('Location: ' . $redirect);
+header('Location: ' . $redirect, true, 302);
 exit;

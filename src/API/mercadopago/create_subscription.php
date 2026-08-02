@@ -50,9 +50,10 @@ try {
         throw new RuntimeException('ACCESS_TOKEN de Mercado Pago faltante.');
     }
     $mode = strtolower(trim((string)($mpConfig['modo'] ?? $mpConfig['MODO'] ?? $mpConfig['MODE'] ?? '')));
+    $token = (string)($mpConfig['access_token'] ?? '');
     $sandbox = array_key_exists('sandbox', $mpConfig)
         ? filter_var($mpConfig['sandbox'], FILTER_VALIDATE_BOOLEAN)
-        : ($mode !== 'live' && $mode !== 'prod' && $mode !== 'production');
+        : (!str_starts_with($token, 'APP_USR-') && strtolower((string)($mpConfig['modo'] ?? '')) !== 'live' && $mode !== 'prod' && $mode !== 'production');
 
     $planesRaw = Autoload::get('planes');
     $planes = [];

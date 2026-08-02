@@ -276,7 +276,7 @@ final class MercadoPago
         $mode = strtolower(trim((string)($cfg['modo'] ?? $cfg['mode'] ?? '')));
         $sandbox = array_key_exists('sandbox', $cfg)
             ? self::truthy($cfg['sandbox'])
-            : ($mode !== 'live' && $mode !== 'prod' && $mode !== 'production');
+            : (!str_starts_with($accessToken, 'APP_USR-') && $mode !== 'live' && $mode !== 'prod' && $mode !== 'production');
         $enabled = array_key_exists('enabled', $cfg) ? self::truthy($cfg['enabled']) : $enabledDefault;
 
         $currency = strtoupper(trim((string)($cfg['currency'] ?? $cfg['moneda'] ?? 'UYU')));
