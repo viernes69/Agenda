@@ -65,6 +65,9 @@ final class CommerceSetup
         }
 
         $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
+        if (str_ends_with(strtolower($script), '/admin/commerce_setup.php')) {
+            return;
+        }
         $isLegacyDashboard = preg_match('#/private/dashboard/(admin|empleado)/index\.php$#', $script);
         $isCentralCommerce = preg_match('#/admin/commerce_[^/]+\.php$#', $script);
         if (!$isLegacyDashboard && !$isCentralCommerce) {
