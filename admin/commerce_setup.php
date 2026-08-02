@@ -107,6 +107,42 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 .setup-toast.is-error { border-color: rgba(220,38,38,.45); }
 .setup-toast.is-success { border-color: rgba(22,163,74,.45); }
 .setup-hint { font-size: .82rem; color: var(--muted); margin-top: .25rem; }
+
+/* Servicios list styles */
+.services-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: .85rem; }
+.service-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .85rem;
+    display: flex;
+    gap: .65rem;
+    align-items: flex-start;
+    position: relative;
+}
+.service-col { flex: 1; display: flex; flex-direction: column; gap: .25rem; }
+.service-col.name-col { flex: 2; }
+.setup-sublabel { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.btn-remove-service {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    width: 32px;
+    height: 36px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s ease;
+}
+.btn-remove-service:hover { background: rgba(220,38,38,.15); color: #f87171; border-color: rgba(220,38,38,.3); }
+@media (max-width: 540px) {
+    .service-card { flex-wrap: wrap; }
+    .service-col.name-col { flex: 100%; }
+    .service-col { flex: 1; }
+}
 </style>
 </head>
 <body>
@@ -119,7 +155,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
         <div class="setup-steps" aria-hidden="true">
             <div class="setup-step is-active" data-step-indicator="1">1. Negocio</div>
             <div class="setup-step" data-step-indicator="2">2. Contacto</div>
-            <div class="setup-step" data-step-indicator="3">3. Servicio</div>
+            <div class="setup-step" data-step-indicator="3">3. Servicios</div>
         </div>
 
         <form id="setup-form" method="post" novalidate>
@@ -156,27 +192,51 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
                                value="<?= htmlspecialchars((string)$snapshot['telefono'], ENT_QUOTES, 'UTF-8') ?>"
                                placeholder="099 123 456">
                     </label>
-                    <label>
-                        <span>WhatsApp (opcional)</span>
-                        <input type="tel" name="whatsapp" maxlength="30"
-                               value="<?= htmlspecialchars((string)$snapshot['whatsapp'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Si es distinto al teléfono">
-                        <span class="setup-hint">Si lo dejás vacío usamos el mismo teléfono.</span>
-                    </label>
                 </div>
             </div>
 
             <div class="setup-panel" data-step="3" hidden>
-                <div class="setup-grid">
-                    <label>
-                        <span>Primer servicio *</span>
-                        <input type="text" name="servicio" required maxlength="80"
-                               value="<?= htmlspecialchars((string)$snapshot['servicio'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Ej: Consulta, Corte, Sesión">
-                    </label>
-                    <p class="setup-hint">Rubro actual: <strong><?= htmlspecialchars((string)$snapshot['rubro'], ENT_QUOTES, 'UTF-8') ?></strong>.
-                        Podés agregar más servicios desde el panel después.</p>
-                    <p class="setup-hint">Tu página pública: <strong><?= htmlspecialchars((string)$snapshot['slug'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="margin: 0 0 0.25rem; font-size: 1.1rem;">Servicios de tu negocio</h3>
+                    <p class="setup-hint" style="margin: 0;">Configurá los servicios que ofrecerá tu comercio (nombre, duración y precio).</p>
+                </div>
+
+                <div class="services-list" id="services-container">
+                    <?php 
+                    $servicios = is_array($snapshot['servicios'] ?? null) ? $snapshot['servicios'] : [];
+                    if (empty($servicios)) {
+                        $servicios = [['id_service' => 0, 'nombre' => 'Consulta', 'duracion_min' => 30, 'precio' => 0]];
+                    }
+                    foreach ($servicios as $idx => $srv):
+                    ?>
+                    <div class="service-card" data-service-card>
+                        <input type="hidden" name="servicios[<?= $idx ?>][id_service]" value="<?= (int)($srv['id_service'] ?? 0) ?>">
+                        <div class="service-col name-col">
+                            <label class="setup-sublabel">Nombre del servicio *</label>
+                            <input type="text" name="servicios[<?= $idx ?>][nombre]" required maxlength="80"
+                                   value="<?= htmlspecialchars((string)($srv['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="Ej: Consulta, Corte, Masaje">
+                        </div>
+                        <div class="service-col">
+                            <label class="setup-sublabel">Duración (min) *</label>
+                            <input type="number" name="servicios[<?= $idx ?>][duracion_min]" required min="5" max="480"
+                                   value="<?= (int)($srv['duracion_min'] ?? 30) ?>" placeholder="30">
+                        </div>
+                        <div class="service-col">
+                            <label class="setup-sublabel">Precio ($) *</label>
+                            <input type="number" name="servicios[<?= $idx ?>][precio]" required min="0" step="0.01"
+                                   value="<?= (float)($srv['precio'] ?? 0) ?>" placeholder="0">
+                        </div>
+                        <button type="button" class="btn-remove-service" title="Eliminar servicio" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <button type="button" class="btn btn-ghost btn-sm" id="add-service-btn" style="margin-bottom: 1rem;">+ Agregar otro servicio</button>
+
+                <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem;">
+                    <p class="setup-hint" style="margin: 0 0 0.2rem;">Rubro actual: <strong><?= htmlspecialchars((string)$snapshot['rubro'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+                    <p class="setup-hint" style="margin: 0;">Tu página pública: <strong><?= htmlspecialchars((string)$snapshot['slug'], ENT_QUOTES, 'UTF-8') ?></strong></p>
                 </div>
             </div>
 
@@ -204,6 +264,47 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
   var saveBtn = document.getElementById('setup-save');
   var form = document.getElementById('setup-form');
   var toast = document.getElementById('setup-toast');
+
+  var servicesContainer = document.getElementById('services-container');
+  var addServiceBtn = document.getElementById('add-service-btn');
+  var serviceIndex = servicesContainer ? servicesContainer.querySelectorAll('.service-card').length : 0;
+
+  if (addServiceBtn && servicesContainer) {
+    addServiceBtn.addEventListener('click', function () {
+      serviceIndex++;
+      var card = document.createElement('div');
+      card.className = 'service-card';
+      card.setAttribute('data-service-card', '');
+      card.innerHTML = 
+        '<input type="hidden" name="servicios[' + serviceIndex + '][id_service]" value="0">' +
+        '<div class="service-col name-col">' +
+          '<label class="setup-sublabel">Nombre del servicio *</label>' +
+          '<input type="text" name="servicios[' + serviceIndex + '][nombre]" required maxlength="80" placeholder="Ej: Servicio adicional">' +
+        '</div>' +
+        '<div class="service-col">' +
+          '<label class="setup-sublabel">Duración (min) *</label>' +
+          '<input type="number" name="servicios[' + serviceIndex + '][duracion_min]" required min="5" max="480" value="30" placeholder="30">' +
+        '</div>' +
+        '<div class="service-col">' +
+          '<label class="setup-sublabel">Precio ($) *</label>' +
+          '<input type="number" name="servicios[' + serviceIndex + '][precio]" required min="0" step="0.01" value="0" placeholder="0">' +
+        '</div>' +
+        '<button type="button" class="btn-remove-service" title="Eliminar servicio" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>';
+      servicesContainer.appendChild(card);
+    });
+
+    servicesContainer.addEventListener('click', function (e) {
+      if (e.target && e.target.classList.contains('btn-remove-service')) {
+        var cards = servicesContainer.querySelectorAll('.service-card');
+        if (cards.length <= 1) {
+          notify('Debes mantener al menos 1 servicio.', 'error');
+          return;
+        }
+        var card = e.target.closest('.service-card');
+        if (card) card.remove();
+      }
+    });
+  }
 
   function notify(msg, type) {
     if (!toast) return;

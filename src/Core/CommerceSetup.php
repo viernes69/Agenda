@@ -108,12 +108,24 @@ final class CommerceSetup
             throw new InvalidArgumentException('Comercio no encontrado.');
         }
 
-        $service = $db->fetchOne(
-            "SELECT id_service, nombre, duracion_min, precio FROM services
-             WHERE id_commerce = :c AND estado = 'Activo'
-             ORDER BY id_service ASC LIMIT 1",
+        $services = $db->fetchAll(
+            "SELECT id_service, nombre, duracion_min, precio, estado
+             FROM services
+             WHERE id_commerce = :c
+             ORDER BY id_service ASC",
             [':c' => $idCommerce]
         );
+        if (empty($services)) {
+            $services = [
+                [
+                    'id_service'   => 0,
+                    'nombre'       => 'Consulta',
+                    'duracion_min' => 30,
+                    'precio'       => 0,
+                    'estado'       => 'Activo',
+                ]
+            ];
+        }
 
         $nombre = trim((string)($commerce['nombre'] ?? ''));
         if (str_ends_with(strtolower($nombre), ' - negocio')) {
@@ -133,7 +145,8 @@ final class CommerceSetup
             'calle'     => str_contains(strtolower((string)($commerce['calle'] ?? '')), 'completar')
                 ? '' : (string)($commerce['calle'] ?? ''),
             'rubro'     => (string)($commerce['rubro_nombre'] ?? ''),
-            'servicio'  => (string)($service['nombre'] ?? 'Consulta'),
+            'servicio'  => (string)($services[0]['nombre'] ?? 'Consulta'),
+            'servicios' => $services,
             'slug'      => (string)($commerce['slug'] ?? ''),
         ];
     }
@@ -146,9 +159,11 @@ final class CommerceSetup
         $nombre = trim((string)($payload['nombre'] ?? ''));
         $telefono = trim((string)($payload['telefono'] ?? ''));
         $whatsapp = trim((string)($payload['whatsapp'] ?? $telefono));
+        if ($whatsapp === '') {
+            $whatsapp = $telefono;
+        }
         $ciudad = trim((string)($payload['ciudad'] ?? ''));
         $calle = trim((string)($payload['calle'] ?? ''));
-        $servicio = trim((string)($payload['servicio'] ?? ''));
 
         if ($nombre === '') {
             throw new InvalidArgumentException('Ingresá el nombre de tu negocio.');
@@ -182,15 +197,45 @@ final class CommerceSetup
             'updated_at' => date('Y-m-d H:i:s'),
         ], 'id_commerce = :id', [':id' => $idCommerce]);
 
-        if ($servicio !== '') {
-            $existing = $db->fetchOne(
-                "SELECT id_service FROM services WHERE id_commerce = :c AND estado = 'Activo' ORDER BY id_service ASC LIMIT 1",
-                [':c' => $idCommerce]
-            );
-            if ($existing) {
-                $db->update('services', [
-                    'nombre' => $servicio,
-                ], 'id_service = :id', [':id' => (int)$existing['id_service']]);
+        $serviciosRaw = $payload['servicios'] ?? [];
+        if (!is_array($serviciosRaw) && isset($payload['servicio'])) {
+            $serviciosRaw = [
+                ['nombre' => (string)$payload['servicio'], 'duracion_min' => 30, 'precio' => 0]
+            ];
+        }
+
+        $firstServiceName = 'Consulta';
+        if (is_array($serviciosRaw)) {
+            foreach ($serviciosRaw as $s) {
+                if (!is_array($s)) continue;
+                $sNombre = trim((string)($s['nombre'] ?? ''));
+                if ($sNombre === '') continue;
+                $sDuracion = max(5, (int)($s['duracion_min'] ?? 30));
+                $sPrecio = max(0.0, (float)($s['precio'] ?? 0));
+                $sId = (int)($s['id_service'] ?? 0);
+
+                if ($firstServiceName === 'Consulta') {
+                    $firstServiceName = $sNombre;
+                }
+
+                if ($sId > 0) {
+                    $db->update('services', [
+                        'nombre'       => $sNombre,
+                        'duracion_min' => $sDuracion,
+                        'precio'       => $sPrecio,
+                        'updated_at'   => date('Y-m-d H:i:s'),
+                    ], 'id_service = :id AND id_commerce = :c', [':id' => $sId, ':c' => $idCommerce]);
+                } else {
+                    $db->insert('services', [
+                        'id_commerce'  => $idCommerce,
+                        'nombre'       => $sNombre,
+                        'duracion_min' => $sDuracion,
+                        'precio'       => $sPrecio,
+                        'estado'       => 'Activo',
+                        'descripcion'  => '',
+                        'imagen'       => '',
+                    ]);
+                }
             }
         }
 
@@ -204,7 +249,7 @@ final class CommerceSetup
             'whatsapp' => $whatsapp !== '' ? $whatsapp : $telefono,
             'ciudad'   => $ciudad,
             'calle'    => $calle,
-            'servicio' => $servicio !== '' ? $servicio : 'Consulta',
+            'servicio' => $firstServiceName,
         ]);
 
         CommerceSettings::set($idCommerce, 'onboarding', [
