@@ -241,7 +241,7 @@ try {
     // Misma estrategia que cart_order.php → carrito local.
     $localReservaId = null;
     try {
-        if (TenantLocalDb::exists($slug)) {
+        if (TenantLocalDb::ensureExists($slug)) {
             $idLocal = null;
             if ($idService && is_array($svc) && isset($svc['id_local']) && is_numeric($svc['id_local'])) {
                 $idLocal = (int)$svc['id_local'];

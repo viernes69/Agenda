@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 date_default_timezone_set('America/Montevideo');
 
 $projectRoot = dirname(__DIR__, 4);
@@ -88,6 +88,9 @@ function admin_normalize_public_list($value, string $primaryKey): array {
 
 // Load data for KPIs
 $today = date('Y-m-d');
+if (class_exists(\Agenduy\Core\TenantLocalDb::class) && !empty($slug)) {
+    \Agenduy\Core\TenantLocalDb::syncCentralAppointments((string)$slug);
+}
 $reservas = AutoloadDB::all('reservas');
 $pendingReservations = 0;
 $todayDateObj = new DateTime('today');

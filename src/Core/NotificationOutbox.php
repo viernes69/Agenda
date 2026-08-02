@@ -33,7 +33,7 @@ final class NotificationOutbox
             $payloadJson = '{}';
         }
 
-        return (int)$db->insert('notification_outbox', [
+        $id = (int)$db->insert('notification_outbox', [
             'id_commerce' => $idCommerce,
             'channel' => $channel,
             'recipient' => $recipient,
@@ -45,6 +45,30 @@ final class NotificationOutbox
             'idempotency_key' => $idempotencyKey,
             'status' => 'queued',
         ]);
+
+        self::triggerProcessAsync();
+        return $id;
+    }
+
+    private static bool $shutdownHandlerRegistered = false;
+
+    public static function triggerProcessAsync(): void
+    {
+        if (self::$shutdownHandlerRegistered) {
+            return;
+        }
+        self::$shutdownHandlerRegistered = true;
+
+        register_shutdown_function(static function (): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            try {
+                self::processDue(20);
+            } catch (\Throwable $e) {
+                error_log('[NotificationOutbox] shutdown processDue: ' . $e->getMessage());
+            }
+        });
     }
 
     public static function enqueueAppointmentNotifications(

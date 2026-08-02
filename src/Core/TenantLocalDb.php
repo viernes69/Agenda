@@ -89,6 +89,72 @@ final class TenantLocalDb
         }
     }
 
+    public static function ensureExists(string $slug): bool
+    {
+        if (self::exists($slug)) {
+            return true;
+        }
+        try {
+            $db = Database::getInstance();
+            $commerce = $db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s LIMIT 1', [':s' => $slug]);
+            if (!$commerce) {
+                return false;
+            }
+            $idCommerce = (int)$commerce['id_commerce'];
+            CommercePanel::ensureLocalDatabase($idCommerce, $slug);
+            return self::exists($slug);
+        } catch (\Throwable $e) {
+            error_log('[TenantLocalDb.ensureExists] ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public static function syncCentralAppointments(string $slug): void
+    {
+        try {
+            self::ensureExists($slug);
+            if (!self::exists($slug)) {
+                return;
+            }
+            $db = Database::getInstance();
+            $commerce = $db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s LIMIT 1', [':s' => $slug]);
+            if (!$commerce) {
+                return;
+            }
+            $appts = $db->fetchAll(
+                'SELECT a.*, s.id_local,
+                        cl.nombre AS client_nombre_db,
+                        cl.apellido AS client_apellido_db,
+                        cl.email AS client_email_db,
+                        cl.telefono AS client_telefono_db,
+                        cl.avatar AS client_avatar_db
+                 FROM appointments a
+                 LEFT JOIN services s ON s.id_service = a.id_service
+                 LEFT JOIN clients cl ON cl.id_client = a.id_client
+                 WHERE a.id_commerce = :c
+                 ORDER BY a.id_appointment ASC',
+                [':c' => (int)$commerce['id_commerce']]
+            );
+            foreach ($appts as $appt) {
+                if (empty($appt['cliente_nombre']) && !empty($appt['client_nombre_db'])) {
+                    $appt['cliente_nombre'] = trim(($appt['client_nombre_db'] ?? '') . ' ' . ($appt['client_apellido_db'] ?? ''));
+                }
+                if (empty($appt['cliente_email']) && !empty($appt['client_email_db'])) {
+                    $appt['cliente_email'] = $appt['client_email_db'];
+                }
+                if (empty($appt['cliente_telefono']) && !empty($appt['client_telefono_db'])) {
+                    $appt['cliente_telefono'] = $appt['client_telefono_db'];
+                }
+                if (!empty($appt['client_avatar_db'])) {
+                    $appt['cliente_avatar'] = $appt['client_avatar_db'];
+                }
+                self::mirrorAppointment($slug, $appt);
+            }
+        } catch (\Throwable $e) {
+            error_log('[TenantLocalDb.syncCentralAppointments] ' . $e->getMessage());
+        }
+    }
+
     /**
      * @return array<string,mixed>
      */
