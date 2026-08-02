@@ -354,7 +354,7 @@ if (!empty($statusRegistry)) {
 }
 $statusFilter = strtolower(trim((string)($_GET['res_status'] ?? '')));
 $hasPendiente = in_array('pendiente', $statusList, true);
-$defaultStatus = $hasPendiente ? 'pendiente' : 'todos';
+$defaultStatus = 'todos';
 if ($statusFilter === '' || ($statusFilter !== 'todos' && !in_array($statusFilter, $statusList, true))) {
   $statusFilter = $defaultStatus;
 }
@@ -411,7 +411,7 @@ foreach ($reservas as $r) {
   if ($statusFilter === 'todos') {
     $include = true;
   } elseif ($statusFilter === 'pendiente') {
-    $include = ($st === 'pendiente') && ($timestamp !== PHP_INT_MAX) && ($timestamp >= $nowTs);
+    $include = ($st === 'pendiente');
   } else {
     $include = ($st === $statusFilter);
   }
