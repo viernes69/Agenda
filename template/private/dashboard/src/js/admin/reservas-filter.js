@@ -49,9 +49,6 @@
     if (dateInput) {
       dateInput.setAttribute('data-admin-reserva-dates', JSON.stringify(list));
     }
-    if (!datePicker) return;
-    // Flatpickr: empty enable[] can be ambiguous — force no selectable days.
-    datePicker.set('enable', list.length ? list : [() => false]);
   };
 
   const setPickerDate = (value, triggerChange) => {
@@ -99,7 +96,6 @@
       altFormat: 'd/m/Y',
       allowInput: false,
       disableMobile: true,
-      enable: enableDates.length ? enableDates : [() => false],
       defaultDate: currentDate || undefined,
       onChange: (_selectedDates, dateStr) => {
         currentDate = dateStr || '';
@@ -127,11 +123,11 @@
 
   const applyData = (payload) => {
     if (!payload) return;
-    if (select && payload.status) {
+    if (select && payload.status && !select.dataset.userSelected) {
       select.value = payload.status;
+      currentStatus = payload.status;
     }
-    currentStatus = payload.status || currentStatus;
-    if (Object.prototype.hasOwnProperty.call(payload, 'date')) {
+    if (Object.prototype.hasOwnProperty.call(payload, 'date') && !currentDate) {
       setPickerDate(payload.date || '', false);
     }
     if (Array.isArray(payload.dates)) {
@@ -208,7 +204,9 @@
   };
 
   select?.addEventListener('change', () => {
+    if (select) select.dataset.userSelected = 'true';
     const value = select.value || '';
+    currentStatus = value;
     fetchData(value);
   });
 
