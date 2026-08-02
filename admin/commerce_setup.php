@@ -244,7 +244,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
                 <button type="button" class="btn btn-ghost btn-sm" id="setup-back" hidden>Atrás</button>
                 <div style="margin-left:auto; display:flex; gap:.5rem;">
                     <button type="button" class="btn btn-primary btn-sm" id="setup-next">Siguiente</button>
-                    <button type="submit" class="btn btn-primary btn-sm" id="setup-save" hidden>Guardar y entrar al panel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="setup-save" hidden>Finalizar Configuración</button>
                 </div>
             </div>
         </form>
@@ -328,8 +328,17 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
       el.classList.toggle('is-done', n < num);
     });
     backBtn.hidden = num <= 1;
-    nextBtn.hidden = num >= maxStep;
-    saveBtn.hidden = num < maxStep;
+    if (num >= maxStep) {
+      nextBtn.style.display = 'none';
+      nextBtn.hidden = true;
+      saveBtn.style.display = 'inline-flex';
+      saveBtn.hidden = false;
+    } else {
+      nextBtn.style.display = 'inline-flex';
+      nextBtn.hidden = false;
+      saveBtn.style.display = 'none';
+      saveBtn.hidden = true;
+    }
   }
 
   function validateStep(num) {
