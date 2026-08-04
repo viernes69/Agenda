@@ -68,7 +68,6 @@ final class MembershipPlan
             'mercado_pago',
             'legales',
             'legal',
-            'notificaciones',
             'features',
             'funciones',
             'moneda',
@@ -447,19 +446,19 @@ final class MembershipPlan
     {
         return [
             'Free' => [
-                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 10 productos en tu tienda.',
+                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 6 productos en tu tienda.',
                 'features' => [
                     'Hasta 25 reservas al mes',
                     'Hasta 25 clientes',
                     '1 profesional',
                     'Hasta 4 servicios',
-                    'Hasta 10 productos en la tienda',
+                    'Hasta 6 productos en la tienda',
                     'Configuración básica (nombre, logo, redes)',
                     'Agenda online básica',
                     'Soporte por email',
                 ],
                 'limits' => [
-                    self::LIMIT_MAX_PRODUCTS => 10,
+                    self::LIMIT_MAX_PRODUCTS => 6,
                     self::LIMIT_MAX_SERVICES => 4,
                     self::LIMIT_MAX_APPOINTMENTS_MONTH => 25,
                     self::LIMIT_MAX_PROFESSIONALS => 1,

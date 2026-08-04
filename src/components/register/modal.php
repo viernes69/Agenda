@@ -22,9 +22,9 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
       <div class="u-modal__content">
         <header class="reg-modal__header">
           <div>
-            <p class="reg-badge"><?= (int)($planDestacado['trial_dias'] ?? 30) ?> d&iacute;as gratis</p>
+            <p class="reg-badge">Plan Gratis Ilimitado</p>
             <h3 id="modal-registro-title">Registra tu negocio con nosotros y comienza a agendar a tus clientes</h3>
-          <p class="reg-subtitle">Completa los datos en cuatro pasos. No cobramos el primer mes.</p>
+          <p class="reg-subtitle">Completa los datos en cuatro pasos para crear tu cuenta gratuita.</p>
           <p class="reg-plan" data-reg-plan><?= $planDestacado ? 'Plan ' . htmlspecialchars($planDestacado['nombre'], ENT_QUOTES, 'UTF-8') . ' - ' . htmlspecialchars($planDestacado['moneda'], ENT_QUOTES, 'UTF-8') . ' ' . number_format((float)$planDestacado['precio'], 2) . '/mes' : 'Selecciona un rubro para ver el plan disponible.' ?></p>
           <p class="reg-plan-note"><i class="bx bx-credit-card"></i>No necesitas tarjeta de credito</p>
         </div>

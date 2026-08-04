@@ -268,7 +268,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
     </div>
     <p class="hero__badge">
       <i class="bx bx-gift" aria-hidden="true"></i>
-      <?= $freeTrial ?> días gratis · sin tarjeta
+      Gratis para siempre · sin tarjeta
     </p>
     <h1 class="hero__title">Llevá tu agenda<br><span class="hero__title-accent">al siguiente nivel</span></h1>
     <p class="hero__subtitle">
@@ -281,10 +281,10 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
       gimnasios, talleres, academias y muchos otros servicios.
     </p>
     <div class="hero__actions">
-      <a class="btn-primary hero__cta" href="#rubros">
+      <button type="button" class="btn-primary hero__cta plan-btn" data-rubro-id="0" data-rubro-nombre="">
         Registrá tu negocio
         <i class="bx bx-right-arrow-alt" aria-hidden="true"></i>
-      </a>
+      </button>
       <a class="hero__secondary" href="<?= h(url('categorias/')) ?>">Buscar servicios</a>
     </div>
   </section>
@@ -300,7 +300,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
       <div class="hc-viewport">
         <ul class="hc-track">
           <?php if (!empty($rubros)): ?>
-            <?php foreach ($rubros as $r):
+            <?php foreach (array_slice($rubros, 0, 6) as $r):
               $rImg = trim((string)($r['imagen'] ?? ''));
               // default.jpg no existe en disco; Apache lo enruta a index.php (HTML) y rompe el icono
               if ($rImg === '' || !is_file(__DIR__ . '/' . ltrim(str_replace('\\', '/', $rImg), '/'))) {
@@ -311,7 +311,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
               <figure>
                 <img src="<?= h(url($rImg)) ?>" alt="<?= h($r['nombre']) ?>" loading="lazy" decoding="async">
                 <figcaption><?= h($r['nombre']) ?></figcaption>
-                <div class="hc-highlight"><?= $freeTrial ?> días gratis</div>
+                <div class="hc-highlight">Gratis ilimitado</div>
                 <div class="hc-perks">
                   <div class="hc-perk">
                     <i class="bx bx-check" aria-hidden="true"></i>
@@ -470,7 +470,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 
   <section class="final-cta" aria-label="Registrar negocio en Agendarte UY">
     <h2 class="final-cta__title">Registrá tu negocio en Agendarte UY</h2>
-    <p class="final-cta__text">Comenzá a recibir reservas online. <?= $freeTrial ?> días de prueba gratis, sin tarjeta.</p>
+    <p class="final-cta__text">Comenzá a recibir reservas online. Plan gratuito ilimitado, sin tarjeta.</p>
     <p class="final-cta__brand-line"><?= h(LandingContent::TAGLINE) ?></p>
     <button type="button" class="plan-btn final-cta__btn" data-rubro-id="" data-rubro-nombre="">Registrar mi negocio</button>
   </section>
