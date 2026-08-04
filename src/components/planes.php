@@ -105,8 +105,8 @@ foreach ($planes as $ap) {
             <?php if ($limitBits !== []): ?>
               <p class="plan-card__limit"><?= h(implode(' · ', $limitBits)) ?></p>
             <?php endif; ?>
-            <?php if ($trialDias > 0): ?>
-              <p class="plan-card__trial"><?= $trialDias ?> días gratis</p>
+            <?php if (!$isFree && $trialDias > 0): ?>
+              <p class="plan-card__trial"><?= $trialDias ?> días de prueba gratis</p>
             <?php endif; ?>
             <?php if ($descripcion !== ''): ?>
               <p class="plan-card__desc"><?= h($descripcion) ?></p>
