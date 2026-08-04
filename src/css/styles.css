@@ -112,7 +112,7 @@
 /* ---------- Base ---------- */
 *{ margin:0; padding:0; box-sizing:border-box; font-family:'Poppins', sans-serif; }
 
-html{ scroll-behavior:smooth; scrollbar-gutter: stable; }
+html{ scroll-behavior:smooth; }
 
 body{
   min-height:100dvh;
@@ -135,7 +135,10 @@ button{ font: inherit; color: inherit; }
   outline-offset: 2px;
 }
 
-body.modal-open{ overflow:hidden; }
+body.modal-open{
+  overflow: hidden;
+  padding-right: calc(100vw - 100%);
+}
 
 /* Animación discreta de entrada */
 @keyframes fade-up{
