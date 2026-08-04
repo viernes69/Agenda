@@ -224,7 +224,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
           <div class="site-login-dropdown" id="site-login-dropdown" role="dialog" aria-label="Iniciar sesion" hidden>
             <div class="site-login-tabs" role="tablist">
               <button type="button" class="site-login-tabs__btn is-active" data-login-tab="password" role="tab" aria-selected="true">Login</button>
-              <button type="button" class="site-login-tabs__btn" data-login-tab="magic" role="tab" aria-selected="false">Registro r&aacute;pido</button>
+              <button type="button" class="site-login-tabs__btn" data-login-tab="magic" role="tab" aria-selected="false">Registro rápido</button>
             </div>
             <form method="post" action="<?= h(url('admin/login.php')) ?>" class="site-login-form" id="site-login-form" data-login-panel="password" novalidate>
               <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
@@ -241,7 +241,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
             </form>
             <form class="site-login-form" id="site-login-magic-form" data-login-panel="magic" hidden novalidate>
               <input type="hidden" name="_csrf" value="<?= h($adminLoginCsrf) ?>">
-              <p class="site-login-form__hint">Registro r&aacute;pido: te enviamos un link seguro a tu correo. Si no ten&eacute;s cuenta, se crea al abrirlo. Sin contrase&ntilde;a.</p>
+              <p class="site-login-form__hint">Registro rápido: te enviamos un link seguro a tu correo. Si no tenés cuenta, se crea al abrirlo. Sin contraseña.</p>
               <label class="site-login-form__field">
                 <span>Email</span>
                 <input type="email" name="email" required autocomplete="email" placeholder="tu@email.com">
@@ -262,6 +262,10 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 
 <main class="landing">
   <section class="hero" aria-label="Propuesta de valor">
+    <div class="hero-bg-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
     <p class="hero__badge">
       <i class="bx bx-gift" aria-hidden="true"></i>
       <?= $freeTrial ?> días gratis · sin tarjeta
