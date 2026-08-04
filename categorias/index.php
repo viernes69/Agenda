@@ -66,6 +66,10 @@ if (!$isHub) {
 
 <main class="landing seo-page">
   <section class="seo-page__hero">
+    <div class="hero-bg-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
     <?php if ($isHub): ?>
       <p class="section-heading__eyebrow">Categorías</p>
       <h1>Encontrá y reservá el servicio que necesitás</h1>
