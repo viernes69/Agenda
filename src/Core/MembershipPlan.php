@@ -51,7 +51,7 @@ final class MembershipPlan
      */
     public static function basicAllowedConfigKeys(): array
     {
-        return ['info_barberia', 'redes', 'horarios', 'reservas'];
+        return ['info_barberia', 'redes', 'horarios', 'reservas', 'notificaciones'];
     }
 
     /**

@@ -1,9 +1,9 @@
-﻿(function adminConfigCards() {
+(function adminConfigCards() {
   const grid = document.querySelector('[data-admin-config-grid]');
   if (!grid) return;
 
   let activeCard = null;
-  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'carrito']);
+  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'carrito', 'notificaciones']);
   const settingsTier = String(grid.getAttribute('data-settings-tier') || 'full').toLowerCase();
   const isBasicOnly = settingsTier === 'basic';
 
