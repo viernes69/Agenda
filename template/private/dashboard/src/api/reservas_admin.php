@@ -300,7 +300,7 @@ foreach ($prepared as $row) {
     $rowHtml .= '<td>' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
     $rowHtml .= '<td>' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
     $rowHtml .= '<td><span class="status-pill st-' . $escape($statusNorm) . '">' . $escape($statusLabel) . '</span></td>';
-    if (in_array($statusNorm, ['pendiente','aprobado','rechazado','cancelado','finalizado'], true)) {
+    if (in_array($statusNorm, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)) {
         $rowHtml .= '<td><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
     } else {
         $rowHtml .= '<td><span class="muted">-</span></td>';
