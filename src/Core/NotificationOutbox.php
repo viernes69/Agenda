@@ -54,21 +54,10 @@ final class NotificationOutbox
 
     public static function triggerProcessAsync(): void
     {
-        if (self::$shutdownHandlerRegistered) {
-            return;
-        }
-        self::$shutdownHandlerRegistered = true;
-
-        register_shutdown_function(static function (): void {
-            if (function_exists('fastcgi_finish_request')) {
-                @fastcgi_finish_request();
-            }
-            try {
-                self::processDue(20);
-            } catch (\Throwable $e) {
-                error_log('[NotificationOutbox] shutdown processDue: ' . $e->getMessage());
-            }
-        });
+        // INTENCIONALMENTE VACÍO:
+        // El envío masivo vía `register_shutdown_function` ha sido eliminado.
+        // Ahora el procesamiento de la cola debe hacerse de forma externa 
+        // mediante un Cron Job llamando a bin/process-outbox.php cada 1 minuto.
     }
 
     public static function enqueueAppointmentNotifications(

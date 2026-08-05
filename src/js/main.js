@@ -1,4 +1,4 @@
-﻿/* src/js/main.js — Landing: carrusel y modales de rubros/planes */
+/* src/js/main.js — Landing: carrusel y modales de rubros/planes */
 (() => {
   "use strict";
 
@@ -197,6 +197,37 @@
     "btnPlanes",
     "modal-planes",
     "modal-planes-content",
-    "src/components/planes.php"
+    "src/components/planes.php",
+    (root) => {
+      const toggle = root.querySelector('[data-landing-billing-toggle]');
+      if (!toggle) return;
+      let period = 'monthly';
+      const apply = () => {
+        toggle.querySelectorAll('button').forEach((btn) => {
+          btn.classList.toggle('is-active', btn.getAttribute('data-billing') === period);
+        });
+        root.querySelectorAll('[data-landing-plan]').forEach((card) => {
+          const monthly = parseFloat(card.getAttribute('data-monthly') || '0');
+          const yearly = card.getAttribute('data-yearly');
+          const hasAnnual = card.getAttribute('data-has-annual') === '1';
+          const amountEl = card.querySelector('[data-landing-price-amount]');
+          const periodEl = card.querySelector('[data-landing-price-period]');
+          const note = card.querySelector('[data-landing-annual-note]');
+          const useYearly = period === 'yearly' && hasAnnual && yearly !== '';
+          if (amountEl && periodEl && monthly > 0) {
+            amountEl.textContent = Math.round(useYearly ? parseFloat(yearly) : monthly).toLocaleString('es-UY');
+            periodEl.textContent = useYearly ? '/ año' : '/ mes';
+          }
+          if (note) note.hidden = !useYearly;
+        });
+      };
+      toggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-billing]');
+        if (!btn) return;
+        period = btn.getAttribute('data-billing') || 'monthly';
+        apply();
+      });
+      apply();
+    }
   );
 })();

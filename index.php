@@ -180,17 +180,12 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 </div>
   <header class="site-header">
     <div class="site-header__inner">
-      <a class="site-header__brand" href="<?= h(url_base()) ?>" aria-label="Inicio de Agendarte UY">
-        <img src="<?= h(url('src/media/logo/logo-horizontal.png?v=' . $logoVer)) ?>"
-             alt="Agendarte UY — Reservas online en Uruguay"
-             class="brand-logo brand-logo--horizontal brand-logo--on-light"
-             width="168" height="44"
-             decoding="async" loading="eager">
+      <a href="<?= h(url('')) ?>" class="site-header__brand" aria-label="Inicio" style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.25rem;color:var(--text, #1e293b);text-decoration:none;">
         <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>"
              alt="Agendarte UY"
-             class="brand-logo brand-logo--on-dark"
-             width="40" height="40"
-             decoding="async" loading="eager">
+             class="brand-logo"
+             width="28" height="28" fetchpriority="high">
+        <span>Agendarte <span class="brand-uy" style="color:var(--primary, #6366f1);">UY</span></span>
       </a>
       <nav class="site-header__actions" aria-label="Acciones principales">
         <?php if ($platformInstagramUrl !== ''): ?>
@@ -440,11 +435,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
         <p>Rubros Disponibles</p>
         <span class="category__hint">Conocé los rubros que pueden usar la plataforma</span>
       </div>
-      <div class="category" id="btnCursos" role="button" tabindex="0" aria-controls="modal-cursos" aria-haspopup="dialog">
-        <span class="category__icon"><i class='bx bx-notepad' aria-hidden="true"></i></span>
-        <p>Nuestros Cursos</p>
-        <span class="category__hint">Capacitaciones y novedades para tu equipo</span>
-      </div>
+
       <div class="category" id="btnPlanes" role="button" tabindex="0" aria-controls="modal-planes" aria-haspopup="dialog">
         <span class="category__icon"><i class="bx bx-purchase-tag" aria-hidden="true"></i></span>
         <p>Planes</p>

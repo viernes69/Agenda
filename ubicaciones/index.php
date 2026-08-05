@@ -52,9 +52,9 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
 <body>
 <header class="site-header">
   <div class="site-header__inner">
-    <a class="site-header__brand" href="<?= h(url('')) ?>">
-      <img src="<?= h(url('src/media/logo/logo-horizontal.png?v=' . $logoVer)) ?>" alt="Agendarte UY" class="brand-logo brand-logo--horizontal brand-logo--on-light" width="168" height="44" decoding="async">
-      <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>" alt="Agendarte UY" class="brand-logo brand-logo--on-dark" width="40" height="40" decoding="async">
+    <a class="site-header__brand" href="<?= h(url('')) ?>" aria-label="Inicio" style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.25rem;color:var(--text, #1e293b);text-decoration:none;">
+      <img src="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>" alt="Agendarte UY" class="brand-logo" width="28" height="28" fetchpriority="high">
+      <span>Agendarte <span class="brand-uy" style="color:var(--primary, #6366f1);">UY</span></span>
     </a>
     <nav class="site-header__actions">
       <a class="btn-primary btn-primary--sm" href="<?= h(url('')) ?>#rubros">Registrar mi negocio</a>
@@ -98,7 +98,7 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
   <section class="seo-page__list" aria-label="Negocios en esta ciudad">
     <h2>Negocios disponibles</h2>
     <?php if (empty($commerces)): ?>
-      <p class="seo-page__empty">Todavía no hay comercios publicados en esta ciudad. <a href="<?= h(url('')) ?>#rubros">Registrá el tuyo</a>.</p>
+      <p class="seo-page__empty">Todavía no hay comercios publicados en esta ciudad. <a href="javascript:void(0)" onclick="window.openRegisterModal && window.openRegisterModal()">Registrá el tuyo</a>.</p>
     <?php else: ?>
       <ul class="seo-commerce-list">
         <?php foreach ($commerces as $c): ?>

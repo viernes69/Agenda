@@ -563,9 +563,7 @@
       }
     }
     if (badgeEl) {
-      badgeEl.textContent = freeTrialDays > 0
-        ? `${freeTrialDays} día${freeTrialDays === 1 ? '' : 's'} gratis`
-        : 'Registro gratis';
+      badgeEl.textContent = 'Gratis Ilimitado';
     }
   }
 

@@ -101,19 +101,24 @@ foreach ($planes as $ap) {
               if ($limitBits === [] && MembershipPlan::settingsTier($p) === MembershipPlan::SETTINGS_TIER_FULL) {
                   $limitBits[] = 'Ilimitado';
               }
+              
+              $combinedFeatures = [];
+              foreach (array_merge($limitBits, $features) as $f) {
+                  $f = trim($f);
+                  if ($f !== '' && !in_array($f, $combinedFeatures, true)) {
+                      $combinedFeatures[] = $f;
+                  }
+              }
             ?>
-            <?php if ($limitBits !== []): ?>
-              <p class="plan-card__limit"><?= h(implode(' · ', $limitBits)) ?></p>
-            <?php endif; ?>
             <?php if (!$isFree && $trialDias > 0): ?>
               <p class="plan-card__trial"><?= $trialDias ?> días de prueba gratis</p>
             <?php endif; ?>
             <?php if ($descripcion !== ''): ?>
               <p class="plan-card__desc"><?= h($descripcion) ?></p>
             <?php endif; ?>
-            <?php if ($features !== []): ?>
+            <?php if ($combinedFeatures !== []): ?>
               <ul class="plan-card__features">
-                <?php foreach ($features as $feat): ?>
+                <?php foreach ($combinedFeatures as $feat): ?>
                   <li><?= h($feat) ?></li>
                 <?php endforeach; ?>
               </ul>
@@ -124,41 +129,7 @@ foreach ($planes as $ap) {
           </article>
         <?php endforeach; ?>
       </div>
-      <?php if ($anyAnnual): ?>
-      <script>
-      (function () {
-        var toggle = document.querySelector('[data-landing-billing-toggle]');
-        if (!toggle) return;
-        var period = 'monthly';
-        function apply() {
-          toggle.querySelectorAll('button').forEach(function (btn) {
-            btn.classList.toggle('is-active', btn.getAttribute('data-billing') === period);
-          });
-          document.querySelectorAll('[data-landing-plan]').forEach(function (card) {
-            var monthly = parseFloat(card.getAttribute('data-monthly') || '0');
-            var yearly = card.getAttribute('data-yearly');
-            var hasAnnual = card.getAttribute('data-has-annual') === '1';
-            var amountEl = card.querySelector('[data-landing-price-amount]');
-            var periodEl = card.querySelector('[data-landing-price-period]');
-            var note = card.querySelector('[data-landing-annual-note]');
-            var useYearly = period === 'yearly' && hasAnnual && yearly !== '';
-            if (amountEl && periodEl && monthly > 0) {
-              amountEl.textContent = Math.round(useYearly ? parseFloat(yearly) : monthly).toLocaleString('es-UY');
-              periodEl.textContent = useYearly ? '/ año' : '/ mes';
-            }
-            if (note) note.hidden = !useYearly;
-          });
-        }
-        toggle.addEventListener('click', function (e) {
-          var btn = e.target.closest('[data-billing]');
-          if (!btn) return;
-          period = btn.getAttribute('data-billing') || 'monthly';
-          apply();
-        });
-        apply();
-      })();
-      </script>
-      <?php endif; ?>
+
     <?php endif; ?>
   </div>
 </div>
