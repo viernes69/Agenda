@@ -48,6 +48,7 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
   <link rel="icon" type="image/png" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
   <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+  <script src="<?= h(url('src/js/register/modal.js')) ?>" defer></script>
 </head>
 <body>
 <header class="site-header">
@@ -57,7 +58,7 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
       <span>Agendarte <span class="brand-uy" style="color:var(--primary, #6366f1);">UY</span></span>
     </a>
     <nav class="site-header__actions">
-      <a class="btn-primary btn-primary--sm" href="<?= h(url('')) ?>#rubros">Registrar mi negocio</a>
+      <a class="btn-primary btn-primary--sm" href="<?= h(url('')) ?>#rubros" onclick="event.preventDefault(); window.openRegisterModal && window.openRegisterModal();">Registrar mi negocio</a>
     </nav>
   </div>
 </header>
@@ -133,5 +134,6 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
     <p class="site-footer__tagline"><?= h(LandingContent::TAGLINE) ?></p>
   </div>
 </footer>
+<?php include __DIR__ . '/../src/components/register/modal.php'; ?>
 </body>
 </html>
