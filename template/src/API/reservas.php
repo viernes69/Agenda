@@ -8,6 +8,7 @@ $projectRoot = dirname(__DIR__, 2);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\NotificationOutbox;
 use PHPMailer\PHPMailer\PHPMailer;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -248,6 +249,23 @@ try {
     }
     $_SESSION['cliente']['reservas'][] = $row;
     $_SESSION['cliente']['cliente_id'] = $_SESSION['cliente']['cliente_id'] ?? (int)$clienteId;
+
+    // Enqueue email + WhatsApp notifications via NotificationOutbox
+    try {
+        NotificationOutbox::enqueueLocalReservaCreated(
+            $tenantSlug,
+            $row,
+            [
+                'cliente_nombre' => buildClienteDisplayName($session),
+                'cliente_email' => $session['email'] ?? '',
+                'cliente_telefono' => $session['telefono'] ?? '',
+                'cedula' => $session['cedula'] ?? '',
+            ],
+            (int)$serviceId
+        );
+    } catch (Throwable $e) {
+        error_log('[reservas] NotificationOutbox enqueue failed: ' . $e->getMessage());
+    }
 
     $payload = ['ok' => true, 'data' => $row, 'session' => $_SESSION['cliente'] ?? null];
     if ($waitlist) {
