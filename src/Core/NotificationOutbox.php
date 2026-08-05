@@ -54,10 +54,25 @@ final class NotificationOutbox
 
     public static function triggerProcessAsync(): void
     {
-        // INTENCIONALMENTE VACÍO:
-        // El envío masivo vía `register_shutdown_function` ha sido eliminado.
-        // Ahora el procesamiento de la cola debe hacerse de forma externa 
-        // mediante un Cron Job llamando a bin/process-outbox.php cada 1 minuto.
+        if (self::$shutdownHandlerRegistered) {
+            return;
+        }
+        self::$shutdownHandlerRegistered = true;
+
+        // Lanzar una petición HTTP no bloqueante (fire and forget) al pseudo-cron
+        // Esto procesa la cola de mensajes en segundo plano sin colgar la web del usuario ni generar loops síncronos.
+        $url = url('admin/api/async_cron.php');
+        if (str_starts_with($url, 'http')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200); // 200ms timeout para no trancar
+            curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            @curl_exec($ch);
+            @curl_close($ch);
+        }
     }
 
     public static function enqueueAppointmentNotifications(
