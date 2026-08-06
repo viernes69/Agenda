@@ -9,7 +9,6 @@ require_once $projectRoot . '/src/Core/bootstrap.php';
 
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\NotificationOutbox;
-use PHPMailer\PHPMailer\PHPMailer;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -64,105 +63,6 @@ function buildClienteDisplayName(array $session): string {
         }
     }
     return 'Cliente';
-}
-
-function sendReservationEmail(array $reservation, array $session, int $serviceId): void {
-    try {
-        $infoBarberia = AutoloadDB::getConfigSection('info_barberia');
-    } catch (Throwable $e) {
-        error_log('[reservas] No se pudo obtener info_barberia: ' . $e->getMessage());
-        return;
-    }
-
-    $targetEmail = trim((string)($infoBarberia['contacto']['email'] ?? $infoBarberia['email'] ?? ''));
-    if ($targetEmail === '') {
-        agenduy_mail_log('No hay correo de contacto configurado en info_barberia; no se envía notificación.');
-        return;
-    }
-
-    $mailConfig = agenduy_mail_get_config();
-    $host = trim((string)($mailConfig['host'] ?? ''));
-    $username = trim((string)($mailConfig['username'] ?? ''));
-    $password = (string)($mailConfig['password'] ?? '');
-    if ($host === '' || $username === '' || $password === '') {
-        agenduy_mail_log('Configuración SMTP incompleta; falta host, usuario o contraseña.');
-        return;
-    }
-
-    if (!agenduy_mail_require_phpmailer()) {
-        agenduy_mail_log('PHPMailer no está disponible; verifica la instalación de composer.');
-        return;
-    }
-
-    $serviceName = 'Servicio';
-    try {
-        $service = AutoloadDB::find('servicios', $serviceId);
-        if (is_array($service)) {
-            $candidate = trim((string)($service['Nombre'] ?? ''));
-            if ($candidate !== '') {
-                $serviceName = $candidate;
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('[reservas] No se pudo leer servicio para notificación: ' . $e->getMessage());
-    }
-
-    $fecha = trim((string)($reservation['Fecha_Reserva'] ?? ''));
-    $hora = formatReservaHour((string)($reservation['Hora_Reserva'] ?? ''));
-    $cliente = buildClienteDisplayName($session);
-
-    $subject = 'Tienes una nueva reserva';
-    $summary = sprintf(
-        "Tienes Una Nueva reserva!! para el día %s %s, con %s, Servicio: %s.",
-        $fecha !== '' ? $fecha : 'sin fecha',
-        $hora !== '' ? $hora : 'sin hora',
-        $cliente,
-        $serviceName
-    );
-
-    $fromEmail = trim((string)($mailConfig['from_email'] ?? $username));
-    $fromName = trim((string)($mailConfig['from_name'] ?? 'Agenduy Reservas'));
-    $port = (int)($mailConfig['port'] ?? 465);
-    $timeout = max(5, (int)($mailConfig['timeout'] ?? 15));
-    $encryption = strtolower(trim((string)($mailConfig['encryption'] ?? 'ssl')));
-
-    $mailer = new PHPMailer(true);
-    try {
-        $mailer->CharSet = 'UTF-8';
-        $mailer->isSMTP();
-        $mailer->Host = $host;
-        $mailer->SMTPAuth = true;
-        $mailer->Username = $username;
-        $mailer->Password = $password;
-        $mailer->Port = $port;
-        $mailer->Timeout = $timeout;
-        if ($encryption === 'tls') {
-            $mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        } else {
-            $mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        }
-
-        $mailer->setFrom($fromEmail !== '' ? $fromEmail : $username, $fromName);
-        $mailer->addAddress($targetEmail);
-
-        $mailer->isHTML(false);
-        $mailer->Subject = $subject;
-        $mailer->Body = $summary;
-        $mailer->AltBody = $summary;
-
-        $mailer->send();
-        agenduy_mail_log(sprintf(
-            'Correo enviado a %s para reserva %s %s (%s).',
-            $targetEmail,
-            $fecha ?: 's/f',
-            $hora ?: 's/h',
-            $serviceName
-        ));
-    } catch (Throwable $e) {
-        $message = '[reservas] No se pudo enviar notificación de reserva: ' . $e->getMessage();
-        error_log($message);
-        agenduy_mail_log($message);
-    }
 }
 
 function findClienteIdByCedula(string $cedula): ?int {
