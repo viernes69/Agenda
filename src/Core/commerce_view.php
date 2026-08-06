@@ -2162,18 +2162,29 @@ if (!function_exists('agenduy_render_commerce')) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
                     alertBox.className = 'alert alert--ok';
-                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Listo! Te enviamos email y WhatsApp con la confirmación.';
+                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Gracias por tu reserva! Te enviamos la confirmación por email y WhatsApp.';
                     alertBox.hidden = false;
-                    setTimeout(closeModal, 2500);
+                    setTimeout(closeModal, 3000);
                     return;
                 }
+                // Show thank-you message, then auto-close
                 if (stepForm) stepForm.hidden = true;
+                const upsellOk = document.getElementById('booking-upsell-ok');
+                if (upsellOk) {
+                    upsellOk.innerHTML = '<i class="bx bx-check-circle"></i> ¡Gracias por tu reserva! Te enviamos la confirmación por email y WhatsApp.';
+                    upsellOk.hidden = false;
+                }
+                const upsellLead = document.getElementById('booking-upsell-lead');
+                if (upsellLead) upsellLead.hidden = true;
+                const upsellGrid = document.getElementById('booking-upsell-grid');
+                if (upsellGrid) upsellGrid.hidden = true;
+                const upsellWaHint = document.getElementById('booking-upsell-wa-hint');
+                if (upsellWaHint) upsellWaHint.hidden = true;
                 stepUpsell.hidden = false;
                 if (footForm) footForm.hidden = true;
-                if (footUpsell) footUpsell.hidden = false;
-                if (bookingTitle) bookingTitle.textContent = '¿Desea productos?';
-                renderUpsellGrid();
-                renderCartUI();
+                if (footUpsell) footUpsell.hidden = true;
+                if (bookingTitle) bookingTitle.textContent = '¡Reserva confirmada!';
+                setTimeout(closeModal, 3500);
             }
 
             function openModal(svcId, svcName) {
