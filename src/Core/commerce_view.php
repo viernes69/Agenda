@@ -1941,6 +1941,9 @@ if (!function_exists('agenduy_render_commerce')) {
                     if (json && json.found) {
                         applyGuestFields(json, 'lookup');
                         saveGuest(json);
+                        if (json.historial) {
+                            renderClientHistory(json.historial);
+                        }
                     }
                 } catch (_) {
                     // Silencioso: el usuario puede seguir completando manualmente.
@@ -2146,7 +2149,11 @@ if (!function_exists('agenduy_render_commerce')) {
             loadGoogleClientScript();
 
             function prefillBookingGuest() {
-                applyGuestFields(loadSavedGuest(), 'local');
+                const guest = loadSavedGuest();
+                applyGuestFields(guest, 'local');
+                if (guest && (guest.email || guest.telefono)) {
+                    scheduleClientLookup();
+                }
             }
 
             if (bookingEmailInput) {
@@ -2442,6 +2449,8 @@ if (!function_exists('agenduy_render_commerce')) {
                         telefono: (bookingPhoneInput || {}).value || ''
                     };
                     saveGuest(booking);
+                    lastLookupKey = '';
+                    scheduleClientLookup();
                     showUpsellStep(booking);
                 } catch (err) {
                     const msg = (err && err.name === 'AbortError')

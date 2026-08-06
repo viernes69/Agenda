@@ -803,7 +803,8 @@
 
     const sendRegister = async () => {
       const body = { ...data, _csrf: csrfToken };
-      const response = await fetch('src/API/register.php', {
+      const urlBase = (window.__AGENDUY_CONFIG__ && window.__AGENDUY_CONFIG__.urlBase) ? window.__AGENDUY_CONFIG__.urlBase : '';
+      const response = await fetch(urlBase + 'src/API/register.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

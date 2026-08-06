@@ -1,4 +1,4 @@
-ï»¿(function adminConfigRedesModal() {
+(function adminConfigRedesModal() {
   const modal = document.querySelector('[data-admin-modal="config-redes"]');
   if (!modal) {
     if (document.readyState === 'loading') {
@@ -174,7 +174,7 @@
     if (!form.reportValidity()) return;
     const waInput = form.querySelector('[data-admin-config-redes-username="whatsapp"]');
     if (waInput && sanitizeWhatsAppDigits(waInput.value).length < 8) {
-      showError('IngresÃ¡ un WhatsApp vÃ¡lido (mÃ­nimo 8 dÃ­gitos).');
+      showError('Ingresá un WhatsApp válido (mínimo 8 dígitos).');
       return;
     }
     if (submitBtn) submitBtn.disabled = true;
@@ -185,7 +185,7 @@
 
     const payload = collect();
     try {
-      const res = await fetch('../../../src/API/AdminConfig.php', {
+      const res = await fetch((window.AdminApiBase || '../../../src/API/') + 'AdminConfig.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'config_update', key: 'info_barberia', data: payload }),

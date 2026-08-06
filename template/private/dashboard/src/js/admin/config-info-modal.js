@@ -565,7 +565,7 @@
       if (logoInput && logoInput.files && logoInput.files[0]) {
         formData.append('logo', logoInput.files[0]);
       }
-      const res = await fetch('../../../src/API/AdminConfig.php', {
+      const res = await fetch((window.AdminApiBase || '../../../src/API/') + 'AdminConfig.php', {
         method: 'POST',
         body: formData
       });

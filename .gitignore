@@ -34,6 +34,9 @@ Thumbs.db
 
 # Temp / inspect
 storage/_inspect_db.php
+/fix_smtp.php
+/scratch.php
+/scratch_query.php
 .phpunit.result.cache
 .freebuff/
 /nul

@@ -20,6 +20,13 @@ use Agenduy\Core\GoogleAuth;
 use Agenduy\Core\LandingContent;
 use Agenduy\Core\PlatformSettings;
 
+// Legacy admin config API handler
+$requestUri = (string)($_SERVER['REQUEST_URI'] ?? '');
+if (stripos($requestUri, '/src/API/AdminConfig.php') !== false) {
+    require __DIR__ . '/template/src/API/AdminConfig.php';
+    exit;
+}
+
 // ¿Hay un slug de comercio en la URL?
 $slug = current_slug();
 

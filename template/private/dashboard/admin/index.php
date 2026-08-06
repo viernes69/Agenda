@@ -1996,10 +1996,14 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     } catch (Throwable $e) {
       // conservar legacy
     }
+    $adminConfigEndpoint = $panelApiEndpoints['adminConfig'] ?? admin_panel_href('../../../src/API/AdminConfig.php');
+    $adminApiBase = preg_replace('#AdminConfig\.php$#', '', (string)$adminConfigEndpoint);
+    if (!is_string($adminApiBase) || $adminApiBase === '') { $adminApiBase = '../../../src/API/'; }
   ?>
   <script>
     window.ADMIN_INFO_BARBERIA = <?php echo $infoBarberiaJson; ?>;
     window.ADMIN_DASHBOARD = <?php echo json_encode($panelApiEndpoints, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    window.AdminApiBase = <?php echo json_encode($adminApiBase, JSON_UNESCAPED_SLASHES); ?>;
     window.__TENANT_CONFIG__ = {
       slug: <?php echo json_encode($tenantSlug, JSON_UNESCAPED_SLASHES); ?>,
       basePath: <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>,

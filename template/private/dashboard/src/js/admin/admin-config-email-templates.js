@@ -72,7 +72,7 @@
       },
     };
     try {
-      const res = await fetch('../../../src/API/AdminConfig.php', {
+      const res = await fetch((window.AdminApiBase || '../../../src/API/') + 'AdminConfig.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'config_update', key: 'info_barberia', data: payload }),

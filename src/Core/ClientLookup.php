@@ -13,6 +13,20 @@ final class ClientLookup
      */
     public static function lookup(int $idCommerce, ?string $email, ?string $phone): array
     {
+        $db = Database::getInstance();
+        $result = self::doLookup($db, $idCommerce, $email, $phone);
+
+        if ($result['found']) {
+            $histEmail = strtolower(trim((string)($result['email'] ?? $email ?? '')));
+            if ($histEmail !== '') {
+                $result['historial'] = self::getHistorial($db, $idCommerce, $histEmail);
+            }
+        }
+        return $result;
+    }
+
+    private static function doLookup(Database $db, int $idCommerce, ?string $email, ?string $phone): array
+    {
         if ($idCommerce <= 0) {
             return ['ok' => false, 'found' => false, 'error' => 'Comercio inválido.'];
         }
@@ -23,8 +37,6 @@ final class ClientLookup
         if ($email === '' && strlen($phoneDigits) < 8) {
             return ['ok' => true, 'found' => false];
         }
-
-        $db = Database::getInstance();
 
         if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $fromClient = $db->fetchOne(
@@ -76,6 +88,35 @@ final class ClientLookup
         }
 
         return ['ok' => true, 'found' => false];
+    }
+
+    private static function getHistorial(Database $db, int $idCommerce, string $email): array
+    {
+        $historial = ['reservas' => [], 'pedidos' => []];
+        try {
+            $reservasDb = $db->fetchAll(
+                "SELECT a.id_appointment as id, a.fecha, a.hora_inicio as hora, a.status, COALESCE(s.nombre, '') AS servicio
+                 FROM appointments a
+                 LEFT JOIN services s ON s.id_service = a.id_service
+                 WHERE a.id_commerce = :c AND lower(trim(a.cliente_email)) = :e
+                 ORDER BY a.fecha DESC, a.hora_inicio DESC LIMIT 20",
+                [':c' => $idCommerce, ':e' => $email]
+            );
+            foreach ($reservasDb as $r) {
+                $historial['reservas'][] = $r;
+            }
+            $pedidosDb = $db->fetchAll(
+                "SELECT id_order as id, fecha, status, total
+                 FROM commerce_orders
+                 WHERE id_commerce = :c AND lower(trim(cliente_email)) = :e
+                 ORDER BY fecha DESC LIMIT 20",
+                [':c' => $idCommerce, ':e' => $email]
+            );
+            foreach ($pedidosDb as $p) {
+                $historial['pedidos'][] = $p;
+            }
+        } catch (\Throwable $e) {}
+        return $historial;
     }
 
     private static function normalizePhoneDigits(?string $phone): string

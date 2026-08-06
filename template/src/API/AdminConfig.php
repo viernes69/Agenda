@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\CommerceStorage;
@@ -26,7 +26,6 @@ $json = $raw !== '' ? json_decode($raw, true) : null;
 if (is_array($json)) {
     $_REQUEST = array_merge($_REQUEST, $json);
 }
-
 try {
     assertAdminRequest();
     $action = (string)($_REQUEST['action'] ?? 'config_get');

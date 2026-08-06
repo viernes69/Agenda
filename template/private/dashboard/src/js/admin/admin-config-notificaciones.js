@@ -1,4 +1,4 @@
-ï»¿(function adminConfigNotificacionesModal() {
+(function adminConfigNotificacionesModal() {
   const modal = document.querySelector('[data-admin-modal="config-notificaciones"]');
   if (!modal) {
     if (document.readyState === 'loading') {
@@ -107,7 +107,7 @@
     const prefix = countrySelect ? (countrySelect.value || '+598') : '+598';
     const number = sanitizeNumber(numberInput ? numberInput.value : '');
     if (!number) {
-      showError('Ingresa un nÃºmero de WhatsApp vÃ¡lido.');
+      showError('Ingresa un número de WhatsApp válido.');
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
@@ -133,20 +133,20 @@
     };
 
     try {
-      const res = await fetch('../../../src/API/AdminConfig.php', {
+      const res = await fetch((window.AdminApiBase || '../../../src/API/') + 'AdminConfig.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'config_update', key: 'info_barberia', data: payload }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json || !json.ok) {
-        throw new Error(json && json.error ? json.error : 'No se pudo guardar la configuraciÃ³n de notificaciones.');
+        throw new Error(json && json.error ? json.error : 'No se pudo guardar la configuración de notificaciones.');
       }
       window.ADMIN_INFO_BARBERIA = clone(json.data || {});
       notify('Notificaciones actualizadas.', 'success');
       close();
     } catch (error) {
-      const message = error && error.message ? error.message : 'No se pudo guardar la configuraciÃ³n de notificaciones.';
+      const message = error && error.message ? error.message : 'No se pudo guardar la configuración de notificaciones.';
       showError(message);
       if (submitBtn) submitBtn.disabled = false;
     }

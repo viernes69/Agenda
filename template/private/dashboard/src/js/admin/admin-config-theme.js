@@ -114,7 +114,7 @@
     showProgress(progressMessage);
 
     try {
-      const response = await fetch('../../../src/API/AdminConfig.php', {
+      const response = await fetch((window.AdminApiBase || '../../../src/API/') + 'AdminConfig.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
