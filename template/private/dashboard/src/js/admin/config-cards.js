@@ -72,6 +72,8 @@
       }
     } else if (configId === 'notificaciones' && window.AdminConfigNotificacionesModal && typeof window.AdminConfigNotificacionesModal.open === 'function') {
       window.AdminConfigNotificacionesModal.open();
+    } else if (configId === 'notif-log' && window.AdminNotificationsLogModal && typeof window.AdminNotificationsLogModal.open === 'function') {
+      window.AdminNotificationsLogModal.open();
     } else if (configId === 'funciones' && window.AdminConfigFeaturesModal && typeof window.AdminConfigFeaturesModal.open === 'function') {
       openWithGuard('Funciones', window.AdminConfigFeaturesModal.open);
     } else if (configId === 'temas' && window.AdminConfigThemeModal && typeof window.AdminConfigThemeModal.open === 'function') {

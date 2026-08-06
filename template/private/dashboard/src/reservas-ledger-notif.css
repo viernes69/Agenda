@@ -1,0 +1,191 @@
+/* Notifications Log Dashboard */
+.notif-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+
+.notif-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  padding: .7rem .5rem;
+  border-radius: .85rem;
+  background: rgba(15, 19, 29, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.notif-stat-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.notif-stat-label {
+  font-size: .75rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.notif-stat-sent .notif-stat-num { color: var(--success); }
+.notif-stat-failed .notif-stat-num { color: #f87171; }
+.notif-stat-email .notif-stat-num { color: #93c5fd; }
+.notif-stat-wa .notif-stat-num { color: #86efac; }
+
+.notif-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  padding: .75rem;
+  border-radius: .85rem;
+  background: rgba(15, 19, 29, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.notif-filter {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  min-width: 120px;
+}
+
+.notif-filter__label {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.notif-filter select,
+.notif-filter input {
+  padding: .4rem .55rem;
+  border-radius: .55rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 20, 30, 0.85);
+  color: var(--text);
+  font-size: .85rem;
+}
+
+.notif-table-wrap {
+  overflow-x: auto;
+  border-radius: .85rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(9, 13, 22, 0.75);
+  transition: opacity .2s ease;
+}
+
+.notif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.notif-table th {
+  text-align: left;
+  padding: .65rem .75rem;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  white-space: nowrap;
+}
+
+.notif-table td {
+  padding: .55rem .75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.notif-table tbody tr:hover td {
+  background: rgba(30, 64, 175, 0.1);
+}
+
+.notif-channel-icon {
+  margin-right: .3rem;
+}
+
+.notif-recipient {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-subject {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.notif-time {
+  white-space: nowrap;
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.notif-error {
+  cursor: help;
+  text-align: center;
+}
+
+.notif-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.notif-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: 1rem;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.notif-pagination button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* Status pill extensions for notifications */
+.status-pill.st-sent {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.32);
+  color: #86efac;
+}
+
+.status-pill.st-failed {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.32);
+  color: #fca5a5;
+}
+
+.status-pill.st-queued {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.32);
+  color: #fcd34d;
+}
+
+.status-pill.st-cancelled {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: var(--muted);
+}
+
+/* Wide modal for notifications */
+.modal__dialog--wide {
+  max-width: min(900px, 92vw);
+}

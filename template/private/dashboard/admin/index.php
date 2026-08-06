@@ -977,6 +977,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger-notif.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(\Agenduy\Core\AdminBrand::faviconUrl()); ?>">
   <link rel="apple-touch-icon" href="<?php echo e(\Agenduy\Core\AdminBrand::iconUrl()); ?>">
@@ -1839,6 +1840,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               ['id' => 'redes', 'title' => 'Contacto y redes', 'icon' => 'bx-share-alt'],
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
+              ['id' => 'notif-log', 'title' => 'Historial notif.', 'icon' => 'bx-history'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
               ['id' => 'funciones', 'title' => $isStoreMode ? 'Modo del comercio' : 'Funciones', 'icon' => 'bx-wrench'],
               ['id' => 'temas', 'title' => 'Tema visual', 'icon' => 'bx-palette'],
@@ -1924,6 +1926,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         'admin_config_redes_modal.php',
         'admin_config_seo_modal.php',
         'admin_config_notifications_modal.php',
+        'admin_notifications_log_modal.php',
         'admin_config_features_modal.php',
         'admin_config_cart_modal.php',
         'admin_config_mercadopago_modal.php',
@@ -2207,6 +2210,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-redes.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-seo.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-notificaciones.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-notifications-log.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-legales.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-features.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-cart.js')); ?>"></script>
