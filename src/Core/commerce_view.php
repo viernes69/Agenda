@@ -802,16 +802,16 @@ if (!function_exists('agenduy_render_commerce')) {
                 <div class="modal__body">
                     <div id="booking-step-form">
                         <div id="booking-alert" hidden></div>
-                        <?php if ($googleClientId !== ''): ?>
+                            <?php if ($googleClientId !== ''): ?>
                         <div id="booking-google-wrap" hidden>
                             <div id="booking-google-btn"></div>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
+                        <?php endif; ?>
                         <div class="client-history" id="booking-history" hidden>
                             <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
                             <div class="client-history__body" id="booking-history-body"></div>
                         </div>
-                        <?php endif; ?>
                         <form id="booking-form" novalidate>
                             <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="id_service" id="booking-svc-id" value="">
@@ -940,11 +940,11 @@ if (!function_exists('agenduy_render_commerce')) {
                             <p class="hint" id="cart-google-hint" hidden role="status"></p>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
+                        <?php endif; ?>
                         <div class="client-history" id="cart-history" hidden>
                             <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
                             <div class="client-history__body" id="cart-history-body"></div>
                         </div>
-                        <?php endif; ?>
                         <div class="cart-contact" id="cart-contact">
                             <p class="cart-contact__title">Datos para confirmarte el pedido</p>
                             <div class="cart-contact__grid">
@@ -1895,7 +1895,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (!data) return;
                 const fillIfEmpty = (el, value) => {
                     if (!el || !value) return;
-                    if (source === 'lookup' || !String(el.value || '').trim()) {
+                    if (!String(el.value || '').trim()) {
                         el.value = value;
                     }
                 };
@@ -2162,18 +2162,29 @@ if (!function_exists('agenduy_render_commerce')) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
                     alertBox.className = 'alert alert--ok';
-                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Listo! Te enviamos email y WhatsApp con la confirmación.';
+                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Gracias por tu reserva! Te enviamos la confirmación por email y WhatsApp.';
                     alertBox.hidden = false;
-                    setTimeout(closeModal, 2500);
+                    setTimeout(closeModal, 3000);
                     return;
                 }
+                // Show thank-you message, then auto-close
                 if (stepForm) stepForm.hidden = true;
+                const upsellOk = document.getElementById('booking-upsell-ok');
+                if (upsellOk) {
+                    upsellOk.innerHTML = '<i class="bx bx-check-circle"></i> ¡Gracias por tu reserva! Te enviamos la confirmación por email y WhatsApp.';
+                    upsellOk.hidden = false;
+                }
+                const upsellLead = document.getElementById('booking-upsell-lead');
+                if (upsellLead) upsellLead.hidden = true;
+                const upsellGrid = document.getElementById('booking-upsell-grid');
+                if (upsellGrid) upsellGrid.hidden = true;
+                const upsellWaHint = document.getElementById('booking-upsell-wa-hint');
+                if (upsellWaHint) upsellWaHint.hidden = true;
                 stepUpsell.hidden = false;
                 if (footForm) footForm.hidden = true;
-                if (footUpsell) footUpsell.hidden = false;
-                if (bookingTitle) bookingTitle.textContent = '¿Desea productos?';
-                renderUpsellGrid();
-                renderCartUI();
+                if (footUpsell) footUpsell.hidden = true;
+                if (bookingTitle) bookingTitle.textContent = '¡Reserva confirmada!';
+                setTimeout(closeModal, 3500);
             }
 
             function openModal(svcId, svcName) {
@@ -2442,6 +2453,15 @@ if (!function_exists('agenduy_render_commerce')) {
                         telefono: (bookingPhoneInput || {}).value || ''
                     };
                     saveGuest(booking);
+                    renderClientHistory({
+                        reservas: [{
+                            fecha: booking.fecha,
+                            hora: booking.hora,
+                            servicio: booking.servicio,
+                            status: 'Pendiente'
+                        }],
+                        pedidos: []
+                    });
                     showUpsellStep(booking);
                 } catch (err) {
                     const msg = (err && err.name === 'AbortError')
