@@ -163,6 +163,8 @@ try {
 
     $status = strtolower(trim((string)($commerce['status'] ?? ($sub['status'] ?? 'trial'))));
     $planName = trim((string)($commerce['plan_nombre'] ?? 'Sin plan'));
+    $planIsFree = ($membershipId > 0 && (float)($commerce['plan_precio'] ?? 0) <= 0)
+        || in_array(strtolower($planName), ['free', 'gratis', 'gratuito'], true);
     $trialEndRaw = (string)($commerce['trial_expires_at'] ?? ($sub['trial_expires_at'] ?? ''));
     $periodEndRaw = (string)($sub['current_period_end'] ?? ($commerce['next_billing_at'] ?? ''));
 
@@ -186,7 +188,7 @@ try {
     if ($planName !== '') {
         $details[] = ['label' => 'Plan', 'value' => $planName];
     }
-    if ($renewalDisplay !== '') {
+    if ($renewalDisplay !== '' && !($status === 'trial' && $planIsFree)) {
         $details[] = [
             'label' => $status === 'trial' ? 'Fin de prueba' : 'Renovación',
             'value' => $renewalDisplay,
@@ -195,7 +197,21 @@ try {
 
     $ctaLabel = 'Ver planes';
 
-    if ($status === 'trial') {
+    if ($status === 'trial' && $planIsFree) {
+        $planBannerData = $buildBanner(
+            'admin-plan-banner--trial',
+            'Plan gratuito',
+            'Tu prueba ilimitada está activa.',
+            'Prueba ilimitada',
+            $details,
+            'prueba',
+            null,
+            '',
+            $tenantNegocioId,
+            'Mejorar plan',
+            $membershipId
+        );
+    } elseif ($status === 'trial') {
         $message = 'Tu periodo de prueba está activo.';
         if ($daysRemaining !== null) {
             if ($daysRemaining > 1) {

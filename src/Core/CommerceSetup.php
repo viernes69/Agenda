@@ -16,6 +16,27 @@ final class CommerceSetup
 
     public const DEFAULT_PLACEHOLDER_PHONE = '099000000';
     public const DEFAULT_PLACEHOLDER_STREET = 'Completar en el panel';
+    public const URUGUAY_DEPARTMENTS = [
+        'Artigas',
+        'Canelones',
+        'Cerro Largo',
+        'Colonia',
+        'Durazno',
+        'Flores',
+        'Florida',
+        'Lavalleja',
+        'Maldonado',
+        'Montevideo',
+        'Paysandú',
+        'Río Negro',
+        'Rivera',
+        'Rocha',
+        'Salto',
+        'San José',
+        'Soriano',
+        'Tacuarembó',
+        'Treinta y Tres',
+    ];
 
     public static function needsOnboarding(array $commerce): bool
     {
@@ -173,6 +194,9 @@ final class CommerceSetup
         }
         if ($ciudad === '') {
             throw new InvalidArgumentException('Ingresá la ciudad.');
+        }
+        if (!in_array($ciudad, self::URUGUAY_DEPARTMENTS, true)) {
+            throw new InvalidArgumentException('Seleccioná un departamento válido.');
         }
         if ($calle === '') {
             throw new InvalidArgumentException('Ingresá la dirección.');

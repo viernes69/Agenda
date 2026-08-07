@@ -4,9 +4,10 @@ session_start();
 require_once __DIR__ . '/Autoload.php';
 require_once __DIR__ . '/mail_helpers.php';
 
-$projectRoot = dirname(__DIR__, 2);
+$projectRoot = dirname(__DIR__, 3);
 require_once $projectRoot . '/src/Core/bootstrap.php';
 
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\MembershipPlan;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -215,7 +216,7 @@ try {
         respond(['ok' => false, 'error' => 'Cliente no encontrado para la sesion'], 404);
     }
 
-    $tenantSlug = basename(dirname(__DIR__, 2));
+    $tenantSlug = CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 2));
     $plan = MembershipPlan::forCommerceSlug($tenantSlug);
     $waitlist = false;
     $maxAppts = null;

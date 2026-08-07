@@ -9,6 +9,30 @@
   const closeEls = modal.querySelectorAll('[data-admin-reserva-close]');
   const el = (sel) => modal.querySelector(sel);
   const setText = (sel, v) => { const n = el(sel); if (n) n.textContent = String(v || '-'); };
+  const normalizeStatusKey = (value) => {
+    let status = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+    status = status.replace(/\s+/g, ' ');
+    if (!status || status === 'pending' || status === 'sin confirmar') return 'pendiente';
+    if (['confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada'].includes(status)) return 'aprobado';
+    if (['in progress', 'en progreso', 'en curso', 'atendiendo'].includes(status)) return 'en progreso';
+    if (['rejected', 'rechazado', 'rechazada', 'no show', 'no asistio'].includes(status)) return 'rechazado';
+    if (['cancelled', 'canceled', 'cancelado', 'cancelada'].includes(status)) return 'cancelado';
+    if (['completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada'].includes(status)) return 'finalizado';
+    return status;
+  };
+  const statusClassKey = (value) => normalizeStatusKey(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'pendiente';
+  const statusLabel = (value) => {
+    const key = normalizeStatusKey(value);
+    const labels = {
+      pendiente: 'Pendiente',
+      aprobado: 'Aprobado',
+      'en progreso': 'En progreso',
+      rechazado: 'Rechazado',
+      cancelado: 'Cancelado',
+      finalizado: 'Finalizado',
+    };
+    return labels[key] || key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
 
   const fill = (data) => {
     setText('[data-admin-res-cliente]', data.cliente);
@@ -19,17 +43,17 @@
     setText('[data-admin-res-hora]', data.hora);
     const stRaw = (data.status || '').toString();
     const st = stRaw.trim();
-    const stLower = st.toLowerCase();
+    const stKey = normalizeStatusKey(st);
     const stEl = el('[data-admin-res-status]');
-    if (stEl) { stEl.textContent = st; stEl.className = 'status-pill st-' + stLower; }
-    const isPending = stLower === 'pendiente';
+    if (stEl) { stEl.textContent = st || statusLabel(stKey); stEl.className = 'status-pill st-' + statusClassKey(stKey); }
+    const isPending = stKey === 'pendiente';
     const btnRech = el('[data-admin-res-rechazar]');
     const btnAten = el('[data-admin-res-atender]');
     if (btnRech) btnRech.disabled = !isPending;
     if (btnAten) btnAten.disabled = !isPending;
     // Retomar atencion cuando esta aprobado
     const btnResume = el('[data-admin-res-retomar]');
-    if (btnResume) btnResume.hidden = !(stLower === 'aprobado');
+    if (btnResume) btnResume.hidden = !(stKey === 'aprobado');
   };
   const open = () => {
     modal.hidden = false;
@@ -133,8 +157,8 @@
       if (horaInput) horaInput.value = (data.hora && data.hora !== '-') ? String(data.hora).slice(0, 5) : '';
       const reprogramWrap = el('[data-admin-res-reprogram-wrap]');
       if (reprogramWrap) {
-        const statusLower = String(data.status || '').trim().toLowerCase();
-        const locked = ['cancelado', 'finalizado', 'rechazado'].includes(statusLower);
+        const statusKey = normalizeStatusKey(data.status);
+        const locked = ['cancelado', 'finalizado', 'rechazado'].includes(statusKey);
         reprogramWrap.hidden = locked;
       }
       fill(data);
@@ -157,8 +181,9 @@
       if (res.ok && payload && payload.ok) {
         const row = document.querySelector(`[data-admin-res-row-id="${id}"]`);
         if (row) {
+          row.setAttribute('data-admin-reserva-status', normalizeStatusKey(status));
           const pill = row.querySelector('.status-pill');
-          if (pill) { pill.textContent = status; pill.className = 'status-pill st-' + status.toLowerCase(); }
+          if (pill) { pill.textContent = statusLabel(status); pill.className = 'status-pill st-' + statusClassKey(status); }
         }
         close();
         try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}

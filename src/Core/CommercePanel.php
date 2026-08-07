@@ -394,6 +394,13 @@ final class CommercePanel
             return $central;
         }
 
+        if (function_exists('current_slug')) {
+            $requestSlug = current_slug();
+            if (is_string($requestSlug) && $requestSlug !== '' && !self::isTemplateHost($requestSlug)) {
+                return trim($requestSlug, '/');
+            }
+        }
+
         Auth::start();
         if (Auth::check() && Auth::role() === Auth::ROLE_LOCAL) {
             $commerceId = (int)Auth::commerceId();

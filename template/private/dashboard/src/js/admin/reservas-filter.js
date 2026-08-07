@@ -121,8 +121,35 @@
     }
   };
 
+  const syncStatusOptions = (options, labels, selected) => {
+    if (!select || !Array.isArray(options)) return;
+    const clean = [];
+    options.forEach((option) => {
+      const value = String(option || '').trim();
+      if (value && !clean.includes(value)) clean.push(value);
+    });
+    if (!clean.length) clean.push('todos');
+    const active = clean.includes(selected) ? selected : (clean.includes(currentStatus) ? currentStatus : 'todos');
+    const currentSignature = Array.from(select.options).map((option) => option.value).join('|');
+    const nextSignature = clean.join('|');
+    if (currentSignature !== nextSignature) {
+      select.innerHTML = '';
+      clean.forEach((value) => {
+        const optionEl = document.createElement('option');
+        optionEl.value = value;
+        optionEl.textContent = labels && labels[value] ? labels[value] : (value === 'todos' ? 'Todos' : value);
+        select.appendChild(optionEl);
+      });
+    }
+    select.value = active;
+    currentStatus = active;
+  };
+
   const applyData = (payload) => {
     if (!payload) return;
+    if (select && Array.isArray(payload.statusOptions)) {
+      syncStatusOptions(payload.statusOptions, payload.statusLabels || {}, payload.status || currentStatus || defaultValue);
+    }
     if (select && payload.status && !select.dataset.userSelected) {
       select.value = payload.status;
       currentStatus = payload.status;

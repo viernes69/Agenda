@@ -8,6 +8,7 @@ require_once $projectRoot . '/src/Core/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/src/API/Autoload.php';
 
 use Agenduy\Core\TenantApiGuard;
+use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,6 +22,10 @@ $tenantStaff = TenantApiGuard::requireStaff(dirname(__DIR__, 4));
 $activeSession = $tenantStaff['session'];
 $employeeRole = $tenantStaff['role'];
 $isFunc = $employeeRole === 'func';
+$tenantSlug = (string)($tenantStaff['slug'] ?? '');
+if ($tenantSlug !== '') {
+    TenantLocalDb::syncCentralAppointments($tenantSlug);
+}
 
 $escape = static function ($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -137,8 +142,7 @@ $statusRegistry = [];
 $pendingBadge   = 0;
 foreach ($reservas as $row) {
     if (!is_array($row)) continue;
-    $status = strtolower(trim((string)($row['Status'] ?? '')));
-    if ($status === '') $status = 'pendiente';
+    $status = TenantLocalDb::normalizeStatusKey((string)($row['Status'] ?? ''));
     $statusRegistry[$status] = true;
 
     if ($status !== 'pendiente' && $status !== 'sin confirmar') {
@@ -155,13 +159,10 @@ foreach ($reservas as $row) {
 }
 
 $statusSeed = ['pendiente', 'aprobado', 'en progreso', 'rechazado', 'cancelado', 'finalizado'];
-$statusList = [];
+$statusList = $statusSeed;
 $registryCopy = $statusRegistry;
 foreach ($statusSeed as $seed) {
-    if (isset($registryCopy[$seed])) {
-        $statusList[] = $seed;
-        unset($registryCopy[$seed]);
-    }
+    unset($registryCopy[$seed]);
 }
 if (!empty($registryCopy)) {
     foreach ($registryCopy as $extra => $_) {
@@ -169,8 +170,8 @@ if (!empty($registryCopy)) {
     }
 }
 
-$statusFilter = strtolower(trim((string)($_GET['status'] ?? '')));
-$hasPendiente = in_array('pendiente', $statusList, true);
+$statusFilterRaw = strtolower(trim((string)($_GET['status'] ?? '')));
+$statusFilter = $statusFilterRaw === '' ? '' : ($statusFilterRaw === 'todos' ? 'todos' : TenantLocalDb::normalizeStatusKey($statusFilterRaw));
 $defaultStatus = 'todos';
 if ($statusFilter === '' || ($statusFilter !== 'todos' && !in_array($statusFilter, $statusList, true))) {
     $statusFilter = $defaultStatus;
@@ -197,9 +198,7 @@ sort($availableDates);
 
 $statusOptions = array_merge(['todos'], $statusList);
 $formatStatusLabel = static function (string $value): string {
-    $value = strtolower(trim($value));
-    if ($value === '' || $value === 'pendiente') return 'Pendiente';
-    return ucwords($value);
+    return TenantLocalDb::statusLabel($value);
 };
 
 $statusOptionLabels = [];
@@ -211,8 +210,7 @@ $currentStatusLabel = $statusOptionLabels[$statusFilter] ?? ($statusFilter === '
 $prepared = [];
 foreach ($reservas as $row) {
     if (!is_array($row)) continue;
-    $status = strtolower(trim((string)($row['Status'] ?? '')));
-    if ($status === '') $status = 'pendiente';
+    $status = TenantLocalDb::normalizeStatusKey((string)($row['Status'] ?? ''));
 
     $fecha = trim((string)($row['Fecha_Reserva'] ?? ''));
     $hora  = trim((string)($row['Hora_Reserva'] ?? ''));
@@ -289,6 +287,7 @@ foreach ($prepared as $row) {
 
     $statusNorm  = $row['_status_norm'] ?? 'pendiente';
     $statusLabel = $statusOptionLabels[$statusNorm] ?? $formatStatusLabel($statusNorm);
+    $statusClass = TenantLocalDb::statusClassKey((string)$statusNorm);
     $timestampAttr = (isset($row['_timestamp']) && $row['_timestamp'] !== PHP_INT_MAX) ? (string)(int)$row['_timestamp'] : '';
     $idReserva = (int)($row['ID_Reserva'] ?? 0);
 
@@ -299,9 +298,13 @@ foreach ($prepared as $row) {
     $rowHtml .= '<td class="numeric">' . $escape($servicePriceLabel) . '</td>';
     $rowHtml .= '<td>' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
     $rowHtml .= '<td>' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
-    $rowHtml .= '<td><span class="status-pill st-' . $escape($statusNorm) . '">' . $escape($statusLabel) . '</span></td>';
+    $rowHtml .= '<td><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
     if (in_array($statusNorm, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)) {
-        $rowHtml .= '<td><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
+        if ($statusNorm === 'pendiente') {
+            $rowHtml .= '<td><button type="button" class="btn btn-success btn-sm admin-reserva-attend" data-admin-view-reserva="' . $idReserva . '" data-admin-reserva-attend>Ver y Atender</button></td>';
+        } else {
+            $rowHtml .= '<td><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
+        }
     } else {
         $rowHtml .= '<td><span class="muted">-</span></td>';
     }
@@ -321,6 +324,8 @@ $respond(200, [
     'dates'     => $availableDates,
     'finalizedAmount' => $totalFinalizedAmount,
     'finalizedLabel'  => 'Total finalizado: ' . $formatCurrency($totalFinalizedAmount),
+    'statusOptions' => $statusOptions,
+    'statusLabels' => $statusOptionLabels,
     'html'      => $rowHtml,
     'badge'     => $pendingBadge,
     'emptyMessage' => 'No hay reservas para el estado seleccionado.'

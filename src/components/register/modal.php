@@ -5,11 +5,13 @@
  */
 $config = require dirname(__DIR__, 2) . '/Core/bootstrap.php';
 use Agenduy\Core\Database;
+use Agenduy\Core\CommerceSetup;
 
 $db = Database::getInstance();
 $rubros = $db->fetchAll('SELECT id_rubro, nombre, tipo FROM rubros WHERE activo = 1 ORDER BY orden ASC, nombre COLLATE NOCASE ASC');
 $plans = $db->fetchAll('SELECT * FROM memberships WHERE activo = 1 ORDER BY precio ASC, id_membership ASC');
 $planDestacado = $plans[0] ?? null;
+$departamentosUy = CommerceSetup::URUGUAY_DEPARTMENTS;
 $registerDays = [
   'lunes' => 'Lunes', 'martes' => 'Martes', 'miercoles' => 'Mi&eacute;rcoles',
   'jueves' => 'Jueves', 'viernes' => 'Viernes', 'sabado' => 'S&aacute;bado', 'domingo' => 'Domingo',
@@ -95,7 +97,14 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
                 <option value="PY">Paraguay</option>
               </select>
             </label>
-            <label class="reg-field"><span>Ciudad</span><input type="text" name="business_city" required></label>
+            <label class="reg-field"><span>Departamento</span>
+              <select name="business_city" required>
+                <option value="">Selecciona un departamento</option>
+                <?php foreach ($departamentosUy as $departamento): ?>
+                  <option value="<?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
             <label class="reg-field"><span>Calle y n&uacute;mero</span><input type="text" name="business_street" required></label>
             <label class="reg-field reg-field--full">
               <span>Rubro</span>

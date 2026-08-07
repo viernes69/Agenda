@@ -1907,7 +1907,8 @@ body {
 }
 
 .status-pill.st-aprobado,
-.status-pill.st-approved {
+.status-pill.st-approved,
+.status-pill.st-en-progreso {
   background: rgba(59, 188, 189, 0.18);
   border-color: rgba(59, 188, 189, 0.32);
   color: #5eead4;

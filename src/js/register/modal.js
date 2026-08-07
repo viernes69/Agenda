@@ -803,7 +803,8 @@
 
     const sendRegister = async () => {
       const body = { ...data, _csrf: csrfToken };
-      const urlBase = (window.__AGENDUY_CONFIG__ && window.__AGENDUY_CONFIG__.urlBase) ? window.__AGENDUY_CONFIG__.urlBase : '';
+      const rawUrlBase = (window.__AGENDUY_CONFIG__ && window.__AGENDUY_CONFIG__.urlBase) ? window.__AGENDUY_CONFIG__.urlBase : '';
+      const urlBase = rawUrlBase ? (rawUrlBase.endsWith('/') ? rawUrlBase : rawUrlBase + '/') : '';
       const response = await fetch(urlBase + 'src/API/register.php', {
         method: 'POST',
         headers: {

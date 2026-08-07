@@ -605,25 +605,62 @@ final class TenantLocalDb
 
     public static function mapCentralStatusToLocal(string $status): string
     {
-        $s = strtolower(trim($status));
-        return match ($s) {
-            'confirmed', 'aprobado', 'approved', 'confirmado' => 'Aprobado',
-            'cancelled', 'canceled', 'cancelado', 'rechazado', 'rejected' => 'Cancelado',
-            'completed', 'finalizado', 'done' => 'Finalizado',
-            'in_progress', 'en progreso' => 'En progreso',
+        return match (self::normalizeStatusKey($status)) {
+            'aprobado' => 'Aprobado',
+            'cancelado' => 'Cancelado',
+            'rechazado' => 'Rechazado',
+            'finalizado' => 'Finalizado',
+            'en progreso' => 'En progreso',
             default => 'Pendiente',
         };
     }
 
     public static function mapLocalStatusToCentral(string $status): string
     {
-        $s = strtolower(trim($status));
-        return match ($s) {
-            'aprobado', 'approved', 'confirmed', 'confirmado' => 'confirmed',
-            'cancelado', 'cancelled', 'canceled', 'rechazado', 'rejected' => 'cancelled',
-            'finalizado', 'completed', 'done' => 'done',
-            'en progreso', 'in_progress' => 'confirmed',
+        return match (self::normalizeStatusKey($status)) {
+            'aprobado', 'en progreso' => 'confirmed',
+            'cancelado', 'rechazado' => 'cancelled',
+            'finalizado' => 'done',
             default => 'pending',
+        };
+    }
+
+    public static function normalizeStatusKey(string $status): string
+    {
+        $s = strtolower(trim($status));
+        $s = str_replace(['_', '-'], ' ', $s);
+        $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+
+        return match ($s) {
+            '', 'pending', 'pendiente', 'sin confirmar' => 'pendiente',
+            'confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada' => 'aprobado',
+            'in progress', 'en progreso', 'en curso', 'atendiendo' => 'en progreso',
+            'rejected', 'rechazado', 'rechazada', 'no show', 'no asistio' => 'rechazado',
+            'cancelled', 'canceled', 'cancelado', 'cancelada' => 'cancelado',
+            'completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada' => 'finalizado',
+            default => $s,
+        };
+    }
+
+    public static function statusClassKey(string $status): string
+    {
+        $key = self::normalizeStatusKey($status);
+        $class = preg_replace('/[^a-z0-9]+/', '-', $key) ?? '';
+        $class = trim($class, '-');
+        return $class !== '' ? $class : 'pendiente';
+    }
+
+    public static function statusLabel(string $status): string
+    {
+        $key = self::normalizeStatusKey($status);
+        return match ($key) {
+            'pendiente' => 'Pendiente',
+            'aprobado' => 'Aprobado',
+            'en progreso' => 'En progreso',
+            'rechazado' => 'Rechazado',
+            'cancelado' => 'Cancelado',
+            'finalizado' => 'Finalizado',
+            default => ucwords(str_replace(['_', '-'], ' ', $key)),
         };
     }
 

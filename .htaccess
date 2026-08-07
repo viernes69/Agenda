@@ -41,6 +41,8 @@ ServerSignature Off
 
     # Si NO es archivo ni directorio (ej: /agenduy.uy/la-barberia/ sin carpeta física),
     # enrutar al index.php raíz que detecta el slug y renderiza el comercio
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php [L,QSA]
 </IfModule>
 

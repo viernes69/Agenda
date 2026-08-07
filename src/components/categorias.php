@@ -44,7 +44,7 @@ $defaultPlan = $planes[0] ?? ['id_membership' => '', 'nombre' => 'Plan', 'precio
       ?>
       <article class="cat-card">
         <div class="cat-imgfill">
-          <img src="<?php echo h(url($img)); ?>" alt="<?php echo h($nombre); ?>">
+          <img src="<?php echo h(url($img)); ?>" alt="<?php echo h($nombre); ?>" loading="lazy" decoding="async" width="600" height="400">
           <div class="cat-overlay">
             <div class="cat-overlay__text">
               <h4 class="cat-ttl"><?php echo h($nombre); ?></h4>

@@ -46,7 +46,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             'whatsapp' => $_POST['whatsapp'] ?? '',
             'ciudad'   => $_POST['ciudad'] ?? '',
             'calle'    => $_POST['calle'] ?? '',
-            'servicio' => $_POST['servicio'] ?? '',
+            'servicios' => $_POST['servicios'] ?? [],
         ]);
         $slug = trim((string)($commerce['slug'] ?? ''));
         header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'resumen', ['setup' => 'ok']));
@@ -57,6 +57,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
+$departamentosUy = CommerceSetup::URUGUAY_DEPARTMENTS;
+$selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 ?>
 <!doctype html>
 <html lang="es">
@@ -69,7 +71,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 <link rel="icon" type="image/png" href="<?= htmlspecialchars(\Agenduy\Core\AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
 <meta name="theme-color" content="#7c3aed">
 <style>
-.setup-wrap { max-width: 640px; margin: 2rem auto; padding: 0 1rem 3rem; }
+.setup-wrap { max-width: 760px; margin: 2rem auto; padding: 0 1rem 3rem; }
 .setup-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -91,10 +93,14 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 .setup-panel[hidden] { display: none !important; }
 .setup-grid { display: grid; gap: .9rem; }
 .setup-grid label { display: grid; gap: .35rem; font-size: .9rem; }
-.setup-grid input {
+.setup-grid input,
+.setup-grid select,
+.service-card input {
     width: 100%; padding: .65rem .75rem; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    min-height: 42px;
 }
+.setup-grid select { appearance: auto; }
 .setup-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.25rem; }
 .setup-toast {
     position: fixed; right: 1rem; bottom: 1rem; z-index: 50;
@@ -115,13 +121,14 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: .85rem;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(220px, 1.35fr) minmax(120px, .65fr) minmax(150px, .8fr) 40px;
     gap: .65rem;
-    align-items: flex-start;
+    align-items: end;
     position: relative;
 }
-.service-col { flex: 1; display: flex; flex-direction: column; gap: .25rem; }
-.service-col.name-col { flex: 2; }
+.service-col { min-width: 0; display: flex; flex-direction: column; gap: .25rem; }
+.service-col.name-col { min-width: 0; }
 .setup-sublabel { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .btn-remove-service {
     background: transparent;
@@ -139,9 +146,12 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 }
 .btn-remove-service:hover { background: rgba(220,38,38,.15); color: #f87171; border-color: rgba(220,38,38,.3); }
 @media (max-width: 540px) {
-    .service-card { flex-wrap: wrap; }
-    .service-col.name-col { flex: 100%; }
-    .service-col { flex: 1; }
+    .service-card { grid-template-columns: 1fr; }
+    .btn-remove-service { width: 100%; }
+}
+@media (min-width: 541px) and (max-width: 700px) {
+    .service-card { grid-template-columns: 1fr 1fr 40px; }
+    .service-col.name-col { grid-column: 1 / -1; }
 }
 </style>
 </head>
@@ -170,10 +180,15 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
                                placeholder="Ej: Consultorio Lucas Iglesias">
                     </label>
                     <label>
-                        <span>Ciudad *</span>
-                        <input type="text" name="ciudad" required maxlength="80"
-                               value="<?= htmlspecialchars((string)$snapshot['ciudad'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Montevideo">
+                        <span>Departamento *</span>
+                        <select name="ciudad" required>
+                            <option value="">Seleccioná un departamento</option>
+                            <?php foreach ($departamentosUy as $departamento): ?>
+                                <option value="<?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>" <?= $selectedDepartamento === $departamento ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
                     <label>
                         <span>Dirección *</span>
@@ -289,7 +304,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
           '<label class="setup-sublabel">Precio ($) *</label>' +
           '<input type="number" name="servicios[' + serviceIndex + '][precio]" required min="0" step="0.01" value="0" placeholder="0">' +
         '</div>' +
-        '<button type="button" class="btn-remove-service" title="Eliminar servicio" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>';
+        '<button type="button" class="btn-remove-service" title="Eliminar servicio">&times;</button>';
       servicesContainer.appendChild(card);
     });
 
@@ -344,7 +359,7 @@ $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
   function validateStep(num) {
     var panel = document.querySelector('[data-step="' + num + '"]');
     if (!panel) return true;
-    var fields = panel.querySelectorAll('input[required]');
+    var fields = panel.querySelectorAll('input[required], select[required], textarea[required]');
     for (var i = 0; i < fields.length; i++) {
       if (!fields[i].value.trim()) {
         fields[i].focus();

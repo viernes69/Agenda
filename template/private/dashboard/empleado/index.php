@@ -16,6 +16,13 @@ function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
 $tenantRootPath = dirname(__DIR__, 3);
 $tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug($tenantRootPath);
+if (
+  class_exists(\Agenduy\Core\TenantLocalDb::class)
+  && $tenantSlug !== ''
+  && !\Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)
+) {
+  \Agenduy\Core\TenantLocalDb::syncCentralAppointments((string)$tenantSlug);
+}
 $maxClientsLimit = null;
 $maxProductsLimit = null;
 try {
@@ -88,7 +95,7 @@ $pendingReservations = 0;
 $todayDateObj = new DateTime('today');
 foreach ($reservas as $rv) {
   if (!is_array($rv)) continue;
-  $statusRaw = strtolower(trim((string)($rv['Status'] ?? $rv['status'] ?? '')));
+  $statusRaw = \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($rv['Status'] ?? $rv['status'] ?? ''));
   if ($statusRaw !== '' && $statusRaw !== 'pendiente' && $statusRaw !== 'sin confirmar') {
     continue;
   }
@@ -253,8 +260,7 @@ $totalReservas = count($reservas);
 $reservasHoy = 0; $reservasPend = 0; $reservasActivas = 0;
 $statusRegistry = [];
 foreach ($reservas as $r) {
-  $st = strtolower(trim((string)($r['Status'] ?? '')));
-  if ($st === '') { $st = 'pendiente'; }
+  $st = \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($r['Status'] ?? ''));
   $statusRegistry[$st] = true;
   if ((string)($r['Fecha_Reserva'] ?? '') === $today) { $reservasHoy++; }
   if ($st === 'pendiente') { $reservasPend++; }
@@ -262,21 +268,18 @@ foreach ($reservas as $r) {
 }
 
 $statusOrderSeed = ['pendiente', 'aprobado', 'en progreso', 'rechazado', 'cancelado', 'finalizado'];
-$statusList = [];
+$statusList = $statusOrderSeed;
 foreach ($statusOrderSeed as $seed) {
-  if (isset($statusRegistry[$seed])) {
-    $statusList[] = $seed;
-    unset($statusRegistry[$seed]);
-  }
+  unset($statusRegistry[$seed]);
 }
 if (!empty($statusRegistry)) {
   foreach ($statusRegistry as $rest => $_) {
     $statusList[] = $rest;
   }
 }
-$statusFilter = strtolower(trim((string)($_GET['res_status'] ?? '')));
-$hasPendiente = in_array('pendiente', $statusList, true);
-$defaultStatus = $hasPendiente ? 'pendiente' : 'todos';
+$statusFilterRaw = strtolower(trim((string)($_GET['res_status'] ?? '')));
+$statusFilter = $statusFilterRaw === '' ? '' : ($statusFilterRaw === 'todos' ? 'todos' : \Agenduy\Core\TenantLocalDb::normalizeStatusKey($statusFilterRaw));
+$defaultStatus = 'todos';
 if ($statusFilter === '' || ($statusFilter !== 'todos' && !in_array($statusFilter, $statusList, true))) {
   $statusFilter = $defaultStatus;
 }
@@ -300,9 +303,7 @@ $reservaDatesJson = json_encode(array_values($reservaDates), JSON_UNESCAPED_UNIC
 
 $statusOptions = array_merge(['todos'], $statusList);
 $formatStatusLabel = static function($value) {
-  $value = strtolower(trim((string)$value));
-  if ($value === '' || $value === 'pendiente') { return 'Pendiente'; }
-  return ucwords($value);
+  return \Agenduy\Core\TenantLocalDb::statusLabel((string)$value);
 };
 $statusOptionLabels = [];
 foreach ($statusOptions as $option) {
@@ -312,8 +313,7 @@ $currentStatusLabel = $statusOptionLabels[$statusFilter] ?? ($statusFilter === '
 $nowTs = time();
 $ultimas = [];
 foreach ($reservas as $r) {
-  $st = strtolower(trim((string)($r['Status'] ?? '')));
-  if ($st === '') { $st = 'pendiente'; }
+  $st = \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($r['Status'] ?? ''));
 
   $fecha = trim((string)($r['Fecha_Reserva'] ?? ''));
   $hora = trim((string)($r['Hora_Reserva'] ?? ''));
@@ -385,7 +385,11 @@ foreach ($ultimas as $row) {
   }
   $sid = (string)($row['ID_Servicio'] ?? '');
   $serviceData = $serviciosMap[$sid] ?? [];
-  $finalizedAmount += $normalizeAmount($serviceData['Precio'] ?? 0);
+  if (isset($row['Precio']) && is_numeric($row['Precio']) && (float)$row['Precio'] > 0) {
+    $finalizedAmount += $normalizeAmount($row['Precio']);
+  } else {
+    $finalizedAmount += $normalizeAmount($serviceData['Precio'] ?? 0);
+  }
 }
 $finalizedAmountLabel = 'Total finalizado: ' . $formatCurrency($finalizedAmount);
 
@@ -719,8 +723,7 @@ foreach ($reservas as $reserva) {
   $fecha = $fechaObj->format('Y-m-d');
   $mesId = $fechaObj->format('Y-m');
   $hora = trim((string)($reserva['Hora_Reserva'] ?? ''));
-  $statusRaw = strtolower(trim((string)($reserva['Status'] ?? '')));
-  if ($statusRaw === '') { $statusRaw = 'pendiente'; }
+  $statusRaw = \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($reserva['Status'] ?? ''));
   $sid = isset($reserva['ID_Servicio']) ? (string)(int)$reserva['ID_Servicio'] : '';
   $precio = 0.0;
   if (isset($reserva['Precio']) && is_numeric($reserva['Precio']) && (float)$reserva['Precio'] > 0) {
@@ -1155,9 +1158,9 @@ $summaryCards = [
                     $serviceImgUrl = '../../../' . ltrim($serviceImgRel, '/');
                   }
                 }
-                $st = isset($r['_status_norm']) ? $r['_status_norm'] : strtolower(trim((string)($r['Status'] ?? 'pendiente')));
-                $stLabel = $statusOptionLabels[$st] ?? ucwords(str_replace(['_', '-'], ' ', $st));
-                $cls = 'st-' . $st;
+                $st = isset($r['_status_norm']) ? $r['_status_norm'] : \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($r['Status'] ?? ''));
+                $stLabel = $statusOptionLabels[$st] ?? \Agenduy\Core\TenantLocalDb::statusLabel($st);
+                $cls = 'st-' . \Agenduy\Core\TenantLocalDb::statusClassKey($st);
                 $timestampAttr = '';
                 if (isset($r['_timestamp']) && $r['_timestamp'] !== PHP_INT_MAX) {
                   $timestampAttr = (string)(int)$r['_timestamp'];
@@ -1180,7 +1183,7 @@ $summaryCards = [
                 <td><?php echo e(substr((string)($r['Hora_Reserva'] ?? ''),0,5)); ?></td>
                 <td><span class="status-pill <?php echo e($cls); ?>"><?php echo e($stLabel); ?></span></td>
                 <td>
-                  <?php if (in_array($st, ['pendiente','aprobado','rechazado','cancelado','finalizado'], true)): ?>
+                  <?php if (in_array($st, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)): ?>
                     <?php if ($st === 'pendiente'): ?>
                       <button
                         type="button"

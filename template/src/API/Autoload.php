@@ -8,6 +8,22 @@ class AutoloadDB {
         if (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) && AGENDUY_LOCAL_DB_PATH !== '') {
             return AGENDUY_LOCAL_DB_PATH;
         }
+        $projectRoot = dirname(__DIR__, 3);
+        $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+        if (is_file($bootstrap)) {
+            require_once $bootstrap;
+            if (class_exists(\Agenduy\Core\CommercePanel::class) && class_exists(\Agenduy\Core\TenantLocalDb::class)) {
+                try {
+                    $slug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 2));
+                    if ($slug !== '' && !\Agenduy\Core\CommercePanel::isTemplateHost($slug)
+                        && \Agenduy\Core\TenantLocalDb::exists($slug)) {
+                        return \Agenduy\Core\TenantLocalDb::pathForSlug($slug);
+                    }
+                } catch (\Throwable $e) {
+                    error_log('[AutoloadDB] tenant db resolve: ' . $e->getMessage());
+                }
+            }
+        }
         return __DIR__ . '/../db/database.php';
     }
 
@@ -753,7 +769,11 @@ if (php_sapi_name() !== 'cli' && realpath(__FILE__) === realpath($_SERVER['SCRIP
     $projectRoot = dirname(__DIR__, 3);
     require_once $projectRoot . '/src/Core/bootstrap.php';
 
-    \Agenduy\Core\TenantApiGuard::requireStaff(dirname(__DIR__, 2));
+    $tenantStaff = \Agenduy\Core\TenantApiGuard::requireStaff(dirname(__DIR__, 2));
+    $tenantSlug = (string)($tenantStaff['slug'] ?? '');
+    if ($tenantSlug !== '' && class_exists(\Agenduy\Core\TenantLocalDb::class)) {
+        \Agenduy\Core\TenantLocalDb::syncCentralAppointments($tenantSlug);
+    }
 
     header('Content-Type: application/json; charset=utf-8');
 

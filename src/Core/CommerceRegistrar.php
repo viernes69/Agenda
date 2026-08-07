@@ -80,6 +80,9 @@ final class CommerceRegistrar
             $cedula = 'GOOGLE-' . substr((string)($googleProfile['sub'] ?? bin2hex(random_bytes(4))), 0, 12);
         }
         self::assert($bizName !== '' && $ciudad !== '' && $calle !== '' && $tel !== '', 'Completa los datos del negocio.');
+        if ($pais === 'UY') {
+            self::assert(in_array($ciudad, CommerceSetup::URUGUAY_DEPARTMENTS, true), 'Selecciona un departamento valido.');
+        }
         self::assert($rubroId > 0, 'Selecciona un rubro válido.');
         if (!$isStore) {
             self::assert(count($services) > 0, 'Agrega al menos un servicio.');

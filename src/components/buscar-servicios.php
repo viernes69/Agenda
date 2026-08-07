@@ -125,7 +125,8 @@ try {
                      alt="Logo de <?php echo h($name); ?>"
                      class="search-card__avatar-img"
                      loading="lazy"
-                     decoding="async" />
+                     decoding="async"
+                     width="48" height="48" />
               <?php endif; ?>
               <span class="search-card__initials" aria-hidden="true"><?php echo h($initials); ?></span>
             </div>

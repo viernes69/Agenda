@@ -19,10 +19,13 @@
 # Tenant runtime
 **/src/db/backups/
 **/src/db/database.lock
+/src/db/*.sqlite*
 **/logs/*
 !**/logs/.gitkeep
 /src/media/commerce/**
 !/src/media/commerce/.gitkeep
+**/error_log.txt
+/cookies.txt
 
 # OS / IDE
 .DS_Store

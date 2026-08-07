@@ -311,7 +311,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
             ?>
             <li class="hc-card" data-rubro-id="<?= (int)$r['id_rubro'] ?>" data-plan-id="">
               <figure>
-                <img src="<?= h(url($rImg)) ?>" alt="<?= h($r['nombre']) ?>" loading="lazy" decoding="async">
+                <img src="<?= h(url($rImg)) ?>" alt="<?= h($r['nombre']) ?>" loading="lazy" decoding="async" width="104" height="104">
                 <figcaption><?= h($r['nombre']) ?></figcaption>
                 <div class="hc-highlight">Gratis ilimitado</div>
                 <div class="hc-perks">
@@ -335,8 +335,8 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
           <?php else: ?>
             <li class="hc-card">
               <figure>
-                <img src="<?= h(url('src/media/carousel/barberias.jpg')) ?>" alt="Barberias">
-                <figcaption>Barberias</figcaption>
+                <img src="<?= h(url('src/media/carousel/barberias.jpg')) ?>" alt="Barberías" loading="lazy" decoding="async" width="104" height="104">
+                <figcaption>Barberías</figcaption>
                 <button type="button" class="plan-btn" data-rubro-id="0" data-rubro-nombre="Barberias">Comenzar ahora</button>
               </figure>
             </li>
@@ -360,7 +360,7 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
         ?>
           <span class="trust-banner__avatar<?php echo $avatarSrc === '' ? ' trust-banner__avatar--empty' : ''; ?>">
             <?php if ($avatarSrc !== ''): ?>
-              <img src="<?php echo h($avatarSrc); ?>" alt="Cliente satisfecho <?php echo $i + 1; ?>">
+              <img src="<?php echo h($avatarSrc); ?>" alt="Cliente satisfecho <?php echo $i + 1; ?>" loading="lazy" decoding="async" width="52" height="52">
             <?php else: ?>
               <span aria-hidden="true">AG</span>
             <?php endif; ?>
