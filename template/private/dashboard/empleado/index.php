@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 date_default_timezone_set('America/Montevideo');
 
 $projectRoot = dirname(__DIR__, 4);
@@ -25,15 +25,18 @@ if (
 }
 $maxClientsLimit = null;
 $maxProductsLimit = null;
+$maxProfessionalsLimit = null;
 try {
   $empleadoPlanRow = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
   if (is_array($empleadoPlanRow)) {
     $maxClientsLimit = \Agenduy\Core\MembershipPlan::maxClients($empleadoPlanRow);
     $maxProductsLimit = \Agenduy\Core\MembershipPlan::maxProducts($empleadoPlanRow);
+    $maxProfessionalsLimit = \Agenduy\Core\MembershipPlan::maxProfessionals($empleadoPlanRow);
   }
 } catch (Throwable $e) {
   $maxClientsLimit = null;
   $maxProductsLimit = null;
+  $maxProfessionalsLimit = null;
 }
 
 function admin_normalize_public_list($value, string $primaryKey): array {
@@ -1302,12 +1305,20 @@ $summaryCards = [
               $adminBarberCount++;
             }
           }
+          $barbersAtLimit = ($maxProfessionalsLimit !== null && $adminBarberCount >= (int)$maxProfessionalsLimit);
           ?>
           <div class="admin-barbers-header admin-section-tools">
-            <button type="button" class="admin-barbers-create" data-admin-barber-create>
-              <i class="bx bx-user-plus"></i>
-              Registrar un Profesional
-            </button>
+            <?php if ($barbersAtLimit): ?>
+              <button type="button" class="btn btn-outline admin-barbers-create" data-plan-membership-open title="Mejorá tu plan para registrar más profesionales">
+                <i class="bx bx-crown" aria-hidden="true"></i>
+                <span>Mejorar plan</span>
+              </button>
+            <?php else: ?>
+              <button type="button" class="admin-barbers-create" data-admin-barber-create>
+                <i class="bx bx-user-plus"></i>
+                Registrar un Profesional
+              </button>
+            <?php endif; ?>
             <span class="admin-section-count admin-barbers-count" data-admin-barber-count>Total: <?php echo (int)$adminBarberCount; ?></span>
           </div>
           <div class="admin-barbers-list" data-admin-barber-list>

@@ -176,17 +176,20 @@ $planSettingsTier = 'full';
 $currentPlanRow = null;
 $maxClientsLimit = null;
 $maxProductsLimit = null;
+$maxProfessionalsLimit = null;
 try {
   $currentPlanRow = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
   if (is_array($currentPlanRow)) {
     $planSettingsTier = \Agenduy\Core\MembershipPlan::settingsTier($currentPlanRow);
     $maxClientsLimit = \Agenduy\Core\MembershipPlan::maxClients($currentPlanRow);
     $maxProductsLimit = \Agenduy\Core\MembershipPlan::maxProducts($currentPlanRow);
+    $maxProfessionalsLimit = \Agenduy\Core\MembershipPlan::maxProfessionals($currentPlanRow);
   }
 } catch (Throwable $e) {
   $planSettingsTier = 'full';
   $maxClientsLimit = null;
   $maxProductsLimit = null;
+  $maxProfessionalsLimit = null;
 }
 // Source of truth: CommerceSettings funciones (central DB), fallback: legacy features (local database.php)
 $funcionesFromLegacy = $infoBarberia['features'] ?? [];
@@ -1502,12 +1505,20 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               $adminBarberCount++;
             }
           }
+          $barbersAtLimit = ($maxProfessionalsLimit !== null && $adminBarberCount >= (int)$maxProfessionalsLimit);
           ?>
           <div class="admin-barbers-header admin-section-tools">
-            <button type="button" class="admin-barbers-create" data-admin-barber-create>
-              <i class="bx bx-user-plus"></i>
-              Registrar un Profesional
-            </button>
+            <?php if ($barbersAtLimit): ?>
+              <button type="button" class="btn btn-outline admin-barbers-create" data-plan-membership-open title="Mejorá tu plan para registrar más profesionales">
+                <i class="bx bx-crown" aria-hidden="true"></i>
+                <span>Mejorar plan</span>
+              </button>
+            <?php else: ?>
+              <button type="button" class="admin-barbers-create" data-admin-barber-create>
+                <i class="bx bx-user-plus"></i>
+                Registrar un Profesional
+              </button>
+            <?php endif; ?>
             <span class="admin-section-count admin-barbers-count" data-admin-barber-count>Total: <?php echo (int)$adminBarberCount; ?></span>
           </div>
           <div class="admin-barbers-list" data-admin-barber-list>
