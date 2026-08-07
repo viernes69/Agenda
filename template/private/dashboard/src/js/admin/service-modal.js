@@ -8,6 +8,9 @@
   const modalLoading = window.AdminModalLoading;
   const finishBtn = serviceModal.querySelector('[data-service-finish]');
   const closeEls = serviceModal.querySelectorAll('[data-admin-service-close]');
+  const apiBase = (window.AdminApiBase
+    ? String(window.AdminApiBase).replace(/\/?$/, '/') + 'Autoload.php'
+    : '../../../src/API/Autoload.php');
 
   const open = () => {
     serviceModal.hidden = false;
@@ -34,14 +37,16 @@
       const reservaModal = document.querySelector('[data-admin-modal="reserva"]');
       const id = reservaModal && reservaModal.getAttribute('data-admin-reserva-id');
       if (!id) { close(); return; }
-      const res = await fetch('../../../src/API/Autoload.php', {
+      const res = await fetch(apiBase, {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'same-origin',
         body: new URLSearchParams({ action: 'update', table: 'reservas', id, data: JSON.stringify({ Status: 'Finalizado' }) })
       });
       const payload = await res.json();
       if (res.ok && payload && payload.ok) {
         const row = document.querySelector(`[data-admin-res-row-id="${id}"]`);
         if (row) {
+          row.setAttribute('data-admin-reserva-status', 'finalizado');
           const pill = row.querySelector('.status-pill');
           if (pill) { pill.textContent = 'Finalizado'; pill.className = 'status-pill st-finalizado'; }
         }

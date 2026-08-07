@@ -70,19 +70,57 @@
   closeEls.forEach((x) => x.addEventListener('click', close));
 
   // Fetch helpers
-  const apiBase = '../../../src/API/Autoload.php';
-  const fetchJson = async (url) => { const r = await fetch(url); try { return await r.json(); } catch (_) { return null; } };
+  const apiBase = (window.AdminApiBase
+    ? String(window.AdminApiBase).replace(/\/?$/, '/') + 'Autoload.php'
+    : '../../../src/API/Autoload.php');
+  const fetchJson = async (url) => {
+    const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+    try { return await r.json(); } catch (_) { return null; }
+  };
+
+  const startAttendFlow = async () => {
+    const ok = await adminConfirm({
+      title: 'Atender reserva',
+      message: '\u00bfConfirmas que vas a atender esta reserva ahora?',
+      confirmText: 'Atender',
+    });
+    if (!ok) return;
+    const fecha = modal.getAttribute('data-admin-res-fecha') || '';
+    const hora = (modal.getAttribute('data-admin-res-hora') || '').slice(0,5);
+    const now = new Date();
+    const nowDate = ymd(now);
+    const nowTime = hm(now);
+    let proceed = true;
+    if (!(nowDate === fecha && nowTime === hora)) {
+      proceed = await adminConfirm({
+        title: 'Fuera de horario',
+        message: 'Vas a atender este cliente fuera del horario de la reserva, \u00bfDeseas avanzar?',
+        confirmText: 'Atender igual',
+      });
+    }
+    if (!proceed) return;
+    try { if (btnAten) btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
+    const okUpdate = await actionUpdate('Aprobado');
+    try { if (btnAten) btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
+    if (okUpdate) {
+      try { window.openServiceFlow && window.openServiceFlow(modal.getAttribute('data-admin-reserva-id')); } catch (_) {}
+    }
+  };
 
   document.addEventListener('click', async (evt) => {
     const btn = evt.target && evt.target.closest && evt.target.closest('[data-admin-view-reserva]');
     if (!btn) return;
     const id = btn.getAttribute('data-admin-view-reserva');
     if (!id) return;
+    const autoAttend = btn.hasAttribute('data-admin-reserva-attend');
     if (modalLoading) modalLoading.show(modal);
     try {
       const payload = await fetchJson(`${apiBase}?action=get&table=reservas&id=${encodeURIComponent(id)}`);
       const r = payload && payload.data ? payload.data : null;
-      if (!r) return;
+      if (!r) {
+        adminNotify('No se pudo cargar la reserva', 'error');
+        return;
+      }
       const [sv, bb, cl] = await Promise.all([
         fetchJson(`${apiBase}?action=list&table=servicios`),
         fetchJson(`${apiBase}?action=list&table=barberos`),
@@ -163,8 +201,11 @@
       }
       fill(data);
       open();
+      if (autoAttend && normalizeStatusKey(data.status) === 'pendiente') {
+        window.setTimeout(() => { startAttendFlow(); }, 120);
+      }
     } catch (_) {
-      // ignore
+      adminNotify('No se pudo abrir la reserva', 'error');
     } finally {
       if (modalLoading) modalLoading.hide(modal);
     }
@@ -174,7 +215,10 @@
     const id = modal.getAttribute('data-admin-reserva-id'); if (!id) return false;
     try {
       const res = await fetch(apiBase, {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'same-origin',
+        cache: 'no-store',
         body: new URLSearchParams({ action: 'update', table: 'reservas', id, data: JSON.stringify({ Status: status }) })
       });
       const payload = await res.json();
@@ -226,6 +270,8 @@
       const res = await fetch(apiBase, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'same-origin',
+        cache: 'no-store',
         body: new URLSearchParams({
           action: 'update',
           table: 'reservas',
@@ -277,34 +323,7 @@
   const fmt2 = (n) => String(n).padStart(2,'0');
   const ymd = (d) => `${d.getFullYear()}-${fmt2(d.getMonth()+1)}-${fmt2(d.getDate())}`;
   const hm = (d) => `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}`;
-  btnAten && btnAten.addEventListener('click', async () => {
-    const ok = await adminConfirm({
-      title: 'Atender reserva',
-      message: '\u00bfConfirmas que vas a atender esta reserva ahora?',
-      confirmText: 'Atender',
-    });
-    if (!ok) return;
-    const fecha = modal.getAttribute('data-admin-res-fecha') || '';
-    const hora = (modal.getAttribute('data-admin-res-hora') || '').slice(0,5);
-    const now = new Date();
-    const nowDate = ymd(now);
-    const nowTime = hm(now);
-    let proceed = true;
-    if (!(nowDate === fecha && nowTime === hora)) {
-      proceed = await adminConfirm({
-        title: 'Fuera de horario',
-        message: 'Vas a atender este cliente fuera del horario de la reserva, \u00bfDeseas avanzar?',
-        confirmText: 'Atender igual',
-      });
-    }
-    if (!proceed) return;
-    try { btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
-    const okUpdate = await actionUpdate('Aprobado');
-    try { btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
-    if (okUpdate) {
-      try { window.openServiceFlow && window.openServiceFlow(modal.getAttribute('data-admin-reserva-id')); } catch (_) {}
-    }
-  });
+  btnAten && btnAten.addEventListener('click', startAttendFlow);
 
   // Retomar desde modal de reserva (si Aprobado)
   el('[data-admin-res-retomar]')?.addEventListener('click', () => {

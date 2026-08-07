@@ -1175,14 +1175,14 @@ $summaryCards = [
                 data-admin-reserva-ts="<?php echo e($timestampAttr); ?>"
                 data-admin-reserva-price="<?php echo e($servicePriceLabel); ?>"
               >
-                <td><?php echo e($cn); ?></td>
-                <td><?php echo e(trim($bn)); ?></td>
-                <td><span class="reserva-servicio__name"><?php echo e($sn); ?></span></td>
-                <td class="numeric"><?php echo e($servicePriceLabel); ?></td>
-                <td><?php echo e($r['Fecha_Reserva'] ?? ''); ?></td>
-                <td><?php echo e(substr((string)($r['Hora_Reserva'] ?? ''),0,5)); ?></td>
-                <td><span class="status-pill <?php echo e($cls); ?>"><?php echo e($stLabel); ?></span></td>
-                <td>
+                <td data-heading="Cliente"><?php echo e($cn); ?></td>
+                <td data-heading="Profesional"><?php echo e(trim($bn)); ?></td>
+                <td data-heading="Servicio"><span class="reserva-servicio__name"><?php echo e($sn); ?></span></td>
+                <td data-heading="Precio" class="numeric"><?php echo e($servicePriceLabel); ?></td>
+                <td data-heading="Fecha"><?php echo e($r['Fecha_Reserva'] ?? ''); ?></td>
+                <td data-heading="Hora"><?php echo e(substr((string)($r['Hora_Reserva'] ?? ''),0,5)); ?></td>
+                <td data-heading="Status"><span class="status-pill <?php echo e($cls); ?>"><?php echo e($stLabel); ?></span></td>
+                <td data-heading="Accion">
                   <?php if (in_array($st, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)): ?>
                     <?php if ($st === 'pendiente'): ?>
                       <button

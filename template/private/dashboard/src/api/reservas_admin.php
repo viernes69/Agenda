@@ -292,21 +292,21 @@ foreach ($prepared as $row) {
     $idReserva = (int)($row['ID_Reserva'] ?? 0);
 
     $rowHtml .= '<tr data-admin-reserva-item data-admin-res-row-id="' . $idReserva . '" data-admin-reserva-status="' . $escape($statusNorm) . '" data-admin-reserva-fecha="' . $escape($row['Fecha_Reserva'] ?? '') . '" data-admin-reserva-hora="' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '" data-admin-reserva-ts="' . $escape($timestampAttr) . '" data-admin-reserva-price="' . $escape($servicePriceLabel) . '">';
-    $rowHtml .= '<td>' . $escape($clientName) . '</td>';
-    $rowHtml .= '<td>' . $escape($barberName) . '</td>';
-    $rowHtml .= '<td><span class="reserva-servicio__name">' . $escape($serviceName) . '</span></td>';
-    $rowHtml .= '<td class="numeric">' . $escape($servicePriceLabel) . '</td>';
-    $rowHtml .= '<td>' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
-    $rowHtml .= '<td>' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
-    $rowHtml .= '<td><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
+    $rowHtml .= '<td data-heading="Cliente">' . $escape($clientName) . '</td>';
+    $rowHtml .= '<td data-heading="Profesional">' . $escape($barberName) . '</td>';
+    $rowHtml .= '<td data-heading="Servicio"><span class="reserva-servicio__name">' . $escape($serviceName) . '</span></td>';
+    $rowHtml .= '<td data-heading="Precio" class="numeric">' . $escape($servicePriceLabel) . '</td>';
+    $rowHtml .= '<td data-heading="Fecha">' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
+    $rowHtml .= '<td data-heading="Hora">' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
+    $rowHtml .= '<td data-heading="Status"><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
     if (in_array($statusNorm, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)) {
         if ($statusNorm === 'pendiente') {
-            $rowHtml .= '<td><button type="button" class="btn btn-success btn-sm admin-reserva-attend" data-admin-view-reserva="' . $idReserva . '" data-admin-reserva-attend>Ver y Atender</button></td>';
+            $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-success btn-sm admin-reserva-attend" data-admin-view-reserva="' . $idReserva . '" data-admin-reserva-attend>Ver y Atender</button></td>';
         } else {
-            $rowHtml .= '<td><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
+            $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
         }
     } else {
-        $rowHtml .= '<td><span class="muted">-</span></td>';
+        $rowHtml .= '<td data-heading="Accion"><span class="muted">-</span></td>';
     }
     $rowHtml .= '</tr>';
 

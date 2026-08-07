@@ -4441,3 +4441,228 @@ body {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* Mobile dashboard hardening */
+.admin-layout,
+.admin-main,
+.admin-section,
+.admin-section > *,
+.summary-grid,
+.cards,
+.table-wrap,
+.modal__dialog {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  html,
+  body,
+  .admin-layout {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .admin-main {
+    width: 100%;
+    padding-inline: var(--page-padding);
+    padding-bottom: calc(var(--safe-bottom) + 6.4rem);
+  }
+
+  .admin-main__header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .admin-heading-group,
+  .admin-share-link,
+  .admin-share-link__btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-heading-group {
+    align-items: stretch;
+  }
+
+  .admin-share-link__btn {
+    justify-content: flex-start;
+  }
+
+  .admin-share-link__btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-section-tools {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .admin-section-tools > *,
+  .admin-reservas-filter,
+  .admin-products-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-reservas-filter,
+  .admin-products-filter {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: .32rem;
+  }
+
+  .admin-reservas-filter__select,
+  .admin-reservas-filter__input,
+  .admin-products-filter__select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+  }
+
+  .admin-reservas-filter__clear {
+    position: absolute;
+    right: .45rem;
+    bottom: .4rem;
+  }
+
+  .admin-section-count {
+    margin-left: 0;
+    white-space: normal;
+  }
+
+  .summary-grid,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card,
+  .card-kpi,
+  .admin-service-card,
+  .admin-product-card,
+  .admin-client-card,
+  .admin-barber-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .table tbody {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .table tr {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .table td {
+    grid-template-columns: minmax(5.5rem, .42fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: .65rem;
+    overflow-wrap: anywhere;
+  }
+
+  .table td::before {
+    content: attr(data-heading) !important;
+  }
+
+  .table td > * {
+    min-width: 0;
+  }
+
+  .table td:nth-child(7) {
+    order: initial;
+    align-items: center;
+    justify-items: stretch;
+    margin-top: 0;
+  }
+
+  .table td:nth-child(7)::before {
+    margin-bottom: 0;
+  }
+
+  .table td:last-child {
+    order: 99;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    justify-items: stretch;
+    margin-top: .35rem;
+  }
+
+  .table td:last-child::before {
+    margin-bottom: .18rem;
+  }
+
+  .table td:last-child > * {
+    justify-self: stretch;
+    width: 100%;
+    text-align: center;
+  }
+
+  .btn,
+  .btn-sm,
+  .admin-reserva-attend {
+    min-height: 42px;
+  }
+
+  .admin-reserva-actions,
+  .admin-reserva-reprogram__fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .admin-reserva-actions .btn,
+  .admin-reserva-reprogram__fields .btn,
+  .admin-reserva-reprogram__fields label,
+  .admin-reserva-reprogram__fields input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-layout .modal {
+    align-items: start;
+    overflow-y: auto;
+    padding: .75rem .75rem calc(var(--bottomnav-offset) + 1rem);
+  }
+
+  .admin-layout .modal__dialog,
+  .admin-layout .modal__dialog--sm,
+  .admin-layout .modal__dialog--lg,
+  .admin-layout .modal__dialog--barber,
+  .admin-layout .modal__dialog--xl {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    margin: 0 0 calc(var(--bottomnav-offset) + .75rem);
+  }
+
+  .admin-layout .modal__footer {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-layout .modal__footer .btn {
+    width: 100%;
+  }
+}

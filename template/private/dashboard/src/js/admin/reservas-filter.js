@@ -163,6 +163,7 @@
 
     if (typeof payload.html === 'string') {
       tbody.innerHTML = payload.html;
+      try { window.AdminApplyResponsiveTableHeadings && window.AdminApplyResponsiveTableHeadings(); } catch (_) {}
     }
     if (countEl) {
       const label = payload.label || currentStatus;

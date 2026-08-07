@@ -8,6 +8,28 @@ const adminNotify = (message, icon = 'success') => {
   }
 };
 
+window.AdminApplyResponsiveTableHeadings = () => {
+  document.querySelectorAll('.table').forEach((table) => {
+    const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+    if (!headers.length) return;
+    table.querySelectorAll('tbody tr').forEach((row) => {
+      Array.from(row.children).forEach((cell, index) => {
+        if (!cell || cell.tagName !== 'TD') return;
+        const label = headers[index] || '';
+        if (label) {
+          cell.setAttribute('data-heading', label);
+        }
+      });
+    });
+  });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.AdminApplyResponsiveTableHeadings, { once: true });
+} else {
+  window.AdminApplyResponsiveTableHeadings();
+}
+
 const createConfirmModal = () => {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
