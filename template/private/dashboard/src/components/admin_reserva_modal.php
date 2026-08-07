@@ -38,7 +38,9 @@ ob_start();
         <div class="admin-reserva-actions">
           <button type="button" class="btn btn-warning" data-admin-res-ver-cliente>Datos del cliente</button>
           <button type="button" class="btn btn-danger" data-admin-res-rechazar>Rechazar</button>
+          <button type="button" class="btn btn-secondary" data-admin-res-aprobar>Reservar</button>
           <button type="button" class="btn btn-success" data-admin-res-atender>Atender</button>
+          <button type="button" class="btn btn-primary" data-admin-res-finalizar>Finalizar</button>
         </div>
       </div>
     </div>

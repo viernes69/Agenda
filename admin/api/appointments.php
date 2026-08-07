@@ -211,6 +211,7 @@ try {
         $marker = MembershipPlan::APPOINTMENT_NOTA_PLAN_WAITLIST;
         $apptNotas = $apptNotas !== '' ? ($marker . ' | ' . $apptNotas) : $marker;
     }
+    $appointmentStatus = $waitlist ? 'pending' : 'confirmed';
     $idAppt = (int)$db->insert('appointments', [
         'id_commerce'      => (int)$commerce['id_commerce'],
         'id_client'        => $idClient,
@@ -223,7 +224,7 @@ try {
         'cliente_telefono' => $clienteTelefono,
         'notas'            => $apptNotas,
         'precio'           => $precio,
-        'status'           => 'pending',
+        'status'           => $appointmentStatus,
     ]);
 
     // Avatar del cliente (registro con Google) para espejarlo en la DB local.
@@ -257,7 +258,7 @@ try {
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
                 'cliente_avatar'   => $clienteAvatar,
-                'status'           => 'pending',
+                'status'           => $appointmentStatus,
                 'precio'           => $precio,
             ]);
             if (is_array($mirror['row'] ?? null) && isset($mirror['row']['ID_Reserva'])) {

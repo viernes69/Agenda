@@ -18,7 +18,7 @@ ob_start();
           <select data-reservas-filter-status>
             <option value="">Todos los estados</option>
             <option value="pendiente">Pendiente</option>
-            <option value="aprobado">Aprobado</option>
+            <option value="aprobado">Reservado</option>
             <option value="cancelado">Cancelado</option>
             <option value="finalizado">Finalizado</option>
             <option value="rechazado">Rechazado</option>
@@ -50,6 +50,7 @@ ob_start();
     .status-badge { padding: .15rem .5rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
     .status-pendiente { background: rgba(234,179,8,.18); color: #fde68a; border:1px solid rgba(234,179,8,.4); }
     .status-aprobado { background: rgba(34,197,94,.18); color: #bbf7d0; border:1px solid rgba(34,197,94,.45); }
+    .status-en-progreso { background: rgba(59,130,246,.18); color: #bfdbfe; border:1px solid rgba(59,130,246,.42); }
     .status-cancelado { background: rgba(239,68,68,.18); color: #fecaca; border:1px solid rgba(239,68,68,.4); }
     .status-finalizado { background: rgba(148,163,184,.18); color: #e2e8f0; border:1px solid rgba(148,163,184,.35); }
     .status-rechazado { background: rgba(248,113,113,.2); color: #fecdd3; border:1px solid rgba(248,113,113,.4); }

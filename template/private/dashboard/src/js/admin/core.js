@@ -30,6 +30,48 @@ if (document.readyState === 'loading') {
   window.AdminApplyResponsiveTableHeadings();
 }
 
+window.AdminCloseModalElement = (modal) => {
+  if (!modal || !modal.classList) return;
+  modal.classList.remove('is-visible');
+  modal.hidden = true;
+  try { window.AdminModalLoading && window.AdminModalLoading.hide(modal); } catch (_) {}
+};
+
+window.AdminClosePeerModals = (activeModal) => {
+  if (!activeModal) return;
+  document.querySelectorAll('.modal[data-admin-modal]').forEach((modal) => {
+    if (modal !== activeModal && !modal.hidden) {
+      window.AdminCloseModalElement(modal);
+    }
+  });
+};
+
+window.AdminPrepareModalOpen = (modal) => {
+  window.AdminClosePeerModals(modal);
+};
+
+const installAdminModalStackGuard = () => {
+  const sync = (modal) => {
+    if (!modal || !modal.matches || !modal.matches('.modal[data-admin-modal]')) return;
+    if (!modal.hidden && modal.classList.contains('is-visible')) {
+      window.AdminClosePeerModals(modal);
+    }
+  };
+  document.querySelectorAll('.modal[data-admin-modal]').forEach(sync);
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => sync(record.target));
+  });
+  document.querySelectorAll('.modal[data-admin-modal]').forEach((modal) => {
+    observer.observe(modal, { attributes: true, attributeFilter: ['hidden', 'class'] });
+  });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', installAdminModalStackGuard, { once: true });
+} else {
+  installAdminModalStackGuard();
+}
+
 const createConfirmModal = () => {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `

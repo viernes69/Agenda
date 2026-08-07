@@ -300,11 +300,7 @@ foreach ($prepared as $row) {
     $rowHtml .= '<td data-heading="Hora">' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
     $rowHtml .= '<td data-heading="Status"><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
     if (in_array($statusNorm, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)) {
-        if ($statusNorm === 'pendiente') {
-            $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-success btn-sm admin-reserva-attend" data-admin-view-reserva="' . $idReserva . '" data-admin-reserva-attend>Ver y Atender</button></td>';
-        } else {
-            $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
-        }
+        $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
     } else {
         $rowHtml .= '<td data-heading="Accion"><span class="muted">-</span></td>';
     }

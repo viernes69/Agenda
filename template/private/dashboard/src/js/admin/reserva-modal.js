@@ -13,11 +13,11 @@
     let status = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
     status = status.replace(/\s+/g, ' ');
     if (!status || status === 'pending' || status === 'sin confirmar') return 'pendiente';
-    if (['confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada'].includes(status)) return 'aprobado';
+    if (['confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada', 'reservado', 'reservada'].includes(status)) return 'aprobado';
     if (['in progress', 'en progreso', 'en curso', 'atendiendo'].includes(status)) return 'en progreso';
     if (['rejected', 'rechazado', 'rechazada', 'no show', 'no asistio'].includes(status)) return 'rechazado';
     if (['cancelled', 'canceled', 'cancelado', 'cancelada'].includes(status)) return 'cancelado';
-    if (['completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada'].includes(status)) return 'finalizado';
+    if (['completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada', 'attended', 'atendido', 'atendida'].includes(status)) return 'finalizado';
     return status;
   };
   const statusClassKey = (value) => normalizeStatusKey(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'pendiente';
@@ -25,7 +25,7 @@
     const key = normalizeStatusKey(value);
     const labels = {
       pendiente: 'Pendiente',
-      aprobado: 'Aprobado',
+      aprobado: 'Reservado',
       'en progreso': 'En progreso',
       rechazado: 'Rechazado',
       cancelado: 'Cancelado',
@@ -45,17 +45,24 @@
     const st = stRaw.trim();
     const stKey = normalizeStatusKey(st);
     const stEl = el('[data-admin-res-status]');
-    if (stEl) { stEl.textContent = st || statusLabel(stKey); stEl.className = 'status-pill st-' + statusClassKey(stKey); }
-    const isPending = stKey === 'pendiente';
+    if (stEl) { stEl.textContent = statusLabel(stKey); stEl.className = 'status-pill st-' + statusClassKey(stKey); }
+    const isTerminal = ['cancelado', 'finalizado', 'rechazado'].includes(stKey);
+    const canReserve = stKey === 'pendiente';
+    const canAttend = ['pendiente', 'aprobado'].includes(stKey);
+    const canFinalize = ['pendiente', 'aprobado', 'en progreso'].includes(stKey);
     const btnRech = el('[data-admin-res-rechazar]');
     const btnAten = el('[data-admin-res-atender]');
-    if (btnRech) btnRech.disabled = !isPending;
-    if (btnAten) btnAten.disabled = !isPending;
-    // Retomar atencion cuando esta aprobado
+    const btnApr = el('[data-admin-res-aprobar]');
+    const btnFin = el('[data-admin-res-finalizar]');
+    if (btnRech) btnRech.disabled = isTerminal;
+    if (btnApr) btnApr.disabled = !canReserve;
+    if (btnAten) btnAten.disabled = !canAttend;
+    if (btnFin) btnFin.disabled = !canFinalize;
     const btnResume = el('[data-admin-res-retomar]');
-    if (btnResume) btnResume.hidden = !(stKey === 'aprobado');
+    if (btnResume) btnResume.hidden = !(stKey === 'en progreso');
   };
   const open = () => {
+    try { window.AdminPrepareModalOpen && window.AdminPrepareModalOpen(modal); } catch (_) {}
     modal.hidden = false;
     requestAnimationFrame(() => {
       modal.classList.add('is-visible');
@@ -78,30 +85,39 @@
     try { return await r.json(); } catch (_) { return null; }
   };
 
-  const startAttendFlow = async () => {
-    const ok = await adminConfirm({
-      title: 'Atender reserva',
-      message: '\u00bfConfirmas que vas a atender esta reserva ahora?',
-      confirmText: 'Atender',
-    });
-    if (!ok) return;
+  const isInsideReservationSlot = () => {
     const fecha = modal.getAttribute('data-admin-res-fecha') || '';
     const hora = (modal.getAttribute('data-admin-res-hora') || '').slice(0,5);
+    const duration = Math.max(1, parseInt(modal.getAttribute('data-admin-res-duration') || '30', 10) || 30);
     const now = new Date();
     const nowDate = ymd(now);
-    const nowTime = hm(now);
+    if (nowDate !== fecha || !/^\d{2}:\d{2}$/.test(hora)) {
+      return false;
+    }
+    const [hh, mm] = hora.split(':').map((part) => parseInt(part, 10));
+    const start = (hh * 60) + mm;
+    const current = (now.getHours() * 60) + now.getMinutes();
+    return current >= start && current <= (start + duration);
+  };
+
+  const startAttendFlow = async () => {
     let proceed = true;
-    if (!(nowDate === fecha && nowTime === hora)) {
+    if (!isInsideReservationSlot()) {
+      const wasVisible = !modal.hidden;
+      if (wasVisible) close();
       proceed = await adminConfirm({
         title: 'Fuera de horario',
         message: 'Vas a atender este cliente fuera del horario de la reserva, \u00bfDeseas avanzar?',
         confirmText: 'Atender igual',
       });
+      if (!proceed && wasVisible) {
+        open();
+      }
     }
     if (!proceed) return;
-    try { if (btnAten) btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
-    const okUpdate = await actionUpdate('Aprobado');
-    try { if (btnAten) btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
+    try { if (btnAten) btnAten.disabled = true; if (btnRech) btnRech.disabled = true; if (btnFin) btnFin.disabled = true; } catch (_) {}
+    const okUpdate = await actionUpdate('En progreso');
+    try { if (btnAten) btnAten.disabled = false; if (btnRech) btnRech.disabled = false; if (btnFin) btnFin.disabled = false; } catch (_) {}
     if (okUpdate) {
       try { window.openServiceFlow && window.openServiceFlow(modal.getAttribute('data-admin-reserva-id')); } catch (_) {}
     }
@@ -112,7 +128,6 @@
     if (!btn) return;
     const id = btn.getAttribute('data-admin-view-reserva');
     if (!id) return;
-    const autoAttend = btn.hasAttribute('data-admin-reserva-attend');
     if (modalLoading) modalLoading.show(modal);
     try {
       const payload = await fetchJson(`${apiBase}?action=get&table=reservas&id=${encodeURIComponent(id)}`);
@@ -165,14 +180,14 @@
       };
       const rowPriceLabel = getRowPriceLabel();
 
+      const serviceEntry = serviceMap[String(r.ID_Servicio || '')] || {};
       const data = {
         id: r.ID_Reserva,
         cliente: cliMap[String(r.ID_Cliente||'')] || 'Cliente',
         barbero: barbMap[String(r.ID_Barber||'')] || 'Profesional',
-        servicio: (serviceMap[String(r.ID_Servicio||'')] && serviceMap[String(r.ID_Servicio||'')].Nombre) || 'Servicio',
+        servicio: serviceEntry.Nombre || serviceEntry.nombre || 'Servicio',
         precio: (() => {
-          const entry = serviceMap[String(r.ID_Servicio || '')] || {};
-          const parsed = parseAmount(entry.Precio ?? entry.precio ?? null);
+          const parsed = parseAmount(serviceEntry.Precio ?? serviceEntry.precio ?? null);
           if (parsed !== null) {
             return formatCurrency(parsed);
           }
@@ -184,11 +199,13 @@
         fecha: r.Fecha_Reserva || '-',
         hora: String(r.Hora_Reserva || '').slice(0,5),
         status: r.Status || 'Pendiente',
+        duration: parseInt(serviceEntry.Duracion ?? serviceEntry.duracion ?? serviceEntry.duracion_min ?? serviceEntry.Duracion_Min ?? 30, 10) || 30,
       };
       modal.setAttribute('data-admin-reserva-id', String(data.id||''));
       modal.setAttribute('data-admin-res-cliente-id', String(r.ID_Cliente || ''));
       modal.setAttribute('data-admin-res-fecha', String(data.fecha||''));
       modal.setAttribute('data-admin-res-hora', String(data.hora||''));
+      modal.setAttribute('data-admin-res-duration', String(data.duration || 30));
       const fechaInput = el('[data-admin-res-edit-fecha]');
       const horaInput = el('[data-admin-res-edit-hora]');
       if (fechaInput) fechaInput.value = (data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)) ? data.fecha : '';
@@ -201,9 +218,6 @@
       }
       fill(data);
       open();
-      if (autoAttend && normalizeStatusKey(data.status) === 'pendiente') {
-        window.setTimeout(() => { startAttendFlow(); }, 120);
-      }
     } catch (_) {
       adminNotify('No se pudo abrir la reserva', 'error');
     } finally {
@@ -294,6 +308,7 @@
           if (cells[5]) cells[5].textContent = hora.slice(0, 5);
         }
         adminNotify('Reserva reprogramada', 'success');
+        try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}
       } else {
         adminNotify('No se pudo reprogramar', 'error');
       }
@@ -308,13 +323,32 @@
 
   const btnRech = el('[data-admin-res-rechazar]');
   const btnAten = el('[data-admin-res-atender]');
+  const btnApr = el('[data-admin-res-aprobar]');
+  const btnFin = el('[data-admin-res-finalizar]');
+  btnApr && btnApr.addEventListener('click', async () => {
+    try { btnApr.disabled = true; } catch (_) {}
+    await actionUpdate('Aprobado');
+    try { btnApr.disabled = false; } catch (_) {}
+  });
+
+  btnFin && btnFin.addEventListener('click', async () => {
+    try { btnFin.disabled = true; if (btnAten) btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
+    await actionUpdate('Finalizado');
+    try { btnFin.disabled = false; if (btnAten) btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
+  });
+
   btnRech && btnRech.addEventListener('click', async () => {
+    const wasVisible = !modal.hidden;
+    if (wasVisible) close();
     const ok = await adminConfirm({
       title: 'Rechazar reserva',
       message: '\u00bfSeguro que deseas rechazar esta reserva? Esta accion no se puede deshacer.',
       confirmText: 'Rechazar',
     });
-    if (!ok) return;
+    if (!ok) {
+      if (wasVisible) open();
+      return;
+    }
     try { btnRech.disabled = true; if (btnAten) btnAten.disabled = true; } catch (_) {}
     await actionUpdate('Cancelado');
     try { btnRech.disabled = false; if (btnAten) btnAten.disabled = false; } catch (_) {}
@@ -325,10 +359,11 @@
   const hm = (d) => `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}`;
   btnAten && btnAten.addEventListener('click', startAttendFlow);
 
-  // Retomar desde modal de reserva (si Aprobado)
+  // Retomar desde modal de reserva (si esta en progreso)
   el('[data-admin-res-retomar]')?.addEventListener('click', () => {
     const id = modal.getAttribute('data-admin-reserva-id');
     if (!id) return;
+    close();
     window.openServiceFlow && window.openServiceFlow(id);
   });
 

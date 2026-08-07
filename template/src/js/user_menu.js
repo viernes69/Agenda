@@ -79,7 +79,26 @@
     if (typeof raw.normalize === 'function') {
       raw = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
-    return raw.toLowerCase();
+    raw = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+    if (['approved', 'confirmed', 'aprobado', 'aprobada', 'reservado', 'reservada'].includes(raw)) return 'aprobado';
+    if (['in progress', 'en progreso', 'en curso', 'atendiendo'].includes(raw)) return 'en progreso';
+    if (['completed', 'complete', 'done', 'finalizado', 'finalizada', 'atendido', 'atendida'].includes(raw)) return 'finalizado';
+    if (['cancelled', 'canceled', 'cancelado', 'cancelada'].includes(raw)) return 'cancelado';
+    if (['rejected', 'rechazado', 'rechazada'].includes(raw)) return 'rechazado';
+    if (['pending', 'pendiente', 'sin confirmar'].includes(raw)) return 'pendiente';
+    return raw;
+  };
+
+  const statusLabelFor = (key, fallback) => {
+    const labels = {
+      pendiente: 'Pendiente',
+      aprobado: 'Reservado',
+      'en progreso': 'En progreso',
+      cancelado: 'Cancelado',
+      rechazado: 'Rechazado',
+      finalizado: 'Finalizado',
+    };
+    return labels[key] || fallback || 'Pendiente';
   };
 
   const extractDateValue = (value) => {
@@ -768,11 +787,12 @@
                   return [sMap, bMap];
                 } catch (_) { return [{}, {}]; }
               })();
-              const knownStatusKeys = new Set(['pendiente', 'aprobado', 'cancelado', 'finalizado', 'rechazado']);
+              const knownStatusKeys = new Set(['pendiente', 'aprobado', 'en progreso', 'cancelado', 'finalizado', 'rechazado']);
               const dataset = reservas.map((r) => {
-                const statusLabel = String(r.Status || r.status || '').trim() || 'Pendiente';
-                const statusKey = normalizeStatusKey(statusLabel) || 'pendiente';
-                const statusClass = knownStatusKeys.has(statusKey) ? `status-${statusKey}` : 'status-pendiente';
+                const rawStatus = String(r.Status || r.status || '').trim() || 'Pendiente';
+                const statusKey = normalizeStatusKey(rawStatus) || 'pendiente';
+                const statusLabel = statusLabelFor(statusKey, rawStatus);
+                const statusClass = knownStatusKeys.has(statusKey) ? `status-${statusKey.replace(/\s+/g, '-')}` : 'status-pendiente';
                 const dateValue = extractDateValue(r.Fecha_Reserva || r.fecha || r.date || '');
                 const timeValue = formatTimeDisplay(r.Hora_Reserva || r.hora || r.time || '');
                 return {

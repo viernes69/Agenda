@@ -1183,7 +1183,7 @@ const modalManager = (() => {
       barber_id: state.selected.barberId,
       fecha: chosenDate,
       hora: state.selected.slot,
-      status: 'Pendiente',
+      status: 'Aprobado',
     };
     const res = await fetch('src/API/reservas.php', {
       method: 'POST',

@@ -633,11 +633,11 @@ final class TenantLocalDb
 
         return match ($s) {
             '', 'pending', 'pendiente', 'sin confirmar' => 'pendiente',
-            'confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada' => 'aprobado',
+            'confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada', 'reservado', 'reservada' => 'aprobado',
             'in progress', 'en progreso', 'en curso', 'atendiendo' => 'en progreso',
             'rejected', 'rechazado', 'rechazada', 'no show', 'no asistio' => 'rechazado',
             'cancelled', 'canceled', 'cancelado', 'cancelada' => 'cancelado',
-            'completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada' => 'finalizado',
+            'completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada', 'attended', 'atendido', 'atendida' => 'finalizado',
             default => $s,
         };
     }
@@ -655,7 +655,7 @@ final class TenantLocalDb
         $key = self::normalizeStatusKey($status);
         return match ($key) {
             'pendiente' => 'Pendiente',
-            'aprobado' => 'Aprobado',
+            'aprobado' => 'Reservado',
             'en progreso' => 'En progreso',
             'rechazado' => 'Rechazado',
             'cancelado' => 'Cancelado',

@@ -196,9 +196,9 @@ try {
     $barberId = $_REQUEST['barber_id'] ?? null;
     $fecha = $_REQUEST['fecha'] ?? null;
     $hora = $_REQUEST['hora'] ?? null;
-    $status = trim((string)($_REQUEST['status'] ?? 'Pendiente'));
+    $status = trim((string)($_REQUEST['status'] ?? 'Aprobado'));
     if ($status === '') {
-        $status = 'Pendiente';
+        $status = 'Aprobado';
     }
 
     if ($serviceId === null || $barberId === null || !$fecha || !$hora) {

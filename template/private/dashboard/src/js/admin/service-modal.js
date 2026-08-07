@@ -13,6 +13,7 @@
     : '../../../src/API/Autoload.php');
 
   const open = () => {
+    try { window.AdminPrepareModalOpen && window.AdminPrepareModalOpen(serviceModal); } catch (_) {}
     serviceModal.hidden = false;
     requestAnimationFrame(() => {
       serviceModal.classList.add('is-visible');

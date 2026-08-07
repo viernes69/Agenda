@@ -1381,20 +1381,11 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                 <td data-heading="Status"><span class="status-pill <?php echo e($cls); ?>"><?php echo e($stLabel); ?></span></td>
                 <td data-heading="Accion">
                   <?php if (in_array($st, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)): ?>
-                    <?php if ($st === 'pendiente'): ?>
-                      <button
-                        type="button"
-                        class="btn btn-success btn-sm admin-reserva-attend"
-                        data-admin-view-reserva="<?php echo (int)($r['ID_Reserva'] ?? 0); ?>"
-                        data-admin-reserva-attend
-                      >Ver y Atender</button>
-                    <?php else: ?>
-                      <button
-                        type="button"
-                        class="btn btn-warning btn-sm"
-                        data-admin-view-reserva="<?php echo (int)($r['ID_Reserva'] ?? 0); ?>"
-                      >Ver</button>
-                    <?php endif; ?>
+                    <button
+                      type="button"
+                      class="btn btn-warning btn-sm"
+                      data-admin-view-reserva="<?php echo (int)($r['ID_Reserva'] ?? 0); ?>"
+                    >Ver</button>
                   <?php else: ?>
                     <span class="muted">-</span>
                   <?php endif; ?>

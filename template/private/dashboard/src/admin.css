@@ -4666,3 +4666,319 @@ body {
     width: 100%;
   }
 }
+
+/* Responsive panel pass - cards, scroll, compact nav */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.admin-layout {
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+.admin-main {
+  width: min(1440px, 100%);
+}
+
+.admin-section {
+  min-height: 0;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.admin-section-tools,
+.admin-main__header,
+.admin-heading-group {
+  min-width: 0;
+}
+
+.admin-services-grid,
+.admin-products-grid,
+.admin-config-grid,
+.cards {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.admin-service-card,
+.admin-product-card,
+.admin-config-card,
+.card-kpi,
+.summary-card {
+  min-width: 0;
+  max-width: 100%;
+  border-radius: .9rem;
+}
+
+.table-wrap,
+.table-wrap--scroll {
+  max-height: none;
+  overflow: visible;
+}
+
+.table[data-admin-reservas-table] {
+  display: block;
+  min-width: 0;
+  border-collapse: separate;
+}
+
+.table[data-admin-reservas-table] thead {
+  display: none;
+}
+
+.table[data-admin-reservas-table] tbody {
+  display: grid;
+  gap: .85rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.table[data-admin-reservas-table] tr {
+  display: grid;
+  gap: .42rem;
+  width: 100%;
+  padding: .85rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: .9rem;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, .94), rgba(12, 17, 26, .94));
+  box-shadow: 0 14px 28px rgba(2, 6, 23, .24);
+}
+
+.table[data-admin-reservas-table] td {
+  display: grid;
+  grid-template-columns: minmax(5.8rem, .42fr) minmax(0, 1fr);
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  font-size: .86rem;
+  overflow-wrap: anywhere;
+}
+
+.table[data-admin-reservas-table] td::before {
+  content: attr(data-heading);
+  min-width: 0;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, .82);
+}
+
+.table[data-admin-reservas-table] td:last-child {
+  grid-template-columns: 1fr;
+  margin-top: .45rem;
+}
+
+.table[data-admin-reservas-table] td:last-child > * {
+  width: 100%;
+  justify-self: stretch;
+  text-align: center;
+}
+
+.admin-layout .modal {
+  align-items: center;
+  justify-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(.65rem, 2vw, 1.25rem) clamp(.6rem, 2vw, 1.25rem) calc(var(--bottomnav-offset) + clamp(.65rem, 2vw, 1.25rem));
+}
+
+.admin-layout .modal__dialog,
+.admin-layout .modal__dialog--sm,
+.admin-layout .modal__dialog--md,
+.admin-layout .modal__dialog--lg,
+.admin-layout .modal__dialog--barber,
+.admin-layout .modal__dialog--xl {
+  width: min(100%, 760px);
+  max-width: calc(100vw - 1.2rem);
+  max-height: calc(100dvh - var(--bottomnav-offset) - 1.2rem);
+  min-height: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: .95rem;
+}
+
+.admin-layout .modal__dialog--sm {
+  width: min(100%, 460px);
+}
+
+.admin-layout .modal__dialog--lg {
+  width: min(100%, 860px);
+}
+
+.admin-layout .modal__dialog--xl,
+.admin-layout .reservas-ledger {
+  width: min(100%, 1180px);
+}
+
+.admin-layout .modal__body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.admin-layout .modal__header,
+.admin-layout .modal__footer {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 520px) {
+  .admin-bottomnav {
+    width: auto;
+    max-width: calc(100vw - .65rem);
+    gap: .12rem;
+    padding: .26rem;
+    border-radius: 1rem;
+  }
+
+  .admin-bottomnav__item {
+    min-width: 2.55rem;
+    min-height: 2.55rem;
+    padding: .42rem;
+    border-radius: .82rem;
+  }
+
+  .admin-bottomnav__item span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .admin-bottomnav__item i {
+    font-size: 1.22rem;
+  }
+
+  .admin-aside {
+    --nav-width: min(232px, 78vw);
+    gap: .8rem;
+    padding-inline: .8rem;
+  }
+
+  .admin-link {
+    padding: .55rem .65rem;
+    border-radius: .72rem;
+    font-size: .9rem;
+  }
+}
+
+@media (max-width: 379px) {
+  .table[data-admin-reservas-table] tbody,
+  .table tbody,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 380px) and (max-width: 640px) {
+  .table[data-admin-reservas-table] tbody,
+  .table tbody,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table tr {
+    padding: .7rem;
+  }
+
+  .table[data-admin-reservas-table] td,
+  .table td {
+    grid-template-columns: 1fr;
+    gap: .18rem;
+    font-size: .78rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 899px) {
+  .table {
+    min-width: 0;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: .8rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table[data-admin-reservas-table] tbody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table tr {
+    display: grid;
+    gap: .35rem;
+    padding: .8rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: .9rem;
+    background: rgba(14, 18, 29, 0.94);
+  }
+
+  .table td {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, .42fr) minmax(0, 1fr);
+    gap: .45rem;
+    padding: 0;
+    border: 0;
+  }
+
+  .table td::before {
+    content: attr(data-heading);
+    font-size: .66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.82);
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .table[data-admin-reservas-table] tbody,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .table[data-admin-reservas-table] tbody,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
+  .table[data-admin-reservas-table] tbody,
+  .cards,
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-config-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}

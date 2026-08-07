@@ -101,7 +101,28 @@
       const profesional = maps.pro[String(reserva.ID_Barber || '')] || 'Profesional';
       const fecha = reserva.Fecha_Reserva || '-';
       const hora = String(reserva.Hora_Reserva || '').slice(0, 5);
-      const status = (reserva.Status || 'Pendiente').toString();
+      const statusKey = String(reserva.Status || 'Pendiente').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+      const statusMap = {
+        pendiente: ['Pendiente', 'pendiente'],
+        pending: ['Pendiente', 'pendiente'],
+        aprobado: ['Reservado', 'aprobado'],
+        aprobada: ['Reservado', 'aprobado'],
+        approved: ['Reservado', 'aprobado'],
+        confirmed: ['Reservado', 'aprobado'],
+        reservado: ['Reservado', 'aprobado'],
+        reservada: ['Reservado', 'aprobado'],
+        'en progreso': ['En progreso', 'en-progreso'],
+        finalizado: ['Finalizado', 'finalizado'],
+        finalizada: ['Finalizado', 'finalizado'],
+        done: ['Finalizado', 'finalizado'],
+        atendido: ['Finalizado', 'finalizado'],
+        atendida: ['Finalizado', 'finalizado'],
+        cancelado: ['Cancelado', 'cancelado'],
+        cancelada: ['Cancelado', 'cancelado'],
+        rechazado: ['Rechazado', 'rechazado'],
+        rechazada: ['Rechazado', 'rechazado'],
+      };
+      const status = statusMap[statusKey] || [(reserva.Status || 'Pendiente').toString(), statusKey.replace(/[^a-z0-9]+/g, '-') || 'pendiente'];
 
       item.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; gap:.5rem;">
@@ -109,7 +130,7 @@
             <div><strong>${servicio}</strong>&nbsp;&middot;&nbsp;${profesional}</div>
             <div class="muted">${fecha}&nbsp;&middot;&nbsp;${hora}</div>
           </div>
-          <span class="status-pill st-${status.toLowerCase()}">${status}</span>
+          <span class="status-pill st-${status[1]}">${status[0]}</span>
         </div>
       `;
       wrapper.appendChild(item);
