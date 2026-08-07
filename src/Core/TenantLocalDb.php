@@ -672,7 +672,7 @@ final class TenantLocalDb
         try {
             $db = Database::getInstance();
             $params = [':id' => $idService];
-            $sql = 'SELECT id_local, id_commerce FROM services WHERE id_service = :id';
+            $sql = 'SELECT id_local, id_commerce, nombre, duracion_min, precio FROM services WHERE id_service = :id';
             if ($idCommerce > 0) {
                 $sql .= ' AND id_commerce = :c';
                 $params[':c'] = $idCommerce;
@@ -682,10 +682,71 @@ final class TenantLocalDb
             if ($row && isset($row['id_local']) && is_numeric($row['id_local']) && (int)$row['id_local'] > 0) {
                 return (int)$row['id_local'];
             }
+            if ($row) {
+                $matched = self::findLocalServiceByDetails(
+                    $slug,
+                    (string)($row['nombre'] ?? ''),
+                    is_numeric($row['duracion_min'] ?? null) ? (int)$row['duracion_min'] : null,
+                    is_numeric($row['precio'] ?? null) ? (float)$row['precio'] : null
+                );
+                if ($matched !== null) {
+                    return $matched;
+                }
+            }
         } catch (\Throwable $e) {
             // best-effort
         }
         return null;
+    }
+
+    private static function findLocalServiceByDetails(string $slug, string $name, ?int $duration, ?float $price): ?int
+    {
+        $nameKey = self::normalizeComparableText($name);
+        if ($nameKey === '' && $duration === null && $price === null) {
+            return null;
+        }
+        try {
+            $db = self::read($slug);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $bestId = null;
+        $bestScore = 0;
+        foreach (($db['servicios'] ?? []) as $i => $row) {
+            if ($i === 0 || !is_array($row)) {
+                continue;
+            }
+            $id = $row['ID_Servicio'] ?? null;
+            if ($id === null || $id === '' || !is_numeric($id)) {
+                continue;
+            }
+
+            $score = 0;
+            $localName = self::normalizeComparableText((string)($row['Nombre'] ?? ''));
+            if ($nameKey !== '' && $localName === $nameKey) {
+                $score += 4;
+            }
+            if ($duration !== null && is_numeric($row['Duracion'] ?? null) && (int)$row['Duracion'] === $duration) {
+                $score += 2;
+            }
+            if ($price !== null && is_numeric($row['Precio'] ?? null) && abs((float)$row['Precio'] - $price) < 0.01) {
+                $score += 2;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestId = (int)$id;
+            }
+        }
+
+        return $bestScore >= 4 ? $bestId : null;
+    }
+
+    private static function normalizeComparableText(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/\s+/', ' ', $value);
+        return is_string($value) ? $value : '';
     }
 
     private static function localServicePrice(string $slug, int $idLocalService): ?float

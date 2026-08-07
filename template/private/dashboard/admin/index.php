@@ -2020,26 +2020,50 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
           return input;
         }
         let url = input;
+        const replacePreservingRequest = (target) => {
+          try {
+            const sourceUrl = new URL(url, window.location.href);
+            const targetUrl = new URL(target, window.location.href);
+            if (sourceUrl.search) {
+              targetUrl.search = sourceUrl.search;
+            }
+            if (sourceUrl.hash) {
+              targetUrl.hash = sourceUrl.hash;
+            }
+            return targetUrl.toString();
+          } catch (_) {
+            const suffixStart = url.search(/[?#]/);
+            const suffix = suffixStart >= 0 ? url.slice(suffixStart) : '';
+            if (!suffix) {
+              return target;
+            }
+            const hashStart = target.indexOf('#');
+            if (hashStart >= 0) {
+              return target.slice(0, hashStart) + suffix + target.slice(hashStart);
+            }
+            return target + suffix;
+          }
+        };
         if (dash.adminConfig && url.includes('AdminConfig.php')) {
-          return dash.adminConfig;
+          return replacePreservingRequest(dash.adminConfig);
         }
         if (dash.autoload && url.includes('Autoload.php')) {
-          return dash.autoload;
+          return replacePreservingRequest(dash.autoload);
         }
         if (dash.adminPush && url.includes('AdminPush.php')) {
-          return dash.adminPush;
+          return replacePreservingRequest(dash.adminPush);
         }
         if (dash.reservas && url.includes('reservas_admin.php')) {
-          return dash.reservas;
+          return replacePreservingRequest(dash.reservas);
         }
         if (dash.servicios && url.includes('servicios.php')) {
-          return dash.servicios;
+          return replacePreservingRequest(dash.servicios);
         }
         if (dash.productos && url.includes('productos.php')) {
-          return dash.productos;
+          return replacePreservingRequest(dash.productos);
         }
         if (dash.barberos && url.includes('barberos.php')) {
-          return dash.barberos;
+          return replacePreservingRequest(dash.barberos);
         }
         return url;
       };
