@@ -4698,21 +4698,104 @@ body {
 
 .admin-services-grid,
 .admin-products-grid,
+.admin-clients-list,
+.admin-barbers-list,
 .admin-config-grid,
 .cards {
   display: grid;
   align-items: stretch;
+  grid-auto-flow: row;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
 .admin-service-card,
 .admin-product-card,
+.admin-client-card,
+.admin-barber-card,
 .admin-config-card,
 .card-kpi,
 .summary-card {
   min-width: 0;
   max-width: 100%;
   border-radius: .9rem;
+}
+
+.admin-clients-list,
+.admin-barbers-list {
+  gap: .85rem;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.admin-client-card,
+.admin-barber-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  height: 100%;
+  padding: .9rem;
+  gap: .85rem;
+  background: linear-gradient(180deg, rgba(17, 24, 39, .94), rgba(12, 17, 26, .94));
+  box-shadow: 0 14px 28px rgba(2, 6, 23, .22);
+}
+
+.admin-service-card,
+.admin-product-card {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+.admin-client-info,
+.admin-barber-info,
+.admin-service-content,
+.admin-product-content,
+.admin-client-meta,
+.admin-barber-meta {
+  min-width: 0;
+}
+
+.admin-client-info,
+.admin-barber-info {
+  align-items: flex-start;
+}
+
+.admin-client-name,
+.admin-barber-name,
+.admin-service-header h3,
+.admin-product-header h3,
+.admin-product-desc,
+.admin-client-sub span,
+.admin-barber-sub span,
+.admin-service-meta span,
+.admin-product-meta span {
+  overflow-wrap: anywhere;
+}
+
+.admin-client-sub,
+.admin-barber-sub {
+  gap: .3rem .55rem;
+}
+
+.admin-client-actions,
+.admin-barber-actions,
+.admin-service-actions,
+.admin-product-actions {
+  align-self: end;
+  margin-top: auto;
+}
+
+.admin-client-actions,
+.admin-barber-actions {
+  justify-self: end;
+  flex-wrap: wrap;
+}
+
+.admin-clients-empty,
+.admin-barbers-empty,
+.admin-services-empty,
+.admin-products-empty {
+  grid-column: 1 / -1;
 }
 
 .table-wrap,
@@ -4873,6 +4956,18 @@ body {
     border-radius: .72rem;
     font-size: .9rem;
   }
+
+  .admin-client-card,
+  .admin-barber-card {
+    grid-template-columns: 1fr;
+    padding: .8rem;
+  }
+
+  .admin-client-actions,
+  .admin-barber-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 379px) {
@@ -4881,6 +4976,8 @@ body {
   .cards,
   .admin-services-grid,
   .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: 1fr;
   }
@@ -4892,6 +4989,8 @@ body {
   .cards,
   .admin-services-grid,
   .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4927,6 +5026,13 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-services-grid,
+  .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .table tr {
     display: grid;
     gap: .35rem;
@@ -4958,6 +5064,8 @@ body {
   .cards,
   .admin-services-grid,
   .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -4968,6 +5076,8 @@ body {
   .cards,
   .admin-services-grid,
   .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -4978,6 +5088,8 @@ body {
   .cards,
   .admin-services-grid,
   .admin-products-grid,
+  .admin-clients-list,
+  .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
