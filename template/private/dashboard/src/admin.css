@@ -4723,6 +4723,7 @@ body {
 .admin-clients-list,
 .admin-barbers-list {
   gap: .85rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   max-height: none;
   overflow: visible;
   padding-right: 0;
@@ -4731,7 +4732,7 @@ body {
 .admin-client-card,
 .admin-barber-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   align-items: start;
   height: 100%;
   padding: .9rem;
@@ -4774,7 +4775,18 @@ body {
 
 .admin-client-sub,
 .admin-barber-sub {
-  gap: .3rem .55rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .25rem;
+}
+
+.admin-client-name,
+.admin-barber-name,
+.admin-client-sub span,
+.admin-barber-sub span {
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
 }
 
 .admin-client-actions,
@@ -4787,7 +4799,9 @@ body {
 
 .admin-client-actions,
 .admin-barber-actions {
+  width: 100%;
   justify-self: end;
+  justify-content: flex-end;
   flex-wrap: wrap;
 }
 
@@ -4999,6 +5013,11 @@ body {
     padding: .7rem;
   }
 
+  .admin-clients-list,
+  .admin-barbers-list {
+    grid-template-columns: 1fr;
+  }
+
   .table[data-admin-reservas-table] td,
   .table td {
     grid-template-columns: 1fr;
@@ -5069,6 +5088,11 @@ body {
   .admin-config-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .admin-clients-list,
+  .admin-barbers-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1200px) {
@@ -5081,6 +5105,11 @@ body {
   .admin-config-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .admin-clients-list,
+  .admin-barbers-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1440px) {
@@ -5092,5 +5121,10 @@ body {
   .admin-barbers-list,
   .admin-config-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .admin-clients-list,
+  .admin-barbers-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
