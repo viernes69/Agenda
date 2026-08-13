@@ -1072,7 +1072,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=4">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=5">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">

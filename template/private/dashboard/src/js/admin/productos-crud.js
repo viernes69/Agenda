@@ -182,25 +182,34 @@
     const parts = String(window.location.pathname || '').split('/').filter(Boolean);
     const idx = parts.indexOf('private');
     if (idx <= 0) return '';
+    if (String(parts[idx - 1] || '').toLowerCase() === 'template') return '';
     return '/' + parts.slice(0, idx).join('/');
+  };
+  const detectedAppBase = () => {
+    const parts = String(window.location.pathname || '').split('/').filter(Boolean);
+    const templateIdx = parts.indexOf('template');
+    if (templateIdx > 0) return '/' + parts.slice(0, templateIdx).join('/');
+    const adminIdx = parts.indexOf('admin');
+    if (adminIdx > 0) return '/' + parts.slice(0, adminIdx).join('/');
+    return '';
   };
   const appPublicBase = () => {
     const meta = document.querySelector('meta[name="url-base"]');
     const slug = String(document.querySelector('meta[name="tenant-slug"]')?.content || '').trim().replace(/^\/+|\/+$/g, '');
     const raw = String(meta?.content || '').trim();
-    if (!raw) return '';
+    if (!raw) return detectedAppBase();
     try {
       let path = new URL(raw, window.location.origin).pathname.replace(/\/+$/, '');
       if (slug && path.endsWith(`/${slug}`)) {
         path = path.slice(0, -(slug.length + 1));
       }
-      return path;
+      return path || detectedAppBase();
     } catch (_) {
       let path = raw.replace(/\/+$/, '');
       if (slug && path.endsWith(`/${slug}`)) {
         path = path.slice(0, -(slug.length + 1));
       }
-      return path;
+      return path || detectedAppBase();
     }
   };
   const resolveImageUrl = (value) => {
@@ -280,15 +289,18 @@
     if (coverField && checked) coverField.value = checked.value || '0';
   };
   const setSlotPreview = (slot, src, alt) => {
+    const slotEl = form?.querySelector(`[data-admin-product-image-slot="${slot}"]`);
     const img = form?.querySelector(`[data-admin-product-image-preview="${slot}"]`);
     const empty = form?.querySelector(`[data-admin-product-image-empty="${slot}"]`);
     const resolved = String(src || '').trim();
+    const url = resolved ? resolveImageUrl(resolved) : '';
+    if (slotEl) slotEl.classList.toggle('has-image', Boolean(url));
     if (img) {
-      img.hidden = !resolved;
-      img.src = resolved ? resolveImageUrl(resolved) : '';
+      img.hidden = !url;
+      img.src = url;
       img.alt = alt || 'Vista previa';
     }
-    if (empty) empty.hidden = Boolean(resolved);
+    if (empty) empty.hidden = Boolean(url);
   };
   const clearImageSlot = (slot) => {
     revokePreviewObjectUrl(slot);
@@ -583,14 +595,16 @@
         return;
       }
       previewObjectUrls[String(slot)] = URL.createObjectURL(file);
-      const img = form?.querySelector(`[data-admin-product-image-preview="${slot}"]`);
-      const empty = form?.querySelector(`[data-admin-product-image-empty="${slot}"]`);
-      if (img) {
-        img.hidden = false;
-        img.src = previewObjectUrls[String(slot)];
-        img.alt = file.name || 'Vista previa';
-      }
-      if (empty) empty.hidden = true;
+      setSlotPreview(slot, previewObjectUrls[String(slot)], file.name || 'Vista previa');
+    });
+  });
+  form?.querySelectorAll('.admin-product-image-slot__preview').forEach((preview) => {
+    preview.addEventListener('keydown', (evt) => {
+      if (evt.key !== 'Enter' && evt.key !== ' ') return;
+      evt.preventDefault();
+      const id = preview.getAttribute('for');
+      if (!id) return;
+      document.getElementById(id)?.click();
     });
   });
   coverRadios.forEach((radio) => {

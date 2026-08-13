@@ -74,14 +74,14 @@ $tipos = array_values(array_unique(array_map('trim', $tipos)));
       <section class="admin-product-images" data-admin-product-images>
         <div class="admin-product-images__head">
           <span class="admin-form__label">Imagenes del producto</span>
-          <span class="admin-form__hint">Hasta 4 imagenes. Marca una como portada. Cada imagen puede tener precio propio.</span>
+          <span class="admin-form__hint">Hasta 4 imagenes por producto. Marca una como portada. Cada imagen puede tener precio propio.</span>
         </div>
         <div class="admin-product-images__grid">
           <?php for ($i = 0; $i < 4; $i++): ?>
           <div class="admin-product-image-slot" data-admin-product-image-slot="<?php echo $i; ?>">
             <input type="hidden" name="Imagenes_Actuales[<?php echo $i; ?>]" value="" data-admin-product-image-current="<?php echo $i; ?>">
             <input type="hidden" name="Imagenes_Quitar[<?php echo $i; ?>]" value="" data-admin-product-image-remove-value="<?php echo $i; ?>">
-            <label class="admin-product-image-slot__preview" for="admin-product-image-<?php echo $i; ?>">
+            <label class="admin-product-image-slot__preview" for="admin-product-image-<?php echo $i; ?>" tabindex="0">
               <img src="" alt="Vista previa <?php echo $i + 1; ?>" data-admin-product-image-preview="<?php echo $i; ?>" hidden>
               <span data-admin-product-image-empty="<?php echo $i; ?>"><i class="bx bx-image-add"></i></span>
             </label>
