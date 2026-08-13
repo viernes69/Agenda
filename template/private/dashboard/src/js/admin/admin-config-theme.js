@@ -16,9 +16,14 @@
     try {
       localStorage.setItem('agendarte-theme', theme);
       localStorage.setItem('agendarte-admin-theme', theme);
+      localStorage.setItem('agendarte-admin-theme-user-set', '1');
       document.documentElement.setAttribute('data-admin-theme', theme);
       document.documentElement.setAttribute('data-theme', theme);
+      if (document.body) document.body.setAttribute('data-theme', theme);
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute('content', theme === 'dark' ? '#111827' : '#f8fafc');
       updateButtons(theme);
+      window.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { theme } }));
     } catch (err) {}
   };
 
@@ -57,7 +62,7 @@
   }
 
   // Initial state
-  const currentTheme = document.documentElement.getAttribute('data-admin-theme') || 'dark';
+  const currentTheme = document.documentElement.getAttribute('data-admin-theme') || 'light';
   updateButtons(currentTheme);
 
 })();

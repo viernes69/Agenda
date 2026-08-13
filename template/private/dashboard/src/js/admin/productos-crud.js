@@ -782,5 +782,13 @@
     }
   });
 
+  window.AdminProductsCrud = {
+    replaceMarkup: (html) => {
+      list.innerHTML = String(html || '');
+      applyFilter();
+    },
+    refresh: applyFilter,
+  };
+
   applyFilter();
 })();

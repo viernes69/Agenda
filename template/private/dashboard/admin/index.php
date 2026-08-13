@@ -1178,13 +1178,16 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script>
     (function () {
       try {
-        var theme = localStorage.getItem('agendarte-theme') || localStorage.getItem('agendarte-admin-theme') || 'dark';
-        if (theme !== 'dark' && theme !== 'light') theme = 'dark';
+        var userThemeSet = localStorage.getItem('agendarte-admin-theme-user-set') === '1';
+        var theme = userThemeSet
+          ? (localStorage.getItem('agendarte-theme') || localStorage.getItem('agendarte-admin-theme') || 'light')
+          : 'light';
+        if (theme !== 'dark' && theme !== 'light') theme = 'light';
         document.documentElement.setAttribute('data-admin-theme', theme);
         document.documentElement.setAttribute('data-theme', theme);
       } catch (error) {
-        document.documentElement.setAttribute('data-admin-theme', 'dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-admin-theme', 'light');
+        document.documentElement.setAttribute('data-theme', 'light');
       }
     })();
   </script>
@@ -1249,6 +1252,12 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             <i class="bx <?php echo $isStoreMode ? 'bx-store' : 'bx-calendar-check'; ?>" aria-hidden="true"></i>
             <?php echo e($modeLabel); ?>
           </span>
+        </div>
+        <div class="admin-header-actions">
+          <button type="button" class="admin-theme-toggle" data-admin-theme-toggle aria-label="Cambiar modo visual">
+            <i class="bx bx-moon" aria-hidden="true"></i>
+            <span data-admin-theme-toggle-label>Modo oscuro</span>
+          </button>
         </div>
         <details class="admin-orders"<?php echo $hasAnyCartOrders ? '' : ' data-empty="1"'; ?> data-active-status="<?php echo e($cartActiveStatus); ?>" hidden aria-hidden="true">
           <summary class="admin-orders__summary" aria-label="Pedidos">
@@ -2178,7 +2187,6 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
               ['id' => 'legal', 'title' => 'Config. Legal', 'icon' => 'bx-shield-quarter'],
               ['id' => 'funciones', 'title' => $isStoreMode ? 'Modo del comercio' : 'Funciones', 'icon' => 'bx-wrench'],
-              ['id' => 'temas', 'title' => 'Tema visual', 'icon' => 'bx-palette'],
             ];
             foreach ($configOptions as $option):
           ?>
@@ -2545,6 +2553,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/theme-toggle.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
@@ -2582,6 +2591,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-live-refresh.js')); ?>"></script>
   </body>
   </html>
 

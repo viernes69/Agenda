@@ -3,6 +3,7 @@
 
   const STORAGE_KEY = 'agendarte-theme';
   const ADMIN_STORAGE_KEY = 'agendarte-admin-theme';
+  const USER_SET_KEY = 'agendarte-admin-theme-user-set';
   const root = document.documentElement;
   const buttons = Array.from(document.querySelectorAll('[data-admin-theme-toggle]'));
 
@@ -10,15 +11,16 @@
 
   const readTheme = () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const userThemeSet = localStorage.getItem(USER_SET_KEY) === '1';
+      const stored = userThemeSet ? localStorage.getItem(STORAGE_KEY) : '';
       if (isTheme(stored)) return stored;
-      const adminStored = localStorage.getItem(ADMIN_STORAGE_KEY);
+      const adminStored = userThemeSet ? localStorage.getItem(ADMIN_STORAGE_KEY) : '';
       if (isTheme(adminStored)) return adminStored;
     } catch (error) {
       // Storage can be unavailable in private browsing or locked WebViews.
     }
     const current = root.getAttribute('data-admin-theme') || root.getAttribute('data-theme');
-    return isTheme(current) ? current : 'dark';
+    return isTheme(current) ? current : 'light';
   };
 
   const updateButton = (button, theme) => {
@@ -45,10 +47,12 @@
     }
 
     buttons.forEach((button) => updateButton(button, theme));
+    window.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { theme } }));
   };
 
   const saveTheme = (theme) => {
     try {
+      localStorage.setItem(USER_SET_KEY, '1');
       localStorage.setItem(STORAGE_KEY, theme);
       localStorage.setItem(ADMIN_STORAGE_KEY, theme);
     } catch (error) {

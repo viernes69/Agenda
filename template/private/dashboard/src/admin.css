@@ -179,6 +179,43 @@ body {
   gap: 1rem;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .6rem;
+  margin-left: auto;
+}
+
+.admin-theme-toggle {
+  appearance: none;
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.14);
+  color: var(--title, #f8fafc);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 2.45rem;
+  padding: .48rem .85rem;
+  font-size: .88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.admin-theme-toggle:hover {
+  background: rgba(124, 58, 237, 0.22);
+  border-color: rgba(124, 58, 237, 0.48);
+  transform: translateY(-1px);
+}
+
+.admin-theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.24);
+}
+
 .admin-heading {
   margin: 0;
   font-size: clamp(1.2rem, 1rem + 1vw, 1.8rem);
@@ -5362,6 +5399,157 @@ body {
   }
 }
 
+:root[data-admin-theme="light"] {
+  --bg: #f6f8fc;
+  --panel: #ffffff;
+  --muted: #64748b;
+  --text: #172033;
+  --title: #0f172a;
+  --accent: #7c3aed;
+  --accent-600: #6d28d9;
+  --border: #dbe3ef;
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --panel-muted: rgba(248, 250, 252, 0.92);
+  color-scheme: light;
+}
+
+:root[data-admin-theme="light"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root[data-admin-theme="light"] .admin-layout {
+  --bg: #f6f8fc;
+  --panel: #ffffff;
+  --muted: #64748b;
+  --text: #172033;
+  --title: #0f172a;
+  --border: #dbe3ef;
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --panel-muted: rgba(248, 250, 252, 0.92);
+  background:
+    radial-gradient(circle at -15% -20%, rgba(124, 58, 237, 0.09), transparent 42%),
+    linear-gradient(160deg, #fbfdff 0%, #f4f7fb 48%, #eef4ff 100%);
+  color: var(--text);
+  color-scheme: light;
+}
+
+:root[data-admin-theme="light"] .admin-layout::before {
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-admin-theme="light"] .admin-aside,
+:root[data-admin-theme="light"] .admin-main__header,
+:root[data-admin-theme="light"] .admin-plan-banner,
+:root[data-admin-theme="light"] .summary-card,
+:root[data-admin-theme="light"] .admin-config-card,
+:root[data-admin-theme="light"] .admin-product-card,
+:root[data-admin-theme="light"] .admin-client-card,
+:root[data-admin-theme="light"] .admin-service-card,
+:root[data-admin-theme="light"] .admin-barber-card,
+:root[data-admin-theme="light"] .table-wrap,
+:root[data-admin-theme="light"] .admin-orders__dropdown,
+:root[data-admin-theme="light"] .modal__dialog,
+:root[data-admin-theme="light"] .modal__dialog--sm,
+:root[data-admin-theme="light"] .modal__dialog--lg,
+:root[data-admin-theme="light"] .modal__dialog--barber,
+:root[data-admin-theme="light"] .modal__dialog--xl {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(203, 213, 225, 0.9);
+  color: var(--text);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-admin-theme="light"] .admin-client-card,
+:root[data-admin-theme="light"] .admin-product-card,
+:root[data-admin-theme="light"] .admin-config-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+}
+
+:root[data-admin-theme="light"] .admin-heading,
+:root[data-admin-theme="light"] .summary-card__header h3,
+:root[data-admin-theme="light"] .admin-product-header h3,
+:root[data-admin-theme="light"] .admin-client-name,
+:root[data-admin-theme="light"] .modal__header h2,
+:root[data-admin-theme="light"] .modal__header-text h2,
+:root[data-admin-theme="light"] .modal__body {
+  color: var(--title);
+}
+
+:root[data-admin-theme="light"] .muted,
+:root[data-admin-theme="light"] .summary-card__subtitle,
+:root[data-admin-theme="light"] .summary-card__label,
+:root[data-admin-theme="light"] .admin-product-desc,
+:root[data-admin-theme="light"] .admin-client-sub,
+:root[data-admin-theme="light"] .admin-client-sub span,
+:root[data-admin-theme="light"] .admin-section-count,
+:root[data-admin-theme="light"] .modal__eyebrow,
+:root[data-admin-theme="light"] .modal__subtitle {
+  color: var(--muted);
+}
+
+:root[data-admin-theme="light"] .admin-link,
+:root[data-admin-theme="light"] .admin-bottomnav__item {
+  color: #334155;
+}
+
+:root[data-admin-theme="light"] .admin-link:hover,
+:root[data-admin-theme="light"] .admin-link.is-active,
+:root[data-admin-theme="light"] .admin-bottomnav__item.is-active {
+  color: #5b21b6;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+:root[data-admin-theme="light"] .admin-bottomnav {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(203, 213, 225, 0.9);
+  box-shadow: 0 -12px 34px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-admin-theme="light"] .table th {
+  color: #475569;
+  background: rgba(241, 245, 249, 0.95);
+}
+
+:root[data-admin-theme="light"] .table td {
+  color: #172033;
+  border-color: rgba(203, 213, 225, 0.78);
+}
+
+:root[data-admin-theme="light"] .admin-products-filter__select,
+:root[data-admin-theme="light"] .admin-reservas-filter__select,
+:root[data-admin-theme="light"] .admin-reservas-filter__input,
+:root[data-admin-theme="light"] .admin-clients-search,
+:root[data-admin-theme="light"] .admin-clients-search input,
+:root[data-admin-theme="light"] .admin-orders__status-select,
+:root[data-admin-theme="light"] .admin-orders__edit-add-select,
+:root[data-admin-theme="light"] .admin-orders__edit-qty-input {
+  background: #ffffff;
+  color: #172033;
+  border-color: rgba(148, 163, 184, 0.55);
+}
+
+:root[data-admin-theme="light"] .admin-share-link__btn {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #172033 !important;
+  border-color: rgba(124, 58, 237, 0.28) !important;
+}
+
+:root[data-admin-theme="light"] .admin-theme-toggle {
+  background: #ffffff;
+  color: #4c1d95;
+  border-color: rgba(124, 58, 237, 0.34);
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.08);
+}
+
+:root[data-admin-theme="light"] .admin-orders-print-toggle {
+  background: rgba(124, 58, 237, 0.08);
+  color: #4c1d95;
+}
+
 @media (min-width: 641px) and (max-width: 899px) {
   .table {
     min-width: 0;
@@ -5474,4 +5662,19 @@ body {
   border-color: rgba(124, 58, 237, 0.65);
   background: rgba(124, 58, 237, 0.18);
   box-shadow: 0 16px 28px rgba(124, 58, 237, 0.1);
+}
+
+:root[data-admin-theme="light"] .table tr,
+:root[data-admin-theme="light"] .admin-client-card,
+:root[data-admin-theme="light"] .admin-product-card,
+:root[data-admin-theme="light"] .admin-service-card,
+:root[data-admin-theme="light"] .admin-barber-card,
+:root[data-admin-theme="light"] .summary-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(203, 213, 225, 0.9);
+  color: #172033;
+}
+
+:root[data-admin-theme="light"] .table td::before {
+  color: #64748b;
 }

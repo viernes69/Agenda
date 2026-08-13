@@ -23,18 +23,25 @@
   };
 
   let emptyMsg = list.querySelector('.admin-clients-empty');
-  if (!emptyMsg) {
-    emptyMsg = document.createElement('p');
-    emptyMsg.className = 'muted admin-clients-empty';
-    emptyMsg.hidden = true;
-    list.appendChild(emptyMsg);
-  }
+  const ensureEmptyMsg = () => {
+    if (emptyMsg && list.contains(emptyMsg)) return emptyMsg;
+    emptyMsg = list.querySelector('.admin-clients-empty');
+    if (!emptyMsg) {
+      emptyMsg = document.createElement('p');
+      emptyMsg.className = 'muted admin-clients-empty';
+      emptyMsg.hidden = true;
+      list.appendChild(emptyMsg);
+    }
+    return emptyMsg;
+  };
+  ensureEmptyMsg();
 
   const updateCount = () => {
     if (countEl) countEl.textContent = formatRegisteredLabel(getItems().length);
   };
 
   const updateEmptyState = () => {
+    emptyMsg = ensureEmptyMsg();
     if (!emptyMsg) return;
     const items = getItems();
     if (items.length === 0) {
@@ -189,10 +196,16 @@
   window.AdminClientsList = {
     upsert: upsertClient,
     remove: removeClient,
+    replaceMarkup: (html) => {
+      list.innerHTML = String(html || '');
+      emptyMsg = list.querySelector('.admin-clients-empty');
+      ensureEmptyMsg();
+      updateCount();
+      updateEmptyState();
+    },
     refresh: () => {
       updateCount();
       updateEmptyState();
     },
   };
 })();
-

@@ -6,9 +6,8 @@
   const filterButtons = Array.from(ordersDetails.querySelectorAll('.admin-orders__filter-btn'));
   if (!list || !filterButtons.length) return;
 
-  const items = Array.from(list.querySelectorAll('.admin-orders__item'));
+  const getItems = () => Array.from(list.querySelectorAll('.admin-orders__item'));
   const table = document.querySelector('[data-admin-orders-table]');
-  const selects = Array.from(document.querySelectorAll('.admin-orders__status-select'));
   const badge = ordersDetails.querySelector('.admin-orders__badge');
   const emptyState = ordersDetails.querySelector('.admin-orders__empty[data-role="no-results"]');
   const autoPrintToggle = document.querySelector('[data-admin-orders-autoprint]');
@@ -31,7 +30,7 @@
   }, {});
 
   const initialItemCounts = {};
-  items.forEach((item) => {
+  getItems().forEach((item) => {
     const status = item.dataset.orderStatus || '';
     if (!status) return;
     initialItemCounts[status] = (initialItemCounts[status] ?? 0) + 1;
@@ -342,6 +341,17 @@
     });
   };
 
+  const refreshCountsFromCurrentItems = () => {
+    Object.keys(statusCounts).forEach((status) => {
+      statusCounts[status] = 0;
+    });
+    getItems().forEach((item) => {
+      const status = item.dataset.orderStatus || '';
+      if (!status) return;
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    });
+  };
+
   const getPendingCount = () => statusCounts.pendiente ?? 0;
 
   const updateCartBadge = () => {
@@ -376,7 +386,7 @@
 
   const applyStatus = (status, { remember = false } = {}) => {
     let visible = 0;
-    items.forEach((item) => {
+    getItems().forEach((item) => {
       const match = status === (item.dataset.orderStatus || '');
       item.style.display = match ? '' : 'none';
       if (match) visible += 1;
@@ -723,22 +733,22 @@
     });
   }
 
-  selects.forEach((select) => {
-    select.addEventListener('change', async (event) => {
-      const target = event.currentTarget;
-      const orderId = target.dataset.orderId;
-      const nextStatus = target.value || '';
-      const prevStatus = target.dataset.currentStatus || '';
-      if (!orderId || prevStatus === nextStatus) {
-        target.value = prevStatus;
-        return;
-      }
-      const ok = await updateOrderStatus(orderId, nextStatus, {
-        selectEl: target,
-        itemEl: target.closest('.admin-orders__item'),
-      });
-      if (!ok) target.value = prevStatus;
+  document.addEventListener('change', async (event) => {
+    const target = event.target;
+    if (!target || !target.matches || !target.matches('.admin-orders__status-select')) return;
+    if (!ordersDetails.contains(target) && !(table && table.contains(target))) return;
+    const orderId = target.dataset.orderId;
+    const nextStatus = target.value || '';
+    const prevStatus = target.dataset.currentStatus || '';
+    if (!orderId || prevStatus === nextStatus) {
+      target.value = prevStatus;
+      return;
+    }
+    const ok = await updateOrderStatus(orderId, nextStatus, {
+      selectEl: target,
+      itemEl: orderElement(target),
     });
+    if (!ok) target.value = prevStatus;
   });
 
   document.addEventListener('click', async (event) => {
@@ -794,12 +804,41 @@
     }
   });
 
-  items.forEach((item) => {
+  getItems().forEach((item) => {
     syncSaleActionsVisibility(item, item.dataset.orderStatus || '');
   });
 
   updateButtonCounts();
   applyStatus(resolveDefaultStatus());
+  window.AdminOrdersLiveRefresh = ({ listHtml = null, tbodyHtml = null, catalogJson = '', sectionCountText = '' } = {}) => {
+    if (catalogJson) {
+      try {
+        const parsed = JSON.parse(catalogJson);
+        productCatalog = Array.isArray(parsed) ? parsed : productCatalog;
+        if (catalogEl) catalogEl.textContent = catalogJson;
+      } catch (_) { /* keep current catalog */ }
+    }
+    if (typeof listHtml === 'string') {
+      list.innerHTML = listHtml;
+      getItems().forEach((item) => {
+        syncSaleActionsVisibility(item, item.dataset.orderStatus || '');
+      });
+      refreshCountsFromCurrentItems();
+      updateButtonCounts();
+      applyStatus(ordersDetails.dataset.activeStatus || resolveDefaultStatus());
+    }
+    const liveTable = table || document.querySelector('[data-admin-orders-table]');
+    const tbody = liveTable ? liveTable.querySelector('tbody') : null;
+    if (tbody && typeof tbodyHtml === 'string') {
+      tbody.innerHTML = tbodyHtml;
+      try { window.AdminApplyResponsiveTableHeadings && window.AdminApplyResponsiveTableHeadings(); } catch (_) {}
+    }
+    if (sectionCountText) {
+      const countEl = document.querySelector('#pedidos .admin-section-count');
+      if (countEl) countEl.textContent = sectionCountText;
+    }
+    setTimeout(autoPrintNewOrders, 80);
+  };
   window.addEventListener('focus', autoPrintNewOrders);
   setTimeout(autoPrintNewOrders, 500);
   setInterval(autoPrintNewOrders, 8000);
