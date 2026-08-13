@@ -20,10 +20,42 @@ if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: ' . Au
 $db   = Database::getInstance();
 $flash = ['type' => '', 'msg' => ''];
 
+if (isset($_SESSION['admin_commerces_flash']) && is_array($_SESSION['admin_commerces_flash'])) {
+    $pendingFlash = $_SESSION['admin_commerces_flash'];
+    $flash = [
+        'type' => (string)($pendingFlash['type'] ?? ''),
+        'msg'  => (string)($pendingFlash['msg'] ?? ''),
+    ];
+    unset($_SESSION['admin_commerces_flash']);
+}
+
+function commerces_list_redirect_url(): string
+{
+    $params = [];
+    foreach (['q', 'status'] as $key) {
+        $value = trim((string)($_GET[$key] ?? ''));
+        if ($value !== '') {
+            $params[$key] = $value;
+        }
+    }
+
+    return 'commerces.php' . ($params !== [] ? '?' . http_build_query($params) : '');
+}
+
+function commerces_flash_redirect(array $flash): void
+{
+    $_SESSION['admin_commerces_flash'] = [
+        'type' => (string)($flash['type'] ?? ''),
+        'msg'  => (string)($flash['msg'] ?? ''),
+    ];
+    header('Location: ' . commerces_list_redirect_url(), true, 303);
+    exit;
+}
+
 // Acciones POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    CSRF::checkRequest('commerces_admin');
-    $action = $_POST['action'] ?? '';
+    $action = (string)($_POST['action'] ?? '');
+    CSRF::checkRequest('commerces_admin', $action !== 'delete_commerce');
 
     if ($action === 'save_commerce') {
         $id = (int)($_POST['id_commerce'] ?? 0);
@@ -96,9 +128,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete_commerce') {
         $id = (int)($_POST['id_commerce'] ?? 0);
         if ($id > 0) {
-            $db->delete('commerces', 'id_commerce = :id', [':id' => $id]);
-            Auth::audit('delete_commerce', 'commerce', $id);
-            $flash = ['type' => 'ok', 'msg' => 'Comercio eliminado.'];
+            $deleted = $db->delete('commerces', 'id_commerce = :id', [':id' => $id]);
+            if ($deleted > 0) {
+                Auth::audit('delete_commerce', 'commerce', $id);
+                $flash = ['type' => 'ok', 'msg' => 'Comercio eliminado.'];
+            } else {
+                $flash = ['type' => 'ok', 'msg' => 'El comercio ya habia sido eliminado.'];
+            }
+            commerces_flash_redirect($flash);
+        } else {
+            commerces_flash_redirect(['type' => 'error', 'msg' => 'Comercio invalido.']);
         }
     } elseif ($action === 'extend_trial') {
         $id = (int)($_POST['id_commerce'] ?? 0);

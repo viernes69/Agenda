@@ -83,7 +83,7 @@ final class CSRF
         return '<input type="hidden" name="_csrf" value="' . htmlspecialchars($tok, ENT_QUOTES, 'UTF-8') . '">';
     }
 
-    public static function checkRequest(string $purpose = 'form'): void
+    public static function checkRequest(string $purpose = 'form', bool $consume = true): void
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
@@ -92,7 +92,7 @@ final class CSRF
         $token = $_POST['_csrf']
             ?? $_SERVER['HTTP_X_CSRF_TOKEN']
             ?? null;
-        if (!self::validate(is_string($token) ? $token : null, $purpose)) {
+        if (!self::validate(is_string($token) ? $token : null, $purpose, $consume)) {
             http_response_code(419);
             if (self::wantsJson()) {
                 header('Content-Type: application/json; charset=utf-8');
