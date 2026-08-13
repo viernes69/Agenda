@@ -12,6 +12,7 @@
 declare(strict_types=1);
 
 use Agenduy\Core\Availability;
+use Agenduy\Core\AdminBrand;
 use Agenduy\Core\Auth;
 use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CommercePublic;

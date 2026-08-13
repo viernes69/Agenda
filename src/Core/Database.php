@@ -17,6 +17,7 @@ use PDO;
 use PDOException;
 use PDOStatement;
 use RuntimeException;
+use Throwable;
 
 final class Database
 {
@@ -586,6 +587,15 @@ final class Database
         $cols = $this->pdo->query('PRAGMA table_info(memberships)')->fetchAll(PDO::FETCH_ASSOC);
         $names = array_column($cols, 'name');
         $add = [
+            'descripcion' => "ALTER TABLE memberships ADD COLUMN descripcion TEXT DEFAULT ''",
+            'moneda' => "ALTER TABLE memberships ADD COLUMN moneda TEXT NOT NULL DEFAULT 'UYU'",
+            'duracion_dias' => 'ALTER TABLE memberships ADD COLUMN duracion_dias INTEGER NOT NULL DEFAULT 30',
+            'trial_dias' => 'ALTER TABLE memberships ADD COLUMN trial_dias INTEGER NOT NULL DEFAULT 30',
+            'mp_preapproval_id' => 'ALTER TABLE memberships ADD COLUMN mp_preapproval_id TEXT DEFAULT NULL',
+            'paypal_plan_id' => 'ALTER TABLE memberships ADD COLUMN paypal_plan_id TEXT DEFAULT NULL',
+            'activo' => 'ALTER TABLE memberships ADD COLUMN activo INTEGER NOT NULL DEFAULT 1',
+            'created_at' => "ALTER TABLE memberships ADD COLUMN created_at TEXT DEFAULT ''",
+            'updated_at' => "ALTER TABLE memberships ADD COLUMN updated_at TEXT DEFAULT ''",
             'features' => "ALTER TABLE memberships ADD COLUMN features TEXT DEFAULT '[]'",
             'limits' => "ALTER TABLE memberships ADD COLUMN limits TEXT DEFAULT '{}'",
             'precio_anual' => 'ALTER TABLE memberships ADD COLUMN precio_anual REAL DEFAULT NULL',
@@ -597,6 +607,8 @@ final class Database
                 $this->pdo->exec($sql);
             }
         }
+        $this->pdo->exec("UPDATE memberships SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''");
+        $this->pdo->exec("UPDATE memberships SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");
     }
 
     private function ensureSubscriptionBillingPeriod(): void
