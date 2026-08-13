@@ -193,7 +193,7 @@ $error   = $_GET['err'] ?? '';
 .plan-card__desc {
   color: var(--text-soft, #5b6271);
   font-size: .9rem;
-  flex: 1;
+  flex: 0 0 auto;
 }
 .plan-card__features {
   list-style: none;

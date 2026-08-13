@@ -1744,7 +1744,7 @@ body.modal-open{
 }
 .plan-card__desc{
   margin:0;
-  flex:1;
+  flex:0 0 auto;
   font-size:.9rem;
   line-height:1.45;
   color: var(--text-muted);

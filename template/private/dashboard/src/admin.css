@@ -831,7 +831,7 @@ body {
   font-size: .86rem;
   line-height: 1.4;
   color: var(--muted);
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .plan-membership-card__cta {

@@ -73,7 +73,20 @@ final class TenantLocalDb
         }
 
         $legacy = CommerceStorage::legacyBaseDir($idCommerce) . DIRECTORY_SEPARATOR . 'database.php';
-        return is_file($legacy) ? $legacy : null;
+        if (!is_file($legacy)) {
+            return null;
+        }
+
+        try {
+            CommercePanel::ensureLocalDatabase($idCommerce, $slug);
+            if (is_file($path)) {
+                return $path;
+            }
+        } catch (\Throwable) {
+            // Usar legacy como ultima compatibilidad.
+        }
+
+        return $legacy;
     }
 
     public static function lockPathForSlug(string $slug): string
