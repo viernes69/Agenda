@@ -13,8 +13,11 @@ final class UltraMsg
     public static function send(string $to, string $body): bool
     {
         $cfg = ProviderConfig::ultraMsgConfig();
-        if (!$cfg['enabled'] || $cfg['instance_id'] === '' || $cfg['token'] === '') {
-            return false;
+        if (!$cfg['enabled']) {
+            throw new RuntimeException('UltraMsg esta deshabilitado en la configuracion global.');
+        }
+        if ($cfg['instance_id'] === '' || $cfg['token'] === '') {
+            throw new RuntimeException('Faltan credenciales globales de UltraMsg.');
         }
 
         $phone = self::normalizePhone($to);

@@ -14,12 +14,14 @@ if (function_exists('fastcgi_finish_request')) {
 } elseif (!headers_sent()) {
     header("Connection: close");
     header("Content-Length: 0");
-    ob_end_flush();
+    if (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
     @ob_flush();
     flush();
 }
 
-require __DIR__ . '/../src/Core/bootstrap.php';
+require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\NotificationOutbox;
 
 try {

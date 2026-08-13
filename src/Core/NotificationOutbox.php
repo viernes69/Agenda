@@ -8,6 +8,8 @@ namespace Agenduy\Core;
  */
 final class NotificationOutbox
 {
+    private const MAX_DELIVERY_ATTEMPTS = 3;
+
     public static function enqueue(
         ?int $idCommerce,
         string $channel,
@@ -365,29 +367,49 @@ final class NotificationOutbox
             [':now' => $now, ':lim' => $limit]
         );
 
-        $stats = ['processed' => 0, 'sent' => 0, 'failed' => 0];
+        $stats = ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retrying' => 0];
         foreach ($rows as $row) {
             $stats['processed']++;
             $id = (int)$row['id_outbox'];
+            $attempts = (int)$row['attempts'] + 1;
             try {
                 $ok = self::dispatch($row);
-                $db->update('notification_outbox', [
-                    'status' => $ok ? 'sent' : 'failed',
-                    'attempts' => (int)$row['attempts'] + 1,
-                    'sent_at' => $ok ? date('Y-m-d H:i:s') : null,
-                    'last_error' => $ok ? '' : 'dispatch returned false',
-                ], 'id_outbox = :id', [':id' => $id]);
-                $stats[$ok ? 'sent' : 'failed']++;
+                if ($ok) {
+                    $db->update('notification_outbox', [
+                        'status' => 'sent',
+                        'attempts' => $attempts,
+                        'sent_at' => date('Y-m-d H:i:s'),
+                        'last_error' => '',
+                    ], 'id_outbox = :id', [':id' => $id]);
+                    $stats['sent']++;
+                } else {
+                    $willRetry = self::recordDeliveryFailure($db, $id, $attempts, 'dispatch returned false');
+                    $stats[$willRetry ? 'retrying' : 'failed']++;
+                }
             } catch (\Throwable $e) {
-                $db->update('notification_outbox', [
-                    'status' => 'failed',
-                    'attempts' => (int)$row['attempts'] + 1,
-                    'last_error' => $e->getMessage(),
-                ], 'id_outbox = :id', [':id' => $id]);
-                $stats['failed']++;
+                $willRetry = self::recordDeliveryFailure($db, $id, $attempts, $e->getMessage());
+                $stats[$willRetry ? 'retrying' : 'failed']++;
             }
         }
         return $stats;
+    }
+
+    private static function recordDeliveryFailure(Database $db, int $id, int $attempts, string $error): bool
+    {
+        $willRetry = $attempts < self::MAX_DELIVERY_ATTEMPTS;
+        $data = [
+            'status' => $willRetry ? 'queued' : 'failed',
+            'attempts' => $attempts,
+            'last_error' => mb_substr($error, 0, 500, 'UTF-8'),
+        ];
+
+        if ($willRetry) {
+            $delaySeconds = min(900, 60 * max(1, $attempts));
+            $data['scheduled_at'] = date('Y-m-d H:i:s', time() + $delaySeconds);
+        }
+
+        $db->update('notification_outbox', $data, 'id_outbox = :id', [':id' => $id]);
+        return $willRetry;
     }
 
     private static function enqueueAppointmentCreatedFromContext(array $ctx, array $payload): void
@@ -1320,7 +1342,11 @@ final class NotificationOutbox
                     ];
                 }
             }
-            return Mail::send($recipient, $subject, $body, strip_tags($body), $idCommerce, $attachments);
+            $sent = Mail::send($recipient, $subject, $body, strip_tags($body), $idCommerce, $attachments);
+            if (!$sent) {
+                throw new \RuntimeException(Mail::lastError() ?: 'No se pudo enviar el email.');
+            }
+            return true;
         }
         if ($channel === 'whatsapp') {
             try {

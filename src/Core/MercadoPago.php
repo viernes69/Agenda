@@ -83,7 +83,7 @@ final class MercadoPago
     }
 
     /**
-     * Tienda puede cobrar online solo en planes Intermedio/Pro.
+     * Tienda puede cobrar online en planes pagos con configuracion completa.
      */
     public static function isStoreCheckoutAllowed(?array $plan): bool
     {
@@ -98,9 +98,7 @@ final class MercadoPago
             return false;
         }
 
-        return str_contains($name, 'intermedio')
-            || str_contains($name, 'profesional')
-            || preg_match('/(^|\s|[-_])pro($|\s|[-_])/', $name) === 1;
+        return true;
     }
 
     /**
