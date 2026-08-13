@@ -9,6 +9,11 @@ namespace Agenduy\Core;
 final class NotificationOutbox
 {
     private const MAX_DELIVERY_ATTEMPTS = 3;
+    private const STALE_REMINDER_SECONDS = 1800;
+    private const STALE_OPERATIONAL_SECONDS = 86400;
+
+    /** @var array<int,int> */
+    private static array $pendingProcessIds = [];
 
     public static function enqueue(
         ?int $idCommerce,
@@ -48,6 +53,7 @@ final class NotificationOutbox
             'status' => 'queued',
         ]);
 
+        self::$pendingProcessIds[$id] = $id;
         self::triggerProcessAsync();
         return $id;
     }
@@ -61,20 +67,40 @@ final class NotificationOutbox
         }
         self::$shutdownHandlerRegistered = true;
 
-        // Lanzar una petición HTTP no bloqueante (fire and forget) al pseudo-cron
-        // Esto procesa la cola de mensajes en segundo plano sin colgar la web del usuario ni generar loops síncronos.
+        register_shutdown_function(static function (): void {
+            self::triggerPendingProcessAsync();
+        });
+    }
+
+    private static function triggerPendingProcessAsync(): void
+    {
+        $ids = array_values(array_unique(array_map('intval', self::$pendingProcessIds)));
+        $ids = array_values(array_filter($ids, static fn(int $id): bool => $id > 0));
+        if ($ids === []) {
+            return;
+        }
+
+        self::cancelStaleQueuedNotifications();
+
         $url = url('admin/api/async_cron.php');
         if (str_starts_with($url, 'http')) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query([
+                'ids' => implode(',', $ids),
+                'limit' => count($ids),
+            ]);
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200); // 200ms timeout para no trancar
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200);
             curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             @curl_exec($ch);
             @curl_close($ch);
+            return;
         }
+
+        self::processIds($ids, count($ids));
     }
 
     public static function enqueueAppointmentNotifications(
@@ -367,11 +393,64 @@ final class NotificationOutbox
             [':now' => $now, ':lim' => $limit]
         );
 
-        $stats = ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retrying' => 0];
+        return self::processRows($db, $rows);
+    }
+
+    /**
+     * Procesa solo filas recien encoladas por una request web. No drena backlog.
+     *
+     * @param list<int> $ids
+     * @return array<string,int>
+     */
+    public static function processIds(array $ids, int $limit = 50): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        $limit = max(1, min($limit, 100));
+        $ids = array_slice($ids, 0, $limit);
+        if ($ids === []) {
+            return self::emptyStats();
+        }
+
+        $db = Database::getInstance();
+        $now = date('Y-m-d H:i:s');
+        $params = [':now' => $now];
+        $placeholders = [];
+        foreach ($ids as $idx => $id) {
+            $key = ':id' . $idx;
+            $placeholders[] = $key;
+            $params[$key] = $id;
+        }
+
+        $rows = $db->fetchAll(
+            "SELECT * FROM notification_outbox
+             WHERE status = 'queued'
+               AND scheduled_at <= :now
+               AND id_outbox IN (" . implode(',', $placeholders) . ")
+             ORDER BY id_outbox ASC",
+            $params
+        );
+
+        return self::processRows($db, $rows);
+    }
+
+    /**
+     * @param list<array<string,mixed>> $rows
+     * @return array<string,int>
+     */
+    private static function processRows(Database $db, array $rows): array
+    {
+        $stats = self::emptyStats();
+        $nowTs = time();
         foreach ($rows as $row) {
             $stats['processed']++;
             $id = (int)$row['id_outbox'];
             $attempts = (int)$row['attempts'] + 1;
+            $expiryReason = self::queuedRowExpiryReason($row, $nowTs);
+            if ($expiryReason !== null) {
+                self::markExpired($db, $id, $expiryReason);
+                $stats['expired']++;
+                continue;
+            }
             try {
                 $ok = self::dispatch($row);
                 if ($ok) {
@@ -392,6 +471,85 @@ final class NotificationOutbox
             }
         }
         return $stats;
+    }
+
+    /**
+     * @return array<string,int>
+     */
+    private static function emptyStats(): array
+    {
+        return ['processed' => 0, 'sent' => 0, 'failed' => 0, 'retrying' => 0, 'expired' => 0];
+    }
+
+    private static function queuedRowExpiryReason(array $row, int $nowTs): ?string
+    {
+        $templateKey = strtolower(trim((string)($row['template_key'] ?? '')));
+        $scheduledTs = strtotime((string)($row['scheduled_at'] ?? ''));
+        if ($scheduledTs === false) {
+            return 'expired notification without valid schedule';
+        }
+
+        if (!str_starts_with($templateKey, 'appointment_reminder_')) {
+            if (self::isOperationalTemplate($templateKey) && $scheduledTs < ($nowTs - self::STALE_OPERATIONAL_SECONDS)) {
+                return 'expired stale operational notification';
+            }
+            return null;
+        }
+
+        if ($scheduledTs < ($nowTs - self::STALE_REMINDER_SECONDS)) {
+            return 'expired stale appointment reminder';
+        }
+
+        return null;
+    }
+
+    private static function markExpired(Database $db, int $id, string $reason): void
+    {
+        $db->update('notification_outbox', [
+            'status' => 'cancelled',
+            'last_error' => mb_substr($reason, 0, 500, 'UTF-8'),
+        ], 'id_outbox = :id', [':id' => $id]);
+    }
+
+    private static function isOperationalTemplate(string $templateKey): bool
+    {
+        return $templateKey === 'registration_welcome'
+            || str_starts_with($templateKey, 'appointment_')
+            || str_starts_with($templateKey, 'store_order_');
+    }
+
+    private static function cancelStaleQueuedNotifications(): void
+    {
+        try {
+            Database::getInstance()->update(
+                'notification_outbox',
+                [
+                    'status' => 'cancelled',
+                    'last_error' => 'expired stale appointment reminder',
+                ],
+                "status = 'queued'
+                 AND template_key LIKE 'appointment_reminder_%'
+                 AND scheduled_at < :cutoff",
+                [':cutoff' => date('Y-m-d H:i:s', time() - self::STALE_REMINDER_SECONDS)]
+            );
+            Database::getInstance()->update(
+                'notification_outbox',
+                [
+                    'status' => 'cancelled',
+                    'last_error' => 'expired stale operational notification',
+                ],
+                "status = 'queued'
+                 AND scheduled_at < :cutoff
+                 AND (
+                    template_key = 'registration_welcome'
+                    OR template_key LIKE 'appointment_%'
+                    OR template_key LIKE 'store_order_%'
+                 )",
+                [':cutoff' => date('Y-m-d H:i:s', time() - self::STALE_OPERATIONAL_SECONDS)]
+            );
+        } catch (\Throwable $e) {
+            error_log('[NotificationOutbox] cancel stale notifications failed: ' . $e->getMessage());
+        }
     }
 
     private static function recordDeliveryFailure(Database $db, int $id, int $attempts, string $error): bool

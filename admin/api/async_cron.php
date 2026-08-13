@@ -25,8 +25,14 @@ require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\NotificationOutbox;
 
 try {
-    // Process up to 15 notifications in the background
-    NotificationOutbox::processDue(15);
+    $limit = max(1, min(100, (int)($_REQUEST['limit'] ?? 15)));
+    $idsRaw = trim((string)($_REQUEST['ids'] ?? ''));
+    if ($idsRaw !== '') {
+        $ids = array_map('intval', preg_split('/[,\s]+/', $idsRaw, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        NotificationOutbox::processIds($ids, $limit);
+    } else {
+        NotificationOutbox::processDue($limit);
+    }
 } catch (\Throwable $e) {
     error_log('[async_cron] error: ' . $e->getMessage());
 }
