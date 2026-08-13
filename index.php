@@ -18,6 +18,7 @@ use Agenduy\Core\Auth;
 use Agenduy\Core\Database;
 use Agenduy\Core\GoogleAuth;
 use Agenduy\Core\LandingContent;
+use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\PlatformSettings;
 
 // Legacy admin config API handler
@@ -555,6 +556,8 @@ foreach ($planesActivos as $m) {
         'id' => $mid,
         'nombre' => (string)($m['nombre'] ?? ''),
         'descripcion' => (string)($m['descripcion'] ?? ''),
+        'display_descripcion' => MembershipPlan::displayDescription($m),
+        'comparativa' => MembershipPlan::comparisonRows($m),
         'precio' => (float)($m['precio'] ?? 0),
         'moneda' => (string)($m['moneda'] ?? 'UYU'),
         'duracion_dias' => (int)($m['duracion_dias'] ?? 30),

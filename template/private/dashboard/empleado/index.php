@@ -169,6 +169,37 @@ require __DIR__ . '/../src/php/plan_banner_from_sqlite.php';
 $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
   : url('');
+if (!function_exists('admin_tenant_asset_url')) {
+    function admin_tenant_asset_url(string $storedPath): string {
+        $storedPath = ltrim(str_replace('\\', '/', trim($storedPath)), '/');
+        if ($storedPath === '') {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $storedPath)) {
+            return $storedPath;
+        }
+
+        $idCommerce = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+        if ($idCommerce <= 0) {
+            $idCommerce = (int)(\Agenduy\Core\CommercePanel::commerceIdForTenantRoot($GLOBALS['tenantRootPath'] ?? '') ?? 0);
+        }
+        $tenantSlugForAsset = trim((string)($GLOBALS['tenantSlug'] ?? ''), '/');
+        if ($idCommerce > 0) {
+            $resolved = \Agenduy\Core\CommerceStorage::publicUrl($idCommerce, $tenantSlugForAsset, $storedPath);
+            if ($resolved !== '') {
+                return $resolved;
+            }
+            if (\Agenduy\Core\CommerceStorage::isCentralPath($storedPath)) {
+                return '';
+            }
+        }
+
+        if ($tenantSlugForAsset !== '' && $tenantSlugForAsset !== 'template') {
+            return url($tenantSlugForAsset . '/' . $storedPath);
+        }
+        return url($storedPath);
+    }
+}
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
   $dayNameMap = [
@@ -1254,7 +1285,7 @@ $summaryCards = [
                 if (preg_match('#^https?://#i', $photo)) {
                   $photoUrl = $photo;
                 } else {
-                  $photoUrl = '../../../' . ltrim($photo, '/');
+                  $photoUrl = admin_tenant_asset_url($photo);
                 }
               }
               $initials = '';
@@ -1368,7 +1399,7 @@ $summaryCards = [
                 if (preg_match('#^https?://#i', $photo)) {
                   $photoUrl = $photo;
                 } else {
-                  $photoUrl = '../../../' . ltrim($photo, '/');
+                  $photoUrl = admin_tenant_asset_url($photo);
                 }
               }
               $initials = '';
