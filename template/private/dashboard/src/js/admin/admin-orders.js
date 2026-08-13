@@ -11,6 +11,7 @@
   const selects = Array.from(document.querySelectorAll('.admin-orders__status-select'));
   const badge = ordersDetails.querySelector('.admin-orders__badge');
   const emptyState = ordersDetails.querySelector('.admin-orders__empty[data-role="no-results"]');
+  const autoPrintToggle = document.querySelector('[data-admin-orders-autoprint]');
   const apiUrl = '../../../src/API/Autoload.php';
 
   const statusCounts = filterButtons.reduce((acc, btn) => {
@@ -75,6 +76,10 @@
 
   const productById = (id) => productCatalog.find((p) => Number(p.id) === Number(id)) || null;
   const cleanOrderId = (orderId) => String(orderId || '').replace(/[^0-9]/g, '');
+  const printStorageScope = (document.body && document.body.dataset && document.body.dataset.tenantSlug)
+    || window.location.pathname.replace(/[^a-z0-9_-]+/gi, '_');
+  const AUTO_PRINT_KEY = 'adminOrdersAutoPrint:' + printStorageScope;
+  const PRINTED_ORDERS_KEY = 'adminOrdersPrinted:' + printStorageScope;
   const orderSelector = (orderId) => '[data-order-id="' + cleanOrderId(orderId) + '"]';
   const orderElements = (orderId) => Array.from(document.querySelectorAll(
     '.admin-orders__item' + orderSelector(orderId) + ', [data-admin-order-row]' + orderSelector(orderId)
@@ -135,6 +140,168 @@
     const qty = Number(row.quantity) || 0;
     return Number.isFinite(price) ? sum + price * qty : sum;
   }, 0);
+
+  const formatMoney = (value) => {
+    const amount = Number(value) || 0;
+    try {
+      return new Intl.NumberFormat('es-UY', { style: 'currency', currency: 'UYU', maximumFractionDigits: 0 }).format(amount);
+    } catch (_) {
+      return '$' + Math.round(amount);
+    }
+  };
+
+  const readPrintedOrders = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PRINTED_ORDERS_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const markOrderPrinted = (orderId) => {
+    const id = cleanOrderId(orderId);
+    if (!id) return;
+    try {
+      const printed = readPrintedOrders();
+      if (!printed.includes(id)) {
+        printed.push(id);
+        localStorage.setItem(PRINTED_ORDERS_KEY, JSON.stringify(printed.slice(-200)));
+      }
+    } catch (_) { /* localStorage unavailable */ }
+  };
+
+  const isOrderPrinted = (orderId) => readPrintedOrders().includes(cleanOrderId(orderId));
+
+  const businessName = () => {
+    const candidates = [
+      document.querySelector('[data-admin-business-name]'),
+      document.querySelector('.admin-brand__tenant'),
+      document.querySelector('.admin-topbar__brand strong'),
+      document.querySelector('.admin-logo span'),
+    ];
+    for (const el of candidates) {
+      const text = el ? String(el.textContent || '').trim() : '';
+      if (text) return text;
+    }
+    return 'Pedido';
+  };
+
+  const orderPrintData = (itemEl) => {
+    const rows = parseItemsData(itemEl);
+    const orderId = cleanOrderId(itemEl.dataset.orderId || '');
+    const dateText = itemEl.dataset.orderDate || '';
+    const timeText = itemEl.dataset.orderTime || '';
+    const statusEl = itemEl.querySelector('[data-admin-order-status-label], .admin-orders__item-status');
+    return {
+      id: orderId,
+      business: businessName(),
+      client: itemEl.dataset.orderClient || (itemEl.children && itemEl.children[1] ? itemEl.children[1].textContent.trim() : 'Cliente'),
+      email: itemEl.dataset.orderClientEmail || '',
+      phone: itemEl.dataset.orderClientPhone || '',
+      cedula: itemEl.dataset.orderClientCedula || '',
+      payment: itemEl.dataset.orderPayment || (itemEl.children && itemEl.children[4] ? itemEl.children[4].textContent.trim() : ''),
+      date: [dateText, timeText].filter(Boolean).join(' '),
+      status: statusEl ? statusEl.textContent.trim() : '',
+      address: itemEl.dataset.orderAddress || '',
+      rows,
+      total: totalFromRows(rows),
+    };
+  };
+
+  const printOrder = (itemEl, { auto = false } = {}) => {
+    if (!itemEl) return false;
+    const data = orderPrintData(itemEl);
+    if (!data.id) return false;
+    const rowsHtml = data.rows.length
+      ? data.rows.map((row) => {
+        const name = row.name || productNameById(row.product);
+        const variant = row.variant_label ? ' - ' + row.variant_label : '';
+        const subtotal = Number(row.price) * Number(row.quantity || 0);
+        return `<tr><td>${escapeHtml(String(row.quantity))}x ${escapeHtml(name + variant)}</td><td>${escapeHtml(formatMoney(subtotal))}</td></tr>`;
+      }).join('')
+      : '<tr><td colspan="2">Sin productos</td></tr>';
+    const details = [
+      ['Cliente', data.client],
+      ['Cedula', data.cedula],
+      ['Telefono', data.phone],
+      ['Email', data.email],
+      ['Tipo de pago', data.payment],
+      ['Fecha', data.date],
+      ['Estado', data.status],
+      ['Entrega', data.address],
+    ].filter(([, value]) => String(value || '').trim() !== '')
+      .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
+      .join('');
+    const html = `<!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <title>Pedido #${escapeHtml(data.id)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 18px; font-family: Arial, sans-serif; color: #111827; background: #fff; }
+          .ticket { width: 320px; max-width: 100%; margin: 0 auto; }
+          h1 { margin: 0 0 4px; font-size: 20px; }
+          h2 { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: #4b5563; }
+          p { margin: 4px 0; font-size: 13px; line-height: 1.35; }
+          table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+          td { padding: 7px 0; border-top: 1px dashed #cbd5e1; vertical-align: top; }
+          td:last-child { text-align: right; white-space: nowrap; }
+          .total { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 10px; border-top: 2px solid #111827; font-size: 16px; font-weight: 800; }
+          .foot { margin-top: 18px; text-align: center; color: #6b7280; font-size: 12px; }
+          @media print {
+            body { padding: 0; }
+            .ticket { width: 72mm; padding: 4mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="ticket">
+          <h1>${escapeHtml(data.business)}</h1>
+          <h2>Pedido #${escapeHtml(data.id)}</h2>
+          ${details}
+          <table><tbody>${rowsHtml}</tbody></table>
+          <div class="total"><span>Total</span><span>${escapeHtml(formatMoney(data.total))}</span></div>
+          <p class="foot">Generado desde Agendarte UY</p>
+        </main>
+        <script>window.onload = function(){ window.focus(); setTimeout(function(){ window.print(); }, 120); };</script>
+      </body>
+      </html>`;
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    frame.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(frame);
+    const doc = frame.contentWindow && frame.contentWindow.document;
+    if (!doc) {
+      frame.remove();
+      return false;
+    }
+    doc.open();
+    doc.write(html);
+    doc.close();
+    markOrderPrinted(data.id);
+    setTimeout(() => {
+      if (frame.isConnected) frame.remove();
+    }, auto ? 9000 : 6000);
+    return true;
+  };
+
+  const autoPrintNewOrders = () => {
+    if (!autoPrintToggle || !autoPrintToggle.checked) return;
+    const pendingRows = Array.from(document.querySelectorAll('[data-admin-order-row][data-order-status="pendiente"], .admin-orders__item[data-order-status="pendiente"]'));
+    for (const row of pendingRows) {
+      const orderId = row.dataset.orderId || '';
+      if (!orderId || isOrderPrinted(orderId)) continue;
+      printOrder(row, { auto: true });
+      break;
+    }
+  };
 
   const renderItemsList = (itemEl, rows) => {
     const ul = itemEl.querySelector('.admin-orders__items');
@@ -542,6 +709,20 @@
     });
   });
 
+  if (autoPrintToggle) {
+    try {
+      autoPrintToggle.checked = localStorage.getItem(AUTO_PRINT_KEY) === '1';
+    } catch (_) { /* localStorage unavailable */ }
+    autoPrintToggle.addEventListener('change', () => {
+      try {
+        localStorage.setItem(AUTO_PRINT_KEY, autoPrintToggle.checked ? '1' : '0');
+      } catch (_) { /* localStorage unavailable */ }
+      if (autoPrintToggle.checked) {
+        autoPrintNewOrders();
+      }
+    });
+  }
+
   selects.forEach((select) => {
     select.addEventListener('change', async (event) => {
       const target = event.currentTarget;
@@ -573,6 +754,11 @@
       || '';
     const action = actionBtn.getAttribute('data-order-action') || '';
     if (!itemEl || !orderId || !action) return;
+
+    if (action === 'print') {
+      printOrder(itemEl);
+      return;
+    }
 
     if (action === 'finalize') {
       await updateOrderStatus(orderId, 'finalizado', {
@@ -614,4 +800,7 @@
 
   updateButtonCounts();
   applyStatus(resolveDefaultStatus());
+  window.addEventListener('focus', autoPrintNewOrders);
+  setTimeout(autoPrintNewOrders, 500);
+  setInterval(autoPrintNewOrders, 8000);
 })();

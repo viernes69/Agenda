@@ -161,6 +161,7 @@ try {
     $clienteNombre = trim((string)($payload['cliente_nombre'] ?? ''));
     $clienteEmail = trim((string)($payload['cliente_email'] ?? ''));
     $clienteTelefono = trim((string)($payload['cliente_telefono'] ?? ''));
+    $clienteCedula = preg_replace('/\D+/', '', (string)($payload['cliente_cedula'] ?? $payload['cedula'] ?? '')) ?? '';
     if ($clienteEmail === '' || !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
     }
@@ -168,6 +169,9 @@ try {
     $phoneDigits = preg_replace('/\D+/', '', $clienteTelefono) ?? '';
     if (strlen($phoneDigits) < 7) {
         throw new InvalidArgumentException('Telefono invalido.');
+    }
+    if (strlen($clienteCedula) < 7) {
+        throw new InvalidArgumentException('Cedula invalida.');
     }
 
     $address = trim((string)($payload['address'] ?? ''));
@@ -208,7 +212,7 @@ try {
         $clienteAvatar = '';
     }
 
-    $clienteId = TenantLocalDb::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar);
+    $clienteId = TenantLocalDb::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar, $clienteCedula);
 
     $record = [
         'ID_Cliente' => $clienteId,
@@ -218,6 +222,10 @@ try {
         'Fecha' => date('Y-m-d'),
         'Status' => 'Pendiente',
         'Detalle_Items' => json_encode($orderItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]',
+        'Cliente_Nombre' => $clienteNombre,
+        'Cliente_Email' => $clienteEmail,
+        'Cliente_Telefono' => $clienteTelefono,
+        'Cliente_Cedula' => $clienteCedula,
     ];
 
     $row = TenantLocalDb::insertCartOrder($slug, $record, [
@@ -232,6 +240,7 @@ try {
             'cliente_nombre' => $clienteNombre,
             'cliente_email' => $clienteEmail,
             'cliente_telefono' => $clienteTelefono,
+            'cedula' => $clienteCedula,
             'direccion' => $address,
         ], 'created');
     } catch (Throwable $e) {

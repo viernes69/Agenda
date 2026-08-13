@@ -1322,6 +1322,10 @@ if (!function_exists('agenduy_render_commerce')) {
                                     Telefono
                                     <input type="tel" id="cart-customer-phone" autocomplete="tel" placeholder="099 123 456">
                                 </label>
+                                <label for="cart-customer-cedula">
+                                    Cedula
+                                    <input type="text" id="cart-customer-cedula" inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" maxlength="20" required>
+                                </label>
                             </div>
                             <p class="cart-contact__hint">Te enviamos la confirmacion por email y WhatsApp.</p>
                         </div>
@@ -1948,6 +1952,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     cliente_nombre: meta.nombre || '',
                     cliente_email: meta.email || '',
                     cliente_telefono: meta.telefono || '',
+                    cliente_cedula: meta.cedula || '',
                     appointment_id: meta.appointment_id || '',
                     note: meta.note || 'Pedido WhatsApp',
                     address: meta.address || cartInstructions || 'Coordinar por WhatsApp',
@@ -1999,6 +2004,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     cliente_nombre: meta.nombre || '',
                     cliente_email: meta.email || '',
                     cliente_telefono: meta.telefono || '',
+                    cliente_cedula: meta.cedula || '',
                     note: meta.note || 'Pedido Mercado Pago',
                     address: meta.address || cartInstructions || 'Coordinar entrega o retiro',
                     _csrf: csrfToken
@@ -2191,6 +2197,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartCustomerName = document.getElementById('cart-customer-name');
             const cartCustomerEmail = document.getElementById('cart-customer-email');
             const cartCustomerPhone = document.getElementById('cart-customer-phone');
+            const cartCustomerCedula = document.getElementById('cart-customer-cedula');
 
             function isValidEmail(value) {
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
@@ -2208,12 +2215,16 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (cartCustomerPhone && !String(cartCustomerPhone.value || '').trim()) {
                     cartCustomerPhone.value = String(guest.telefono || '').trim();
                 }
+                if (cartCustomerCedula && !String(cartCustomerCedula.value || '').trim()) {
+                    cartCustomerCedula.value = String(guest.cedula || '').trim();
+                }
             }
 
             function collectCartCustomerMeta() {
                 const nombre = String(cartCustomerName?.value || '').trim();
                 const email = String(cartCustomerEmail?.value || '').trim();
                 const telefono = String(cartCustomerPhone?.value || '').trim();
+                const cedula = String(cartCustomerCedula?.value || '').replace(/\D/g, '');
                 if (!isValidEmail(email)) {
                     window.alert('Ingresa un email valido para enviarte la confirmacion.');
                     cartCustomerEmail?.focus();
@@ -2224,10 +2235,15 @@ if (!function_exists('agenduy_render_commerce')) {
                     cartCustomerPhone?.focus();
                     return null;
                 }
-                if (typeof saveGuest === 'function') {
-                    saveGuest({ nombre, email, telefono });
+                if (cedula.length < 7) {
+                    window.alert('Ingresa una cedula valida.');
+                    cartCustomerCedula?.focus();
+                    return null;
                 }
-                return { nombre, email, telefono };
+                if (typeof saveGuest === 'function') {
+                    saveGuest({ nombre, email, telefono, cedula });
+                }
+                return { nombre, email, telefono, cedula };
             }
 
             function openCartModal() {
@@ -3259,6 +3275,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             nombre: booking.nombre || '',
                             email: booking.email || '',
                             telefono: booking.telefono || '',
+                            cedula: booking.cedula || '',
                             appointment_id: booking.id || ''
                         },
                         afterSuccess: () => closeModal()

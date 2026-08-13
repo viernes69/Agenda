@@ -32,6 +32,10 @@ final class TenantLocalDb
         'MP_Status_Detail' => '',
         'Total' => '',
         'Detalle_Items' => '',
+        'Cliente_Nombre' => '',
+        'Cliente_Email' => '',
+        'Cliente_Telefono' => '',
+        'Cliente_Cedula' => '',
     ];
 
     public static function pathForSlug(string $slug): string
@@ -384,6 +388,20 @@ final class TenantLocalDb
                     if ($cedula !== '' && array_key_exists('Cedula', $db['clientes'][$idx])
                         && trim((string)($db['clientes'][$idx]['Cedula'] ?? '')) === '') {
                         $db['clientes'][$idx]['Cedula'] = $cedula;
+                    }
+                    if ($nombre !== '' && array_key_exists('Nombre', $db['clientes'][$idx])) {
+                        $currentName = trim((string)($db['clientes'][$idx]['Nombre'] ?? ''));
+                        if ($currentName === '' || strtolower($currentName) === 'cliente whatsapp') {
+                            $db['clientes'][$idx]['Nombre'] = $nombre;
+                        }
+                    }
+                    if ($telefono !== '' && array_key_exists('Telefono', $db['clientes'][$idx])
+                        && trim((string)($db['clientes'][$idx]['Telefono'] ?? '')) === '') {
+                        $db['clientes'][$idx]['Telefono'] = $telefono;
+                    }
+                    if ($email !== '' && array_key_exists('Email', $db['clientes'][$idx])
+                        && trim((string)($db['clientes'][$idx]['Email'] ?? '')) === '') {
+                        $db['clientes'][$idx]['Email'] = $email;
                     }
                     // Backfill del avatar de Google si el registro local todavía no tiene Perfil.
                     if ($perfil !== '' && array_key_exists('Perfil', $db['clientes'][$idx])

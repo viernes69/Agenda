@@ -157,6 +157,110 @@ $barberos = AutoloadDB::all('barberos');
 $servicios = AutoloadDB::all('servicios');
 $productos = AutoloadDB::all('productos');
 $carritos = AutoloadDB::all('carrito');
+$cartClientIds = [];
+foreach ($clientes as $cliente) {
+  $cid = $cliente['ID_Cliente'] ?? null;
+  if ($cid !== null && $cid !== '' && is_numeric($cid)) {
+    $cartClientIds[(string)(int)$cid] = true;
+  }
+}
+$cartCustomerFromOrder = static function(array $row): array {
+  $firstNonEmpty = static function(array $keys) use ($row): string {
+    foreach ($keys as $key) {
+      $value = trim((string)($row[$key] ?? ''));
+      if ($value !== '') {
+        return $value;
+      }
+    }
+    return '';
+  };
+  $address = '';
+  foreach ($row as $key => $value) {
+    $keyText = strtolower((string)$key);
+    if (str_contains($keyText, 'direcci') || str_contains($keyText, 'direccion')) {
+      $address = trim((string)$value);
+      if ($address !== '') { break; }
+    }
+  }
+  $nombre = $firstNonEmpty(['Cliente_Nombre', 'cliente_nombre']);
+  $email = strtolower($firstNonEmpty(['Cliente_Email', 'cliente_email', 'payer_email']));
+  $telefono = $firstNonEmpty(['Cliente_Telefono', 'cliente_telefono', 'Telefono']);
+  $cedula = preg_replace('/\D+/', '', $firstNonEmpty(['Cliente_Cedula', 'cliente_cedula', 'Cedula'])) ?? '';
+  if ($address !== '') {
+    if ($email === '' && preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $address, $match)) {
+      $email = strtolower($match[0]);
+    }
+    if ($telefono === '' && preg_match('/\+?\d[\d\s().-]{6,}\d/', $address, $match)) {
+      $telefono = trim($match[0]);
+    }
+    if ($nombre === '') {
+      $parts = preg_split('/\s+(?:-|[^\pL\pN@+.])\s+/u', $address) ?: [];
+      $skipWords = ['pedido', 'whatsapp', 'mercado', 'reserva', 'coordinar', 'entrega', 'retiro', 'local'];
+      foreach (array_reverse($parts) as $part) {
+        $candidate = trim((string)$part);
+        $candidateKey = strtolower($candidate);
+        if ($candidate === '' || strlen($candidate) > 80 || preg_match('/\d|@/', $candidate)) { continue; }
+        $skip = false;
+        foreach ($skipWords as $word) {
+          if (str_contains($candidateKey, $word)) { $skip = true; break; }
+        }
+        if (!$skip) {
+          $nombre = $candidate;
+          break;
+        }
+      }
+    }
+  }
+  return [
+    'nombre' => $nombre,
+    'email' => $email,
+    'telefono' => $telefono,
+    'cedula' => $cedula,
+  ];
+};
+if (
+  class_exists(\Agenduy\Core\TenantLocalDb::class)
+  && $tenantSlug !== ''
+  && !\Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)
+) {
+  $cartClientRepairs = 0;
+  foreach ($carritos as $cartRow) {
+    if (!is_array($cartRow)) { continue; }
+    $orderId = $cartRow['ID_Carrito'] ?? null;
+    if ($orderId === null || $orderId === '' || !is_numeric($orderId)) { continue; }
+    $clientIdRaw = $cartRow['ID_Cliente'] ?? null;
+    $clientKey = ($clientIdRaw !== null && $clientIdRaw !== '' && is_numeric($clientIdRaw)) ? (string)(int)$clientIdRaw : '';
+    if ($clientKey !== '' && isset($cartClientIds[$clientKey])) { continue; }
+    $customer = $cartCustomerFromOrder($cartRow);
+    if ($customer['email'] === '' && $customer['telefono'] === '' && $customer['cedula'] === '') { continue; }
+    try {
+      $newClientId = \Agenduy\Core\TenantLocalDb::findOrCreateCliente(
+        (string)$tenantSlug,
+        $customer['nombre'],
+        $customer['telefono'],
+        $customer['email'],
+        '',
+        $customer['cedula']
+      );
+      if ($newClientId !== null && $newClientId > 0) {
+        \Agenduy\Core\TenantLocalDb::updateCartOrder((string)$tenantSlug, (int)$orderId, [
+          'ID_Cliente' => $newClientId,
+          'Cliente_Nombre' => $customer['nombre'],
+          'Cliente_Email' => $customer['email'],
+          'Cliente_Telefono' => $customer['telefono'],
+          'Cliente_Cedula' => $customer['cedula'],
+        ]);
+        $cartClientRepairs++;
+      }
+    } catch (Throwable $e) {
+      error_log('[admin cart client repair] ' . $e->getMessage());
+    }
+  }
+  if ($cartClientRepairs > 0) {
+    $clientes = AutoloadDB::all('clientes');
+    $carritos = AutoloadDB::all('carrito');
+  }
+}
 $clientesMap = [];
 foreach ($clientes as $cliente) {
   $cid = (string)($cliente['ID_Cliente'] ?? '');
@@ -762,9 +866,24 @@ foreach ($carritos as $carrito) {
       'price' => isset($item['price']) && is_numeric($item['price']) ? (float)$item['price'] : ($productPriceMap[(string)$pid] ?? 0.0),
     ];
   }
+  $clientRow = $clientId !== null ? ($clientesMap[(string)$clientId] ?? []) : [];
+  $cartCustomer = $cartCustomerFromOrder(is_array($carrito) ? $carrito : []);
+  $orderClientName = $clientId !== null ? ($clientNameMap[(string)$clientId] ?? ('Cliente ' . $clientId)) : '';
+  if ($orderClientName === '' || $orderClientName === 'Cliente sin asignar') {
+    $orderClientName = $cartCustomer['nombre'] !== '' ? $cartCustomer['nombre'] : 'Cliente sin asignar';
+  }
+  $orderClientEmail = trim((string)($clientRow['Email'] ?? ''));
+  if ($orderClientEmail === '') { $orderClientEmail = $cartCustomer['email']; }
+  $orderClientPhone = trim((string)($clientRow['Telefono'] ?? ($clientRow['Whatsapp'] ?? '')));
+  if ($orderClientPhone === '') { $orderClientPhone = $cartCustomer['telefono']; }
+  $orderClientCedula = trim((string)($clientRow['Cedula'] ?? ''));
+  if ($orderClientCedula === '') { $orderClientCedula = $cartCustomer['cedula']; }
   $cartOrders[] = [
     'id' => (int)$orderId,
-    'client' => $clientId !== null ? ($clientNameMap[(string)$clientId] ?? ('Cliente ' . $clientId)) : 'Cliente sin asignar',
+    'client' => $orderClientName,
+    'client_email' => $orderClientEmail,
+    'client_phone' => $orderClientPhone,
+    'client_cedula' => $orderClientCedula,
     'status_key' => $statusKey,
     'status_label' => $cartStatusLabel,
     'payment_type' => admin_payment_type_label($carrito, 'Pago WhatsApp'),
@@ -1072,7 +1191,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=6">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=7">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1167,6 +1286,14 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                   class="admin-orders__item<?php echo $order['status_key'] === 'pendiente' ? ' is-pending' : ''; ?>"
                   data-order-status="<?php echo e($order['status_key']); ?>"
                   data-order-id="<?php echo (int)$order['id']; ?>"
+                  data-order-client="<?php echo e($order['client']); ?>"
+                  data-order-client-email="<?php echo e($order['client_email'] ?? ''); ?>"
+                  data-order-client-phone="<?php echo e($order['client_phone'] ?? ''); ?>"
+                  data-order-client-cedula="<?php echo e($order['client_cedula'] ?? ''); ?>"
+                  data-order-payment="<?php echo e($order['payment_type']); ?>"
+                  data-order-date="<?php echo e($order['date']); ?>"
+                  data-order-time="<?php echo e($order['time']); ?>"
+                  data-order-address="<?php echo e($order['address']); ?>"
                   data-items='<?php echo $orderItemsJson; ?>'>
                   <header class="admin-orders__item-header">
                     <span class="admin-orders__item-id">Pedido #<?php echo e($order['id']); ?></span>
@@ -1202,6 +1329,13 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                     <ul class="admin-orders__items" hidden></ul>
                   <?php endif; ?>
                   <div class="admin-orders__actions">
+                    <button
+                      type="button"
+                      class="admin-orders__sale-btn admin-orders__sale-btn--print"
+                      data-order-action="print"
+                      data-order-id="<?php echo (int)$order['id']; ?>">
+                      Imprimir
+                    </button>
                     <div class="admin-orders__sale-actions"<?php echo $order['status_key'] === 'pendiente' ? '' : ' hidden'; ?>>
                       <button
                         type="button"
@@ -1339,6 +1473,10 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
       <section class="admin-section" id="pedidos">
         <div class="admin-section-tools">
           <span class="admin-section-count">Total: <?php echo (int)$cartTotalOrders; ?> pedidos</span>
+          <label class="admin-orders-print-toggle">
+            <input type="checkbox" data-admin-orders-autoprint>
+            <span>Imprimir pedidos nuevos</span>
+          </label>
         </div>
         <?php if ($cartTotalOrders > 0): ?>
         <div class="table-wrap table-wrap--scroll">
@@ -1363,6 +1501,14 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                 data-admin-order-row
                 data-order-status="<?php echo e($order['status_key']); ?>"
                 data-order-id="<?php echo (int)$order['id']; ?>"
+                data-order-client="<?php echo e($order['client']); ?>"
+                data-order-client-email="<?php echo e($order['client_email'] ?? ''); ?>"
+                data-order-client-phone="<?php echo e($order['client_phone'] ?? ''); ?>"
+                data-order-client-cedula="<?php echo e($order['client_cedula'] ?? ''); ?>"
+                data-order-payment="<?php echo e($order['payment_type']); ?>"
+                data-order-date="<?php echo e($order['date']); ?>"
+                data-order-time="<?php echo e($order['time']); ?>"
+                data-order-address="<?php echo e($order['address']); ?>"
                 data-items='<?php echo $orderItemsJson; ?>'>
                 <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
                 <td><?php echo e($order['client']); ?></td>
@@ -1375,6 +1521,13 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                 <td>
                   <div class="admin-order-table-status">
                     <span class="status-pill st-<?php echo e($order['status_key']); ?>" data-admin-order-status-label><?php echo e($order['status_label']); ?></span>
+                    <button
+                      type="button"
+                      class="admin-orders__sale-btn admin-orders__sale-btn--print"
+                      data-order-action="print"
+                      data-order-id="<?php echo (int)$order['id']; ?>">
+                      Imprimir
+                    </button>
                     <div class="admin-orders__sale-actions"<?php echo $order['status_key'] === 'pendiente' ? '' : ' hidden'; ?>>
                       <button
                         type="button"
