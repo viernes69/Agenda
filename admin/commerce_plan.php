@@ -138,7 +138,7 @@ $error   = $_GET['err'] ?? '';
 
 .plans-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 1.2rem;
   margin-top: 1.5rem;
 }

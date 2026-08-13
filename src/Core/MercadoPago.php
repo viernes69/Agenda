@@ -33,6 +33,7 @@ final class MercadoPago
     public static function commerceConfig(int $commerceId, string $slug = ''): array
     {
         $cfg = [];
+        $hasActiveStoredKey = false;
         $slug = trim($slug, '/');
         if ($slug !== '' && TenantLocalDb::exists($slug)) {
             try {
@@ -75,6 +76,7 @@ final class MercadoPago
                 if ($value === '') {
                     continue;
                 }
+                $hasActiveStoredKey = true;
                 if (in_array($name, ['mp_access_token', 'access_token', 'accesstoken'], true)) {
                     $cfg['access_token'] = $value;
                 } elseif (in_array($name, ['mp_public_key', 'public_key', 'publickey'], true)) {
@@ -87,7 +89,10 @@ final class MercadoPago
             }
         }
 
-        return self::normalizeConfig($cfg, false);
+        $hasInlineSecret = self::cleanSecret($cfg['access_token'] ?? $cfg['accessToken'] ?? '') !== ''
+            || self::cleanSecret($cfg['public_key'] ?? $cfg['publicKey'] ?? '') !== '';
+
+        return self::normalizeConfig($cfg, $hasActiveStoredKey || $hasInlineSecret);
     }
 
     /**
