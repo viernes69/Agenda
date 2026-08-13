@@ -38,6 +38,10 @@
         msg.classList.toggle('is-success', !isError && !!text);
     }
 
+    function hasLoginCsrfField() {
+        return !!document.querySelector('#site-login-form input[name="_csrf"], #site-login-magic-form input[name="_csrf"]');
+    }
+
     function setLoginTab(tab) {
         var tabs = $all('[data-login-tab]');
         var panels = $all('[data-login-panel]');
@@ -129,7 +133,8 @@
                         if (!res.ok || !data || !data.ok) {
                             var err = (data && data.error) || 'No se pudo enviar el link.';
                             if (res.status === 419 || err.indexOf('CSRF') !== -1) {
-                                err = 'Sesion expirada. Recarga la pagina e intenta de nuevo.';
+                                err = 'Actualizando sesion...';
+                                setTimeout(function () { window.location.reload(); }, 250);
                             }
                             showMsg(err, true);
                             return;
@@ -146,6 +151,15 @@
         var params = new URLSearchParams(window.location.search);
         var loginError = params.get('login_error');
         if (loginError) {
+            if (loginError === 'csrf' && params.get('csrf_refreshed') !== '1') {
+                params.delete('login_error');
+                params.delete('magic');
+                params.set('csrf_refreshed', '1');
+                params.set('_', String(Date.now()));
+                var refreshedQuery = params.toString();
+                window.location.replace(window.location.pathname + (refreshedQuery ? '?' + refreshedQuery : '') + window.location.hash);
+                return;
+            }
             open();
             var magicErr = params.get('magic');
             if (magicErr) {
@@ -164,5 +178,11 @@
                 window.history.replaceState({}, document.title, window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash);
             }
         }
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted && hasLoginCsrfField()) {
+                window.location.reload();
+            }
+        });
     });
 })();

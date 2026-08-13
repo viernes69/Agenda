@@ -8,8 +8,6 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
-use Agenduy\Core\CommercePanel;
-use Agenduy\Core\Database;
 use Agenduy\Core\Security;
 
 function agenduy_logout_safe_redirect(string $next): ?string
@@ -34,25 +32,19 @@ function agenduy_logout_safe_redirect(string $next): ?string
     return str_starts_with($next, '/') ? $next : null;
 }
 
+function agenduy_logout_cache_bust(string $redirect): string
+{
+    $parts = explode('#', $redirect, 2);
+    $base = $parts[0];
+    $fragment = isset($parts[1]) ? '#' . $parts[1] : '';
+    $sep = str_contains($base, '?') ? '&' : '?';
+    return $base . $sep . 'logout=1&_=' . rawurlencode((string)time()) . $fragment;
+}
+
 Auth::start();
 Security::sendNoStoreHeaders();
 
 $defaultRedirect = url('/');
-$user = Auth::user();
-if (is_array($user) && (string)($user['role'] ?? '') === Auth::ROLE_LOCAL) {
-    $commerceId = (int)($user['id_commerce'] ?? 0);
-    if ($commerceId > 0) {
-        $commerce = Database::getInstance()->fetchOne(
-            'SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1',
-            [':id' => $commerceId]
-        );
-        $slug = trim((string)($commerce['slug'] ?? ''));
-        if ($slug !== '') {
-            $defaultRedirect = CommercePanel::publicUrlForSlug($slug);
-        }
-    }
-}
-
 $next = isset($_GET['next']) ? (string)$_GET['next'] : '';
 $redirect = agenduy_logout_safe_redirect($next) ?? $defaultRedirect;
 if ($redirect === '') {
@@ -61,8 +53,9 @@ if ($redirect === '') {
 if (Security::isHttpsRequest() && str_starts_with($redirect, 'http://')) {
     $redirect = 'https://' . substr($redirect, 7);
 }
+$redirect = agenduy_logout_cache_bust($redirect);
 
 Auth::logout();
 
-header('Location: ' . $redirect, true, 302);
+header('Location: ' . $redirect, true, 303);
 exit;

@@ -154,9 +154,10 @@
   const tenantUrls = () => {
     const config = window.__TENANT_CONFIG__ || {};
     if (config.logoutUrl && config.publicUrl) {
+      const platformUrl = String(config.platformUrl || config.basePath || '').trim();
       return {
         logout: String(config.logoutUrl),
-        public: String(config.publicUrl),
+        public: platformUrl || String(config.publicUrl),
       };
     }
 
@@ -179,7 +180,6 @@
     if (slug && tenantSegments[tenantSegments.length - 1] !== slug) {
       tenantSegments.push(slug);
     }
-    const tenantPath = `/${tenantSegments.join('/')}${tenantSegments.length ? '/' : ''}`;
     const platformSegments = [...tenantSegments];
     if (slug && platformSegments[platformSegments.length - 1] === slug) {
       platformSegments.pop();
@@ -187,8 +187,17 @@
     const platformPath = `/${platformSegments.join('/')}${platformSegments.length ? '/' : ''}`;
     return {
       logout: new URL(`${platformPath}admin/logout.php`, window.location.origin).href,
-      public: new URL(tenantPath, window.location.origin).href,
+      public: new URL(platformPath, window.location.origin).href,
     };
+  };
+
+  const logoutNavigationUrl = (urls) => {
+    const logoutUrl = new URL(urls.logout, window.location.origin);
+    const nextUrl = new URL(urls.public || '/', window.location.origin);
+    nextUrl.searchParams.set('logout', '1');
+    nextUrl.searchParams.set('_', String(Date.now()));
+    logoutUrl.searchParams.set('next', nextUrl.href);
+    return logoutUrl.href;
   };
 
   const logoutBtn = bottomNav ? bottomNav.querySelector('[data-admin-logout]') : null;
@@ -203,12 +212,7 @@
       if (!wantsLogout) return;
       logoutBtn.disabled = true;
       const urls = tenantUrls();
-      try {
-        await fetch(urls.logout, { method: 'GET', credentials: 'same-origin' });
-      } catch (_) {
-        // Ignorar errores de red del logout; igual redirigir
-      }
-      window.location.href = urls.public;
+      window.location.replace(logoutNavigationUrl(urls));
     });
   }
 })();

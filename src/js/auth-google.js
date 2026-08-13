@@ -73,6 +73,11 @@
         }
         return;
       }
+      if (result.status === 419 || String(data.error || '').indexOf('CSRF') !== -1) {
+        showLoginMsg('Actualizando sesion...', false);
+        setTimeout(function () { window.location.reload(); }, 250);
+        return;
+      }
       showLoginMsg(mapAuthError(result), true);
     }).catch(function () {
       showLoginMsg('Error de conexión. Intentá de nuevo.', true);
