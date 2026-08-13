@@ -1788,14 +1788,54 @@ body.modal-open{
   margin:0;
   padding:0;
   display:grid;
-  gap:4px;
+  gap:8px;
   font-size:.85rem;
   color: var(--text-muted);
 }
+.plan-card__features li{
+  display:grid;
+  grid-template-columns:1.35rem minmax(0, 1fr);
+  gap:8px;
+  align-items:start;
+  min-width:0;
+}
 .plan-card__features li::before{
-  content:"\2713 ";
+  content:none;
+}
+.plan-card__feature-icon{
+  width:1.15rem;
+  height:1.15rem;
+  border-radius:999px;
+  display:inline-grid;
+  place-items:center;
+  margin-top:1px;
+  font-size:.72rem;
+  font-weight:800;
+  line-height:1;
+}
+.plan-card__features li.is-included .plan-card__feature-icon{
+  background: color-mix(in srgb, var(--success) 18%, transparent);
   color: var(--success);
+}
+.plan-card__features li.is-excluded .plan-card__feature-icon{
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  color:#ef4444;
+}
+.plan-card__feature-copy{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+.plan-card__feature-label{
+  color: var(--text);
   font-weight:700;
+}
+.plan-card__feature-value{
+  color: var(--text-muted);
+  font-size:.78rem;
+}
+.plan-card__features li.is-excluded .plan-card__feature-label{
+  color: var(--text-muted);
 }
 .plan-card__cta{
   width:100%;
