@@ -46,6 +46,32 @@ $formatCurrency = static function (float $value): string {
     return '$ ' . number_format($value, 2, ',', '.');
 };
 
+$paymentTypeLabel = static function (array $row, string $fallback): string {
+    $method = strtolower(trim((string)($row['Metodo_Pago'] ?? $row['metodo_pago'] ?? $row['payment_method'] ?? '')));
+    $paymentStatus = strtolower(trim((string)($row['Payment_Status'] ?? $row['payment_status'] ?? '')));
+    $hasMpSignal = false;
+    foreach (['MP_Preference_ID', 'MP_Payment_ID', 'MP_External_Reference', 'MP_Status_Detail'] as $key) {
+        if (trim((string)($row[$key] ?? '')) !== '') {
+            $hasMpSignal = true;
+            break;
+        }
+    }
+    if (
+        str_contains($method, 'mercado')
+        || $method === 'mp'
+        || $method === 'mercadopago'
+        || $hasMpSignal
+        || in_array($paymentStatus, ['created', 'pending', 'approved', 'rejected', 'cancelled', 'canceled', 'refunded', 'charged_back'], true)
+        || TenantLocalDb::isPaymentFailureStatus((string)($row['Status'] ?? ''))
+    ) {
+        return 'Mercado Pago';
+    }
+    if (str_contains($method, 'local') || str_contains($method, 'presencial') || str_contains($method, 'manual')) {
+        return $fallback;
+    }
+    return $fallback;
+};
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     $respond(405, ['ok' => false, 'error' => 'Metodo no permitido']);
 }
@@ -302,31 +328,37 @@ foreach ($prepared as $row) {
     }
 
     $statusNorm  = $row['_status_norm'] ?? 'pendiente';
-    $statusLabel = $statusOptionLabels[$statusNorm] ?? $formatStatusLabel($statusNorm);
+    $statusLabel = TenantLocalDb::statusLabel((string)($row['Status'] ?? $statusNorm));
     $statusClass = TenantLocalDb::statusClassKey((string)$statusNorm);
+    $paymentLabel = $paymentTypeLabel($row, 'Pago local');
     $timestampAttr = (isset($row['_timestamp']) && $row['_timestamp'] !== PHP_INT_MAX) ? (string)(int)$row['_timestamp'] : '';
     $idReserva = (int)($row['ID_Reserva'] ?? 0);
     $canAttend = in_array($statusNorm, ['pendiente', 'aprobado'], true);
     $canFinish = in_array($statusNorm, ['pendiente', 'aprobado', 'en progreso'], true);
     $canModify = !in_array($statusNorm, ['rechazado', 'cancelado', 'finalizado'], true);
 
-    $rowHtml .= '<tr data-admin-reserva-item data-admin-res-row-id="' . $idReserva . '" data-admin-reserva-status="' . $escape($statusNorm) . '" data-admin-reserva-fecha="' . $escape($row['Fecha_Reserva'] ?? '') . '" data-admin-reserva-hora="' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '" data-admin-reserva-ts="' . $escape($timestampAttr) . '" data-admin-reserva-price="' . $escape($servicePriceLabel) . '">';
+    $rowHtml .= '<tr data-admin-reserva-item data-admin-res-row-id="' . $idReserva . '" data-admin-reserva-status="' . $escape($statusNorm) . '" data-admin-reserva-fecha="' . $escape($row['Fecha_Reserva'] ?? '') . '" data-admin-reserva-hora="' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '" data-admin-reserva-ts="' . $escape($timestampAttr) . '" data-admin-reserva-price="' . $escape($servicePriceLabel) . '" data-admin-reserva-payment="' . $escape($paymentLabel) . '">';
     $rowHtml .= '<td data-heading="Cliente">' . $escape($clientName) . '</td>';
     $rowHtml .= '<td data-heading="Profesional">' . $escape($barberName) . '</td>';
     $rowHtml .= '<td data-heading="Servicio"><span class="reserva-servicio__name">' . $escape($serviceName) . '</span></td>';
     $rowHtml .= '<td data-heading="Precio" class="numeric">' . $escape($servicePriceLabel) . '</td>';
     $rowHtml .= '<td data-heading="Fecha">' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
     $rowHtml .= '<td data-heading="Hora">' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
+    $rowHtml .= '<td data-heading="Tipo de pago">' . $escape($paymentLabel) . '</td>';
     $rowHtml .= '<td data-heading="Status"><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
-    $rowHtml .= '<td data-heading="Accion"><div class="admin-reserva-row-actions">';
-    if ($statusNorm === 'en progreso') {
-        $rowHtml .= '<button type="button" class="btn btn-primary btn-sm" data-admin-reserva-quick-status="Finalizado" data-admin-reserva-id="' . $idReserva . '"' . ($canFinish ? '' : ' disabled') . '>Finalizar</button>';
-    } elseif ($canAttend) {
-        $rowHtml .= '<button type="button" class="btn btn-secondary btn-sm" data-admin-reserva-quick-status="En progreso" data-admin-reserva-id="' . $idReserva . '"' . ($canAttend ? '' : ' disabled') . '>Atender</button>';
+    $rowHtml .= '<td data-heading="Acciones"><div class="admin-reserva-row-actions">';
+    if ($canAttend) {
+        $rowHtml .= '<button type="button" class="btn btn-secondary btn-sm" data-admin-reserva-quick-status="En progreso" data-admin-reserva-id="' . $idReserva . '">Atendiendo</button>';
+    }
+    if ($canFinish) {
+        $rowHtml .= '<button type="button" class="btn btn-primary btn-sm" data-admin-reserva-quick-status="Finalizado" data-admin-reserva-id="' . $idReserva . '">Finalizado</button>';
     }
 
     if ($canModify) {
         $rowHtml .= '<button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Modificar</button>';
+    }
+    if (!$canAttend && !$canFinish && !$canModify) {
+        $rowHtml .= '<span class="muted">-</span>';
     }
     $rowHtml .= '</div></td>';
     $rowHtml .= '</tr>';

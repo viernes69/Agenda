@@ -19,6 +19,7 @@ ob_start();
         <p><strong>Precio:</strong> <span data-admin-res-precio>-</span></p>
         <p><strong>Fecha:</strong> <span data-admin-res-fecha>-</span></p>
         <p><strong>Hora:</strong> <span data-admin-res-hora>-</span></p>
+        <p><strong>Tipo de pago:</strong> <span data-admin-res-payment>-</span></p>
           <p><strong>Status:</strong> <span class="status-pill" data-admin-res-status>-</span><button type="button" class="pill-action" data-admin-res-retomar hidden>Retomar</button></p>
         </div>
         <div class="admin-reserva-reprogram" data-admin-res-reprogram-wrap>
@@ -32,8 +33,14 @@ ob_start();
               <span>Nueva hora</span>
               <input type="time" data-admin-res-edit-hora step="60">
             </label>
-            <button type="button" class="btn btn-secondary" data-admin-res-guardar-fecha>Guardar cambio</button>
+            <button type="button" class="btn btn-secondary" data-admin-res-guardar-fecha disabled>Guardar cambios</button>
+            <p class="admin-reserva-reprogram__feedback" data-admin-res-reprogram-feedback role="status" aria-live="polite" hidden></p>
           </div>
+        </div>
+        <div class="admin-reserva-actions">
+          <button type="button" class="btn btn-secondary" data-admin-res-atender>Atendiendo</button>
+          <button type="button" class="btn btn-success" data-admin-res-finalizar>Finalizado</button>
+          <button type="button" class="btn btn-danger" data-admin-res-rechazar>Cancelar</button>
         </div>
       </div>
     </div>
@@ -73,6 +80,59 @@ ob_start();
     border: 1px solid rgba(0,0,0,.15);
     border-radius: 6px;
     min-width: 9rem;
+  }
+  .admin-reserva-reprogram__fields [data-admin-res-guardar-fecha] {
+    min-width: 10rem;
+  }
+  .admin-reserva-reprogram__fields [data-admin-res-guardar-fecha].is-ready {
+    background: linear-gradient(120deg, #7c3aed, #6366f1);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 14px 28px rgba(124, 58, 237, .24);
+  }
+  .admin-reserva-reprogram__fields [data-admin-res-guardar-fecha]:disabled {
+    background: rgba(148, 163, 184, .18);
+    border-color: rgba(148, 163, 184, .3);
+    color: var(--muted, #64748b);
+  }
+  .admin-reserva-reprogram__feedback {
+    flex-basis: 100%;
+    margin: .2rem 0 0;
+    padding: .55rem .7rem;
+    border-radius: .7rem;
+    font-size: .84rem;
+    font-weight: 700;
+  }
+  .admin-reserva-reprogram__feedback[hidden] {
+    display: none !important;
+  }
+  .admin-reserva-reprogram__feedback.is-success {
+    background: rgba(34, 197, 94, .14);
+    border: 1px solid rgba(34, 197, 94, .34);
+    color: #bbf7d0;
+  }
+  :root[data-admin-theme="light"] .admin-reserva-reprogram__feedback.is-success {
+    color: #14532d;
+  }
+  .admin-reserva-reprogram__feedback.is-error {
+    background: rgba(239, 68, 68, .14);
+    border: 1px solid rgba(239, 68, 68, .34);
+    color: #fecaca;
+  }
+  :root[data-admin-theme="light"] .admin-reserva-reprogram__feedback.is-error {
+    color: #7f1d1d;
+  }
+  .admin-reserva-reprogram__feedback.is-info {
+    background: rgba(99, 102, 241, .12);
+    border: 1px solid rgba(99, 102, 241, .28);
+    color: var(--text, #e5e7eb);
+  }
+  .admin-reserva-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: 1rem;
   }
 </style>
 <?php

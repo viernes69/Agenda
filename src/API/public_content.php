@@ -10,14 +10,25 @@ use Agenduy\Core\Database;
 require_once dirname(__DIR__) . '/Core/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 try {
+    $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    $action = strtolower(trim((string)($_REQUEST['action'] ?? '')));
+    if ($method === 'GET' && in_array($action, ['state', 'version'], true)) {
+        $slug = trim((string)($_GET['slug'] ?? ''), '/');
+        $commerce = commerceByPublicSlug($slug);
+        $commerceId = (int)$commerce['id_commerce'];
+        $content = CommerceSettings::get($commerceId, 'public_content', CommerceSettings::defaultsForSection('public_content'));
+        respond(publicContentState($commerceId, (string)$commerce['slug'], $content, $action === 'state'));
+    }
+
     Auth::start();
     if (!Auth::check() || Auth::role() !== Auth::ROLE_LOCAL) {
         respond(['ok' => false, 'error' => 'Sesion de administrador requerida.'], 401);
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if ($method !== 'POST') {
         respond(['ok' => false, 'error' => 'Metodo no permitido.'], 405);
     }
 
@@ -53,8 +64,15 @@ try {
         $key = normalizeKey((string)($json['key'] ?? $_POST['key'] ?? ''));
         $value = normalizeText((string)($json['value'] ?? $_POST['value'] ?? ''));
         $content['text'][$key] = $value;
+        touchPublicContent($content, 'text');
         CommerceSettings::set($commerceId, 'public_content', $content);
-        respond(['ok' => true, 'type' => 'text', 'key' => $key, 'value' => $value]);
+        respond([
+            'ok' => true,
+            'type' => 'text',
+            'key' => $key,
+            'value' => $value,
+            'version' => (string)($content['version'] ?? ''),
+        ]);
     }
 
     if ($action === 'save_image') {
@@ -64,13 +82,16 @@ try {
         }
         $stored = saveImage($commerceId, $key, $_FILES['image']);
         $content['images'][$key] = $stored;
+        touchPublicContent($content, 'image');
         CommerceSettings::set($commerceId, 'public_content', $content);
+        $url = CommerceStorage::publicUrl($commerceId, (string)$commerce['slug'], $stored);
         respond([
             'ok' => true,
             'type' => 'image',
             'key' => $key,
             'path' => $stored,
-            'url' => CommerceStorage::publicUrl($commerceId, (string)$commerce['slug'], $stored),
+            'url' => appendRevision($url, (string)($content['version'] ?? '')),
+            'version' => (string)($content['version'] ?? ''),
         ]);
     }
 
@@ -113,6 +134,24 @@ function commerceForOwner(string $slug): array
     $ownedSlug = trim((string)($commerce['slug'] ?? ''), '/');
     if ($slug !== '' && $ownedSlug !== '' && !hash_equals($ownedSlug, $slug)) {
         throw new RuntimeException('No autorizado para este comercio.');
+    }
+    return $commerce;
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function commerceByPublicSlug(string $slug): array
+{
+    if ($slug === '') {
+        throw new InvalidArgumentException('Falta el comercio.');
+    }
+    $commerce = Database::getInstance()->fetchOne(
+        'SELECT * FROM commerces WHERE slug = :s LIMIT 1',
+        [':s' => $slug]
+    );
+    if (!$commerce) {
+        throw new InvalidArgumentException('Comercio no encontrado.');
     }
     return $commerce;
 }
@@ -172,13 +211,73 @@ function saveImage(int $commerceId, string $key, array $file): string
 
     $dir = CommerceStorage::kindDir($commerceId, 'site');
     $safeKey = preg_replace('/[^a-z0-9_-]+/', '-', str_replace('.', '-', $key)) ?: 'image';
-    $filename = trim($safeKey, '-') . '-' . date('YmdHis') . '.' . $ext;
+    $filename = trim($safeKey, '-') . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
     $dest = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
     if (!move_uploaded_file($tmpPath, $dest)) {
         throw new RuntimeException('No se pudo guardar la imagen.');
     }
     @chmod($dest, 0644);
     return CommerceStorage::relativePath($commerceId, 'site', $filename);
+}
+
+function touchPublicContent(array &$content, string $type): void
+{
+    $content['version'] = bin2hex(random_bytes(8));
+    $content['updated_at'] = date(DATE_ATOM);
+    $content['latest_type'] = $type === 'image' ? 'image' : 'text';
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function publicContentState(int $commerceId, string $slug, array $content, bool $includeContent): array
+{
+    $version = publicContentVersion($content);
+    $payload = [
+        'ok' => true,
+        'version' => $version,
+        'latest_type' => (string)($content['latest_type'] ?? ''),
+        'updated_at' => (string)($content['updated_at'] ?? ''),
+    ];
+    if (!$includeContent) {
+        return $payload;
+    }
+
+    $texts = is_array($content['text'] ?? null) ? $content['text'] : [];
+    $images = is_array($content['images'] ?? null) ? $content['images'] : [];
+    $imageUrls = [];
+    foreach ($images as $key => $path) {
+        if (!is_scalar($path)) {
+            continue;
+        }
+        $url = CommerceStorage::publicUrl($commerceId, $slug, (string)$path);
+        if ($url !== '') {
+            $imageUrls[(string)$key] = appendRevision($url, $version);
+        }
+    }
+    $payload['text'] = $texts;
+    $payload['images'] = $imageUrls;
+    return $payload;
+}
+
+function publicContentVersion(array $content): string
+{
+    $stored = trim((string)($content['version'] ?? ''));
+    if ($stored !== '') {
+        return $stored;
+    }
+    return sha1(json_encode([
+        'text' => $content['text'] ?? [],
+        'images' => $content['images'] ?? [],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+}
+
+function appendRevision(string $url, string $version): string
+{
+    if ($url === '' || $version === '') {
+        return $url;
+    }
+    return $url . (str_contains($url, '?') ? '&' : '?') . 'rev=' . rawurlencode($version);
 }
 
 function respond(array $payload, int $status = 200): void

@@ -82,6 +82,8 @@ try {
     $clienteCedula = MagicLink::normalizeCedula($payload['cliente_cedula'] ?? null);
     $notas = trim((string)($payload['notas'] ?? ''));
     $idService = (int)($payload['id_service'] ?? 0) ?: null;
+    $requestedBarberId = (int)($payload['id_barber'] ?? $payload['ID_Barber'] ?? $payload['barber_id'] ?? 0);
+    $resolvedBarberId = null;
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) throw new InvalidArgumentException('Fecha inválida.');
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $horaInicio)) throw new InvalidArgumentException('Hora inválida.');
@@ -124,6 +126,19 @@ try {
     }
     // Guardar nombre del servicio para usar después (disponible en todo el scope de la función)
     $svcNombre = ($idService && !empty($svc['nombre'])) ? trim((string)$svc['nombre']) : '';
+    $idLocalService = ($idService && is_array($svc) && isset($svc['id_local']) && is_numeric($svc['id_local']))
+        ? (int)$svc['id_local']
+        : null;
+    if ($requestedBarberId > 0 || $idLocalService !== null) {
+        $resolvedBarberId = TenantLocalDb::resolveAppointmentBarberId(
+            $slug,
+            $requestedBarberId > 0 ? $requestedBarberId : null,
+            $idLocalService
+        );
+        if ($requestedBarberId > 0 && $resolvedBarberId !== $requestedBarberId) {
+            throw new InvalidArgumentException('El profesional elegido no realiza este servicio.');
+        }
+    }
     if ($horaFin === '') {
         $horaFin = date('H:i:s', strtotime($horaInicio . ' +30 minutes'));
     }
@@ -133,7 +148,9 @@ try {
         (int)$commerce['id_commerce'],
         $fecha,
         $horaInicio,
-        $idService
+        $idService,
+        null,
+        $resolvedBarberId
     )) {
         throw new InvalidArgumentException('Ese horario no está disponible. Elegí otro de la lista.');
     }
@@ -254,6 +271,12 @@ try {
         $marker = 'mp-payment-pending';
         $apptNotas = $apptNotas !== '' ? ($marker . ' | ' . $apptNotas) : $marker;
     }
+    if ($resolvedBarberId !== null && $resolvedBarberId > 0) {
+        $marker = 'barber-id:' . $resolvedBarberId;
+        if (!preg_match('/(?:barber|profesional)-id\s*:/i', $apptNotas)) {
+            $apptNotas = $apptNotas !== '' ? ($marker . ' | ' . $apptNotas) : $marker;
+        }
+    }
     $appointmentStatus = ($waitlist || $wantsMercadoPago) ? 'pending' : 'confirmed';
     $idAppt = (int)$db->insert('appointments', [
         'id_commerce'      => (int)$commerce['id_commerce'],
@@ -303,8 +326,12 @@ try {
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
                 'cliente_avatar'   => $clienteAvatar,
+                'notas'            => $apptNotas,
                 'status'           => $appointmentStatus,
                 'precio'           => $precio,
+                'ID_Barber'        => $resolvedBarberId,
+                'Metodo_Pago'      => $wantsMercadoPago ? 'Mercado Pago' : 'Pago local',
+                'Payment_Status'   => $wantsMercadoPago ? 'pending' : 'manual',
             ]);
             if (is_array($mirror['row'] ?? null) && isset($mirror['row']['ID_Reserva'])) {
                 $localReservaId = $mirror['row']['ID_Reserva'];
@@ -551,9 +578,9 @@ function createAppointmentMercadoPagoCheckout(
     ]);
 
     $publicPath = trim($slug, '/') . '/';
-    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'success']);
-    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'failure']);
-    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'pending']);
+    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'success', 'mp_ref' => $externalReference]);
+    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'failure', 'mp_ref' => $externalReference]);
+    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'pending', 'mp_ref' => $externalReference]);
     $notificationUrl = MercadoPago::callbackUrl($mp, 'admin/api/webhook_mercadopago.php', ['appointment_slug' => $slug]);
 
     $preferencePayload = [
@@ -664,7 +691,13 @@ function markAppointmentPaymentSetupFailed(Database $db, string $slug, array $ap
     }
     if ($slug !== '' && TenantLocalDb::exists($slug)) {
         try {
-            TenantLocalDb::mirrorAppointment($slug, array_replace($appointment, ['status' => 'cancelled']));
+            TenantLocalDb::mirrorAppointment($slug, array_replace($appointment, [
+                'status' => 'cancelled',
+                'notas' => trim('mp-payment-failed | ' . $reason),
+                'Metodo_Pago' => 'Mercado Pago',
+                'Payment_Status' => 'rejected',
+                'MP_Status_Detail' => mb_substr($reason, 0, 250, 'UTF-8'),
+            ]));
         } catch (Throwable $e) {
             error_log('[appointments.api] mirror payment failed: ' . $e->getMessage());
         }

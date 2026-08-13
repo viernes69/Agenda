@@ -12,6 +12,17 @@ namespace Agenduy\Core;
  */
 final class TenantLocalDb
 {
+    public const MP_PAYMENT_CANCEL_STATUS = 'Cancelación por pago incorrecto';
+
+    private const RESERVA_PAYMENT_COLUMNS = [
+        'Metodo_Pago' => '',
+        'Payment_Status' => '',
+        'MP_Preference_ID' => '',
+        'MP_Payment_ID' => '',
+        'MP_External_Reference' => '',
+        'MP_Status_Detail' => '',
+    ];
+
     private const CART_PAYMENT_COLUMNS = [
         'Metodo_Pago' => '',
         'Payment_Status' => '',
@@ -448,8 +459,20 @@ final class TenantLocalDb
             $idLocalService = self::resolveLocalServiceId($slug, (int)$appointment['id_service'], (int)($appointment['id_commerce'] ?? 0));
         }
 
-        $idBarber = self::defaultBarberId($slug);
         $localStatus = self::mapCentralStatusToLocal((string)($appointment['status'] ?? 'pending'));
+        $notes = trim((string)($appointment['notas'] ?? ''));
+        $requestedBarberId = self::appointmentRequestedBarberId($appointment, $notes);
+        $idBarber = self::resolveAppointmentBarberId($slug, $requestedBarberId, $idLocalService);
+        $paymentMethod = self::appointmentPaymentMethod($appointment, $notes);
+        $paymentStatus = self::appointmentPaymentStatus($appointment, $notes, (string)($appointment['status'] ?? ''));
+        $mpPreferenceId = trim((string)($appointment['MP_Preference_ID'] ?? $appointment['mp_preference_id'] ?? $appointment['preference_id'] ?? ''));
+        $mpPaymentId = trim((string)($appointment['MP_Payment_ID'] ?? $appointment['mp_payment_id'] ?? $appointment['payment_id'] ?? ''));
+        $mpExternalReference = trim((string)($appointment['MP_External_Reference'] ?? $appointment['mp_external_reference'] ?? $appointment['external_reference'] ?? ''));
+        $mpStatusDetail = trim((string)($appointment['MP_Status_Detail'] ?? $appointment['mp_status_detail'] ?? $appointment['status_detail'] ?? ''));
+        if (self::isMercadoPagoPaymentFailure($paymentStatus, $notes)) {
+            $localStatus = self::MP_PAYMENT_CANCEL_STATUS;
+            $paymentMethod = 'Mercado Pago';
+        }
 
         $precio = null;
         if (isset($appointment['precio']) && is_numeric($appointment['precio']) && (float)$appointment['precio'] > 0) {
@@ -466,26 +489,23 @@ final class TenantLocalDb
             $hora,
             $fecha,
             $localStatus,
-            $precio
+            $precio,
+            $paymentMethod,
+            $paymentStatus,
+            $mpPreferenceId,
+            $mpPaymentId,
+            $mpExternalReference,
+            $mpStatusDetail
         ) {
             if (!isset($db['reservas']) || !is_array($db['reservas']) || !isset($db['reservas'][0]) || !is_array($db['reservas'][0])) {
                 throw new \RuntimeException('Tabla reservas local no disponible.');
             }
 
             // Asegurar columnas de enlace / precio (tenants viejos no las tienen).
-            foreach (['ID_Appointment' => null, 'Precio' => null] as $col => $default) {
-                if (!array_key_exists($col, $db['reservas'][0])) {
-                    $db['reservas'][0][$col] = $default;
-                    foreach ($db['reservas'] as $i => $row) {
-                        if ($i === 0 || !is_array($row)) {
-                            continue;
-                        }
-                        if (!array_key_exists($col, $row)) {
-                            $db['reservas'][$i][$col] = $default;
-                        }
-                    }
-                }
-            }
+            self::ensureColumns($db, 'reservas', array_merge(
+                ['ID_Appointment' => null, 'Precio' => null],
+                self::RESERVA_PAYMENT_COLUMNS
+            ));
 
             // Si no vino precio útil en el appointment, resolver desde servicios locales.
             $resolvedPrecio = ($precio !== null && $precio > 0) ? $precio : null;
@@ -513,12 +533,32 @@ final class TenantLocalDb
                     $db['reservas'][$i]['Fecha_Reserva'] = $fecha;
                     $db['reservas'][$i]['Hora_Reserva'] = $hora;
                     // No degradar estados terminales locales (Finalizado/Cancelado) con un espejo débil.
-                    $currentStatus = strtolower(trim((string)($db['reservas'][$i]['Status'] ?? '')));
-                    $incomingStatus = strtolower(trim($localStatus));
+                    $currentStatus = self::normalizeStatusKey((string)($db['reservas'][$i]['Status'] ?? ''));
+                    $incomingStatus = self::normalizeStatusKey($localStatus);
                     $terminal = ['finalizado', 'cancelado', 'rechazado'];
                     $incomingTerminal = in_array($incomingStatus, $terminal, true);
                     if ($currentStatus === '' || $incomingTerminal || !in_array($currentStatus, $terminal, true)) {
                         $db['reservas'][$i]['Status'] = $localStatus;
+                    }
+                    if ($idBarber !== null && array_key_exists('ID_Barber', $db['reservas'][$i])) {
+                        $db['reservas'][$i]['ID_Barber'] = $idBarber;
+                    }
+                    if (array_key_exists('Metodo_Pago', $db['reservas'][$i])) {
+                        $currentMethod = trim((string)($db['reservas'][$i]['Metodo_Pago'] ?? ''));
+                        if ($currentMethod === '' || strcasecmp($paymentMethod, 'Mercado Pago') === 0) {
+                            $db['reservas'][$i]['Metodo_Pago'] = $paymentMethod;
+                        }
+                    }
+                    foreach ([
+                        'Payment_Status' => $paymentStatus,
+                        'MP_Preference_ID' => $mpPreferenceId,
+                        'MP_Payment_ID' => $mpPaymentId,
+                        'MP_External_Reference' => $mpExternalReference,
+                        'MP_Status_Detail' => $mpStatusDetail,
+                    ] as $paymentColumn => $paymentValue) {
+                        if ($paymentValue !== '' && array_key_exists($paymentColumn, $db['reservas'][$i])) {
+                            $db['reservas'][$i][$paymentColumn] = $paymentValue;
+                        }
                     }
                     if ($clienteId !== null && array_key_exists('ID_Cliente', $db['reservas'][$i])) {
                         $db['reservas'][$i]['ID_Cliente'] = $clienteId;
@@ -560,6 +600,20 @@ final class TenantLocalDb
             }
             if (array_key_exists('Precio', $row)) {
                 $row['Precio'] = $resolvedPrecio;
+            }
+            if (array_key_exists('Metodo_Pago', $row)) {
+                $row['Metodo_Pago'] = $paymentMethod;
+            }
+            foreach ([
+                'Payment_Status' => $paymentStatus,
+                'MP_Preference_ID' => $mpPreferenceId,
+                'MP_Payment_ID' => $mpPaymentId,
+                'MP_External_Reference' => $mpExternalReference,
+                'MP_Status_Detail' => $mpStatusDetail,
+            ] as $paymentColumn => $paymentValue) {
+                if (array_key_exists($paymentColumn, $row)) {
+                    $row[$paymentColumn] = $paymentValue;
+                }
             }
             $row['ID_Appointment'] = $appointmentId;
             $db['reservas'][] = $row;
@@ -665,7 +719,10 @@ final class TenantLocalDb
             'confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada', 'reservado', 'reservada' => 'aprobado',
             'in progress', 'en progreso', 'en curso', 'atendiendo' => 'en progreso',
             'rejected', 'rechazado', 'rechazada', 'no show', 'no asistio' => 'rechazado',
-            'cancelled', 'canceled', 'cancelado', 'cancelada' => 'cancelado',
+            'cancelled', 'canceled', 'cancelado', 'cancelada',
+            'cancelacion por pago incorrecto', 'cancelación por pago incorrecto',
+            'cancelacion de mercado pago', 'cancelación de mercado pago',
+            'pago cancelado', 'pago rechazado' => 'cancelado',
             'completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada', 'attended', 'atendido', 'atendida' => 'finalizado',
             default => $s,
         };
@@ -681,6 +738,9 @@ final class TenantLocalDb
 
     public static function statusLabel(string $status): string
     {
+        if (self::isPaymentFailureStatus($status)) {
+            return self::MP_PAYMENT_CANCEL_STATUS;
+        }
         $key = self::normalizeStatusKey($status);
         return match ($key) {
             'pendiente' => 'Pendiente',
@@ -691,6 +751,104 @@ final class TenantLocalDb
             'finalizado' => 'Finalizado',
             default => ucwords(str_replace(['_', '-'], ' ', $key)),
         };
+    }
+
+    public static function isPaymentFailureStatus(string $status): bool
+    {
+        $s = strtolower(trim($status));
+        $s = str_replace(['_', '-'], ' ', $s);
+        $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+        return in_array($s, [
+            'cancelacion por pago incorrecto',
+            'cancelación por pago incorrecto',
+            'cancelacion de mercado pago',
+            'cancelación de mercado pago',
+            'pago cancelado',
+            'pago rechazado',
+        ], true);
+    }
+
+    /**
+     * @param array<string,mixed> $appointment
+     */
+    private static function appointmentPaymentMethod(array $appointment, string $notes): string
+    {
+        $method = trim((string)($appointment['Metodo_Pago']
+            ?? $appointment['metodo_pago']
+            ?? $appointment['payment_method']
+            ?? ''));
+        if ($method !== '') {
+            return self::normalizePaymentMethodLabel($method, 'Pago local');
+        }
+        if (self::hasMercadoPagoSignal($appointment, $notes)) {
+            return 'Mercado Pago';
+        }
+        return 'Pago local';
+    }
+
+    /**
+     * @param array<string,mixed> $appointment
+     */
+    private static function appointmentPaymentStatus(array $appointment, string $notes, string $centralStatus): string
+    {
+        $status = trim((string)($appointment['Payment_Status']
+            ?? $appointment['payment_status']
+            ?? $appointment['mp_payment_status']
+            ?? ''));
+        if ($status !== '') {
+            return strtolower($status);
+        }
+        if (preg_match('/mp-payment-(approved|pending|rejected|cancelled|canceled|refunded|charged_back|failed|unknown)/i', $notes, $match)) {
+            $raw = strtolower((string)$match[1]);
+            return $raw === 'canceled' || $raw === 'failed' ? 'rejected' : $raw;
+        }
+        if (self::hasMercadoPagoSignal($appointment, $notes) && self::normalizeStatusKey($centralStatus) === 'aprobado') {
+            return 'approved';
+        }
+        return '';
+    }
+
+    /**
+     * @param array<string,mixed> $appointment
+     */
+    private static function hasMercadoPagoSignal(array $appointment, string $notes): bool
+    {
+        if (stripos($notes, 'mp-payment-') !== false) {
+            return true;
+        }
+        foreach (['MP_Preference_ID', 'MP_Payment_ID', 'MP_External_Reference', 'mp_preference_id', 'mp_payment_id', 'external_reference'] as $key) {
+            if (trim((string)($appointment[$key] ?? '')) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function isMercadoPagoPaymentFailure(string $paymentStatus, string $notes): bool
+    {
+        $status = strtolower(trim($paymentStatus));
+        if (in_array($status, ['rejected', 'cancelled', 'canceled', 'failed', 'charged_back'], true)) {
+            return true;
+        }
+        return preg_match('/mp-payment-(rejected|cancelled|canceled|failed|charged_back)/i', $notes) === 1;
+    }
+
+    private static function normalizePaymentMethodLabel(string $method, string $fallback): string
+    {
+        $raw = strtolower(trim($method));
+        if ($raw === '') {
+            return $fallback;
+        }
+        if (str_contains($raw, 'mercado') || $raw === 'mp' || $raw === 'mercadopago') {
+            return 'Mercado Pago';
+        }
+        if (str_contains($raw, 'whatsapp') || str_contains($raw, 'whats')) {
+            return 'WhatsApp';
+        }
+        if (str_contains($raw, 'local') || str_contains($raw, 'presencial') || str_contains($raw, 'manual')) {
+            return $fallback;
+        }
+        return $method;
     }
 
     private static function resolveLocalServiceId(string $slug, int $idService, int $idCommerce = 0): ?int
@@ -803,13 +961,24 @@ final class TenantLocalDb
         return null;
     }
 
-    private static function defaultBarberId(string $slug): ?int
+    public static function resolveAppointmentBarberId(string $slug, ?int $requestedBarberId = null, ?int $idLocalService = null): ?int
     {
         try {
             $db = self::read($slug);
         } catch (\Throwable $e) {
             return null;
         }
+        if ($requestedBarberId !== null && $requestedBarberId > 0) {
+            foreach (($db['barberos'] ?? []) as $i => $row) {
+                if ($i === 0 || !is_array($row)) {
+                    continue;
+                }
+                if ((int)($row['ID_Barber'] ?? 0) === $requestedBarberId && self::barberCanPerformService($row, $idLocalService)) {
+                    return $requestedBarberId;
+                }
+            }
+        }
+
         $fallback = null;
         foreach (($db['barberos'] ?? []) as $i => $row) {
             if ($i === 0 || !is_array($row)) {
@@ -817,6 +986,9 @@ final class TenantLocalDb
             }
             $id = $row['ID_Barber'] ?? null;
             if ($id === null || $id === '' || !is_numeric($id)) {
+                continue;
+            }
+            if (!self::barberCanPerformService($row, $idLocalService)) {
                 continue;
             }
             $id = (int)$id;
@@ -829,6 +1001,72 @@ final class TenantLocalDb
             }
         }
         return $fallback;
+    }
+
+    private static function defaultBarberId(string $slug): ?int
+    {
+        return self::resolveAppointmentBarberId($slug);
+    }
+
+    /**
+     * @param array<string,mixed> $appointment
+     */
+    private static function appointmentRequestedBarberId(array $appointment, string $notes): ?int
+    {
+        foreach (['ID_Barber', 'id_barber', 'barber_id', 'professional_id', 'id_profesional'] as $key) {
+            if (isset($appointment[$key]) && is_numeric($appointment[$key]) && (int)$appointment[$key] > 0) {
+                return (int)$appointment[$key];
+            }
+        }
+        if (preg_match('/(?:barber|profesional)-id\s*:\s*(\d+)/i', $notes, $match)) {
+            return (int)$match[1];
+        }
+        return null;
+    }
+
+    /**
+     * @param array<string,mixed> $barber
+     */
+    private static function barberCanPerformService(array $barber, ?int $idLocalService): bool
+    {
+        $status = strtolower(trim((string)($barber['Status'] ?? $barber['status'] ?? '')));
+        if (in_array($status, ['inactivo', 'inactive', 'suspendido', 'suspended', 'baja'], true)) {
+            return false;
+        }
+        if ($idLocalService === null || $idLocalService <= 0) {
+            return true;
+        }
+        $skillsRaw = $barber['Habilidades'] ?? $barber['habilidades'] ?? '';
+        $skills = self::parseBarberSkills($skillsRaw);
+        return $skills === [] || in_array($idLocalService, $skills, true);
+    }
+
+    /**
+     * @param mixed $skillsRaw
+     * @return list<int>
+     */
+    private static function parseBarberSkills($skillsRaw): array
+    {
+        $values = [];
+        if (is_array($skillsRaw)) {
+            $parts = $skillsRaw;
+        } else {
+            $parts = preg_split('/[,;|]+/', (string)$skillsRaw) ?: [];
+        }
+        foreach ($parts as $part) {
+            if (is_array($part)) {
+                continue;
+            }
+            if (preg_match_all('/\d+/', (string)$part, $matches)) {
+                foreach ($matches[0] as $match) {
+                    $id = (int)$match;
+                    if ($id > 0) {
+                        $values[$id] = $id;
+                    }
+                }
+            }
+        }
+        return array_values($values);
     }
 
     /**

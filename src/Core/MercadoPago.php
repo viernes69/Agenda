@@ -202,10 +202,10 @@ final class MercadoPago
         return match (self::paymentStatusToStoreStatus($status)) {
             'approved' => 'Pagado',
             'pending' => 'Pago pendiente',
-            'cancelled' => 'Pago cancelado',
+            'cancelled' => TenantLocalDb::MP_PAYMENT_CANCEL_STATUS,
             'refunded' => 'Reembolsado',
             'charged_back' => 'Contracargo',
-            'rejected' => 'Pago rechazado',
+            'rejected' => TenantLocalDb::MP_PAYMENT_CANCEL_STATUS,
             default => 'Pago en revision',
         };
     }
@@ -247,12 +247,7 @@ final class MercadoPago
         array $fallbackQuery = []
     ): string {
         $candidate = trim((string)($config[$key] ?? ''));
-        if ($candidate !== '') {
-            if (!self::isPublicCallbackUrl($candidate) || stripos($candidate, '/template/') !== false) {
-                throw new RuntimeException(
-                    'La URL configurada para Mercado Pago no es publica o no es valida: ' . $key
-                );
-            }
+        if ($candidate !== '' && self::isUsablePreferredCallbackUrl($candidate)) {
             return $candidate;
         }
 
@@ -395,7 +390,7 @@ final class MercadoPago
 
     private static function baseFromKnownPublicUrl(string $url): string
     {
-        if (!self::isPublicCallbackUrl($url)) {
+        if (!self::isUsablePreferredCallbackUrl($url)) {
             return '';
         }
         $parts = parse_url($url);
@@ -412,6 +407,11 @@ final class MercadoPago
             $basePath = substr($path, 0, $adminPos);
         }
         return rtrim($scheme . '://' . $host . $port . $basePath, '/');
+    }
+
+    private static function isUsablePreferredCallbackUrl(string $url): bool
+    {
+        return self::isPublicCallbackUrl($url) && stripos($url, '/template/') === false;
     }
 
     private static function joinUrl(string $base, string $path): string

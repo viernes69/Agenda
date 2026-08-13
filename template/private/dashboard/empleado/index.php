@@ -14,6 +14,35 @@ require_once dirname(__DIR__, 2) . '/session_guard.php';
 
 function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
+function admin_payment_type_label(array $row, string $fallback): string {
+  $method = strtolower(trim((string)($row['Metodo_Pago'] ?? $row['metodo_pago'] ?? $row['payment_method'] ?? '')));
+  $paymentStatus = strtolower(trim((string)($row['Payment_Status'] ?? $row['payment_status'] ?? '')));
+  $hasMpSignal = false;
+  foreach (['MP_Preference_ID', 'MP_Payment_ID', 'MP_External_Reference', 'MP_Status_Detail'] as $key) {
+    if (trim((string)($row[$key] ?? '')) !== '') {
+      $hasMpSignal = true;
+      break;
+    }
+  }
+  if (
+    str_contains($method, 'mercado')
+    || $method === 'mp'
+    || $method === 'mercadopago'
+    || $hasMpSignal
+    || in_array($paymentStatus, ['created', 'pending', 'approved', 'rejected', 'cancelled', 'canceled', 'refunded', 'charged_back'], true)
+    || \Agenduy\Core\TenantLocalDb::isPaymentFailureStatus((string)($row['Status'] ?? ''))
+  ) {
+    return 'Mercado Pago';
+  }
+  if (str_contains($method, 'whatsapp') || str_contains($method, 'whats')) {
+    return 'Pago WhatsApp';
+  }
+  if (str_contains($method, 'local') || str_contains($method, 'presencial') || str_contains($method, 'manual')) {
+    return $fallback;
+  }
+  return $fallback;
+}
+
 $tenantRootPath = dirname(__DIR__, 3);
 $tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug($tenantRootPath);
 if (
@@ -591,7 +620,8 @@ foreach ($carritos as $carrito) {
   $dateIso = $dateObj->format('Y-m-d');
   $monthIso = $dateObj->format('Y-m');
   $timeRaw = trim((string)($carrito['Hora'] ?? ''));
-  $statusRaw = strtolower(trim((string)($carrito['Status'] ?? '')));
+  $statusRawValue = trim((string)($carrito['Status'] ?? ''));
+  $statusRaw = \Agenduy\Core\TenantLocalDb::normalizeStatusKey($statusRawValue);
   if ($statusRaw === '') { $statusRaw = 'pendiente'; }
   $itemsRaw = $carrito['ID_Producto + Cantidad'] ?? '';
   $items = $parseCartItems($itemsRaw);
@@ -629,7 +659,8 @@ foreach ($carritos as $carrito) {
   }
   $statusKey = $statusRaw;
   $cartStatusCounts[$statusKey] = ($cartStatusCounts[$statusKey] ?? 0) + 1;
-  $cartStatusLabels[$statusKey] = $formatStatusLabel($statusRaw);
+  $cartStatusLabels[$statusKey] = $formatStatusLabel($statusKey);
+  $cartStatusLabel = \Agenduy\Core\TenantLocalDb::statusLabel($statusRawValue !== '' ? $statusRawValue : $statusKey);
   $itemsData = [];
   foreach ($items as $item) {
     $pid = (int)$item['product'];
@@ -644,7 +675,8 @@ foreach ($carritos as $carrito) {
     'id' => (int)$orderId,
     'client' => $clientId !== null ? ($clientNameMap[(string)$clientId] ?? ('Cliente ' . $clientId)) : 'Cliente sin asignar',
     'status_key' => $statusKey,
-    'status_label' => $cartStatusLabels[$statusKey],
+    'status_label' => $cartStatusLabel,
+    'payment_type' => admin_payment_type_label($carrito, 'Pago WhatsApp'),
     'date' => $dateObj->format('d/m/Y'),
     'time' => $timeRaw,
     'address' => $address,
@@ -986,6 +1018,10 @@ $summaryCards = [
                       <dt>Fecha</dt>
                       <dd><?php echo e($order['date']); ?><?php if ($order['time'] !== ''): ?> | <?php echo e($order['time']); ?><?php endif; ?></dd>
                     </div>
+                    <div>
+                      <dt>Tipo de pago</dt>
+                      <dd><?php echo e($order['payment_type']); ?></dd>
+                    </div>
                     <?php if ($order['address'] !== ''): ?>
                       <div>
                         <dt>Entrega</dt>
@@ -1185,8 +1221,9 @@ $summaryCards = [
                 <th class="numeric">Precio</th>
                 <th>Fecha</th>
                 <th>Hora</th>
+                <th>Tipo de pago</th>
                 <th>Status</th>
-                <th>Accion</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -1215,22 +1252,29 @@ $summaryCards = [
                     $serviceImgUrl = '../../../' . ltrim($serviceImgRel, '/');
                   }
                 }
-                $st = isset($r['_status_norm']) ? $r['_status_norm'] : \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($r['Status'] ?? ''));
-                $stLabel = $statusOptionLabels[$st] ?? \Agenduy\Core\TenantLocalDb::statusLabel($st);
+                $statusRawValue = trim((string)($r['Status'] ?? ''));
+                $st = isset($r['_status_norm']) ? $r['_status_norm'] : \Agenduy\Core\TenantLocalDb::normalizeStatusKey($statusRawValue);
+                $stLabel = \Agenduy\Core\TenantLocalDb::statusLabel($statusRawValue !== '' ? $statusRawValue : $st);
                 $cls = 'st-' . \Agenduy\Core\TenantLocalDb::statusClassKey($st);
+                $paymentTypeLabel = admin_payment_type_label($r, 'Pago local');
                 $timestampAttr = '';
                 if (isset($r['_timestamp']) && $r['_timestamp'] !== PHP_INT_MAX) {
                   $timestampAttr = (string)(int)$r['_timestamp'];
                 }
+                $idReserva = (int)($r['ID_Reserva'] ?? 0);
+                $canAttend = in_array($st, ['pendiente', 'aprobado'], true);
+                $canFinish = in_array($st, ['pendiente', 'aprobado', 'en progreso'], true);
+                $canModify = !in_array($st, ['rechazado', 'cancelado', 'finalizado'], true);
               ?>
               <tr
                 data-admin-reserva-item
-                data-admin-res-row-id="<?php echo (int)($r['ID_Reserva'] ?? 0); ?>"
+                data-admin-res-row-id="<?php echo $idReserva; ?>"
                 data-admin-reserva-status="<?php echo e($st); ?>"
                 data-admin-reserva-fecha="<?php echo e($r['Fecha_Reserva'] ?? ''); ?>"
                 data-admin-reserva-hora="<?php echo e(substr((string)($r['Hora_Reserva'] ?? ''), 0, 5)); ?>"
                 data-admin-reserva-ts="<?php echo e($timestampAttr); ?>"
                 data-admin-reserva-price="<?php echo e($servicePriceLabel); ?>"
+                data-admin-reserva-payment="<?php echo e($paymentTypeLabel); ?>"
               >
                 <td data-heading="Cliente"><?php echo e($cn); ?></td>
                 <td data-heading="Profesional"><?php echo e(trim($bn)); ?></td>
@@ -1238,17 +1282,37 @@ $summaryCards = [
                 <td data-heading="Precio" class="numeric"><?php echo e($servicePriceLabel); ?></td>
                 <td data-heading="Fecha"><?php echo e($r['Fecha_Reserva'] ?? ''); ?></td>
                 <td data-heading="Hora"><?php echo e(substr((string)($r['Hora_Reserva'] ?? ''),0,5)); ?></td>
+                <td data-heading="Tipo de pago"><?php echo e($paymentTypeLabel); ?></td>
                 <td data-heading="Status"><span class="status-pill <?php echo e($cls); ?>"><?php echo e($stLabel); ?></span></td>
-                <td data-heading="Accion">
-                  <?php if (in_array($st, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)): ?>
+                <td data-heading="Acciones">
+                  <div class="admin-reserva-row-actions">
+                  <?php if ($canAttend): ?>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      data-admin-reserva-quick-status="En progreso"
+                      data-admin-reserva-id="<?php echo $idReserva; ?>"
+                    >Atendiendo</button>
+                  <?php endif; ?>
+                  <?php if ($canFinish): ?>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      data-admin-reserva-quick-status="Finalizado"
+                      data-admin-reserva-id="<?php echo $idReserva; ?>"
+                    >Finalizado</button>
+                  <?php endif; ?>
+                  <?php if ($canModify): ?>
                     <button
                       type="button"
                       class="btn btn-warning btn-sm"
-                      data-admin-view-reserva="<?php echo (int)($r['ID_Reserva'] ?? 0); ?>"
-                    >Ver</button>
-                  <?php else: ?>
+                      data-admin-view-reserva="<?php echo $idReserva; ?>"
+                    >Modificar</button>
+                  <?php endif; ?>
+                  <?php if (!$canAttend && !$canFinish && !$canModify): ?>
                     <span class="muted">-</span>
                   <?php endif; ?>
+                  </div>
                 </td>
               </tr>
               <?php endforeach; ?>

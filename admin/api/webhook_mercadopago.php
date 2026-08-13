@@ -225,7 +225,13 @@ function handleAppointmentPaymentWebhook(Database $db, string $type, string $pay
     }
     $appointmentRow = appointmentRowForNotification($db, $appointmentId);
     if ($appointmentRow && $appointmentSlug !== '') {
-        mirrorAppointmentPaymentStatus($appointmentSlug, $appointmentRow);
+        mirrorAppointmentPaymentStatus($appointmentSlug, array_replace($appointmentRow, [
+            'Metodo_Pago' => 'Mercado Pago',
+            'Payment_Status' => $paymentStatus,
+            'MP_Payment_ID' => $paymentId,
+            'MP_External_Reference' => $externalReference,
+            'MP_Status_Detail' => mb_substr($statusDetail, 0, 250, 'UTF-8'),
+        ]));
     }
 
     $db->insert('audit_log', [
@@ -457,6 +463,7 @@ function handleStorePaymentWebhook(Database $db, string $type, string $paymentId
     if ($storeSlug !== '' && $orderId > 0 && TenantLocalDb::exists($storeSlug)) {
         $localOrderRow = TenantLocalDb::updateCartOrder($storeSlug, $orderId, [
             'Status' => MercadoPago::paymentStatusToLocalCartStatus($mpStatus),
+            'Metodo_Pago' => 'Mercado Pago',
             'Payment_Status' => $storeStatus,
             'MP_Payment_ID' => $paymentId,
             'MP_External_Reference' => $externalReference,

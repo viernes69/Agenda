@@ -24,6 +24,7 @@ try {
     $slug = trim((string)($_GET['slug'] ?? ''));
     $fecha = trim((string)($_GET['fecha'] ?? $_GET['date'] ?? ''));
     $idService = (int)($_GET['id_service'] ?? $_GET['service_id'] ?? 0) ?: null;
+    $idBarber = (int)($_GET['id_barber'] ?? $_GET['barber_id'] ?? 0) ?: null;
 
     if ($slug === '') {
         throw new InvalidArgumentException('Falta slug del comercio.');
@@ -44,7 +45,7 @@ try {
         throw new RuntimeException('Este comercio no está aceptando reservas.');
     }
 
-    $result = Availability::forCommerce((int)$commerce['id_commerce'], $fecha, $idService);
+    $result = Availability::forCommerce((int)$commerce['id_commerce'], $fecha, $idService, null, $idBarber);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $code = $e instanceof InvalidArgumentException ? 400 : 422;

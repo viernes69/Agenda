@@ -16,13 +16,22 @@
     if (['confirmed', 'approved', 'aprobado', 'aprobada', 'confirmado', 'confirmada', 'reservado', 'reservada'].includes(status)) return 'aprobado';
     if (['in progress', 'en progreso', 'en curso', 'atendiendo'].includes(status)) return 'en progreso';
     if (['rejected', 'rechazado', 'rechazada', 'no show', 'no asistio'].includes(status)) return 'rechazado';
-    if (['cancelled', 'canceled', 'cancelado', 'cancelada'].includes(status)) return 'cancelado';
+    if ([
+      'cancelled', 'canceled', 'cancelado', 'cancelada',
+      'cancelacion por pago incorrecto', 'cancelación por pago incorrecto',
+      'cancelacion de mercado pago', 'cancelación de mercado pago',
+      'pago rechazado', 'pago cancelado',
+    ].includes(status)) return 'cancelado';
     if (['completed', 'complete', 'done', 'finalizado', 'finalizada', 'completado', 'completada', 'attended', 'atendido', 'atendida'].includes(status)) return 'finalizado';
     return status;
   };
   const statusClassKey = (value) => normalizeStatusKey(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'pendiente';
   const statusLabel = (value) => {
     const key = normalizeStatusKey(value);
+    const raw = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+    if (['cancelacion por pago incorrecto', 'cancelación por pago incorrecto', 'pago rechazado', 'pago cancelado'].includes(raw)) {
+      return 'Cancelación por pago incorrecto';
+    }
     const labels = {
       pendiente: 'Pendiente',
       aprobado: 'Reservado',
@@ -32,6 +41,24 @@
       finalizado: 'Finalizado',
     };
     return labels[key] || key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+  const paymentTypeLabel = (row, fallback = 'Pago local') => {
+    const method = String(row?.Metodo_Pago || row?.metodo_pago || row?.payment_method || '').trim().toLowerCase();
+    const paymentStatus = String(row?.Payment_Status || row?.payment_status || '').trim().toLowerCase();
+    const hasMpSignal = ['MP_Preference_ID', 'MP_Payment_ID', 'MP_External_Reference', 'MP_Status_Detail']
+      .some((key) => String(row?.[key] || '').trim() !== '');
+    if (
+      method.includes('mercado')
+      || method === 'mp'
+      || method === 'mercadopago'
+      || hasMpSignal
+      || ['created', 'pending', 'approved', 'rejected', 'cancelled', 'canceled', 'refunded', 'charged_back'].includes(paymentStatus)
+      || statusLabel(row?.Status || '').toLowerCase().includes('pago incorrecto')
+    ) {
+      return 'Mercado Pago';
+    }
+    if (method.includes('whatsapp') || method.includes('whats')) return 'Pago WhatsApp';
+    return fallback;
   };
   const updateRowActions = (row, statusValue) => {
     if (!row) return;
@@ -55,6 +82,7 @@
     setText('[data-admin-res-precio]', data.precio);
     setText('[data-admin-res-fecha]', data.fecha);
     setText('[data-admin-res-hora]', data.hora);
+    setText('[data-admin-res-payment]', data.payment);
     const stRaw = (data.status || '').toString();
     const st = stRaw.trim();
     const stKey = normalizeStatusKey(st);
@@ -88,6 +116,9 @@
     modal.classList.remove('is-visible');
     modal.hidden = true;
     if (modalLoading) modalLoading.hide(modal);
+    isReprogramSaving = false;
+    setReprogramFeedback('');
+    updateScheduleSaveState();
   };
   closeEls.forEach((x) => x.addEventListener('click', close));
 
@@ -98,6 +129,73 @@
   const fetchJson = async (url) => {
     const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
     try { return await r.json(); } catch (_) { return null; }
+  };
+  const readJsonResponse = async (response) => {
+    const text = await response.text();
+    let payload = null;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch (_) {
+      payload = null;
+    }
+    if (!payload && (response.status === 401 || response.status === 403)) {
+      throw new Error('La sesion expiro o no tenes permisos para modificar esta reserva.');
+    }
+    if (!payload && text && /<html|<!doctype/i.test(text)) {
+      throw new Error('El servidor devolvio una pagina en vez de JSON. Reingresa al panel e intenta de nuevo.');
+    }
+    return payload;
+  };
+
+  let isReprogramSaving = false;
+  const normalizeModalDate = (value) => {
+    const date = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+  };
+  const normalizeModalTime = (value) => {
+    const match = String(value || '').trim().match(/^(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : '';
+  };
+  const getReprogramValues = () => {
+    const fechaInput = el('[data-admin-res-edit-fecha]');
+    const horaInput = el('[data-admin-res-edit-hora]');
+    return {
+      fecha: normalizeModalDate(fechaInput ? fechaInput.value : ''),
+      hora: normalizeModalTime(horaInput ? horaInput.value : ''),
+    };
+  };
+  const hasScheduleChanges = () => {
+    const values = getReprogramValues();
+    const currentFecha = normalizeModalDate(modal.getAttribute('data-admin-res-fecha'));
+    const currentHora = normalizeModalTime(modal.getAttribute('data-admin-res-hora'));
+    return values.fecha !== currentFecha || values.hora !== currentHora;
+  };
+  const setReprogramFeedback = (message, type = 'info') => {
+    const feedback = el('[data-admin-res-reprogram-feedback]');
+    if (!feedback) return;
+    const text = String(message || '').trim();
+    feedback.textContent = text;
+    feedback.hidden = !text;
+    feedback.classList.remove('is-success', 'is-error', 'is-info');
+    if (text) feedback.classList.add(type === 'success' || type === 'error' ? `is-${type}` : 'is-info');
+  };
+  const updateScheduleSaveState = () => {
+    const button = el('[data-admin-res-guardar-fecha]');
+    if (!button) return false;
+    const wrap = el('[data-admin-res-reprogram-wrap]');
+    const values = getReprogramValues();
+    const ready = !isReprogramSaving
+      && !(wrap && wrap.hidden)
+      && Boolean(values.fecha)
+      && Boolean(values.hora)
+      && hasScheduleChanges();
+    button.disabled = !ready;
+    button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    button.classList.toggle('btn-primary', ready);
+    button.classList.toggle('btn-secondary', !ready);
+    button.classList.toggle('is-ready', ready);
+    button.textContent = isReprogramSaving ? 'Guardando...' : 'Guardar cambios';
+    return ready;
   };
 
   const isInsideReservationSlot = () => {
@@ -206,7 +304,14 @@
         const value = row.getAttribute('data-admin-reserva-price');
         return value && value.trim() !== '' ? value.trim() : null;
       };
+      const getRowPaymentLabel = () => {
+        const row = document.querySelector(`[data-admin-res-row-id="${r.ID_Reserva}"]`);
+        if (!row) return null;
+        const value = row.getAttribute('data-admin-reserva-payment');
+        return value && value.trim() !== '' ? value.trim() : null;
+      };
       const rowPriceLabel = getRowPriceLabel();
+      const rowPaymentLabel = getRowPaymentLabel();
 
       const serviceEntry = serviceMap[String(r.ID_Servicio || '')] || {};
       const data = {
@@ -226,6 +331,7 @@
         })(),
         fecha: r.Fecha_Reserva || '-',
         hora: String(r.Hora_Reserva || '').slice(0,5),
+        payment: rowPaymentLabel || paymentTypeLabel(r, 'Pago local'),
         status: r.Status || 'Pendiente',
         duration: parseInt(serviceEntry.Duracion ?? serviceEntry.duracion ?? serviceEntry.duracion_min ?? serviceEntry.Duracion_Min ?? 30, 10) || 30,
       };
@@ -245,6 +351,8 @@
         reprogramWrap.hidden = locked;
       }
       fill(data);
+      setReprogramFeedback('');
+      updateScheduleSaveState();
       open();
     } catch (_) {
       adminNotify('No se pudo abrir la reserva', 'error');
@@ -264,7 +372,7 @@
         cache: 'no-store',
         body: new URLSearchParams({ action: 'update', table: 'reservas', id, data: JSON.stringify({ Status: status }) })
       });
-      const payload = await res.json();
+      const payload = await readJsonResponse(res);
       if (res.ok && payload && payload.ok) {
         const nextStatusKey = normalizeStatusKey(status);
         if (modalMatches) {
@@ -295,8 +403,8 @@
         : 'No se pudo actualizar la reserva';
       adminNotify(msg, 'error');
       return false;
-    } catch (_) {
-      adminNotify('No se pudo actualizar la reserva', 'error');
+    } catch (error) {
+      adminNotify(error && error.message ? error.message : 'No se pudo actualizar la reserva', 'error');
       return false;
     }
   };
@@ -306,24 +414,25 @@
     if (!id) return;
     const fechaInput = el('[data-admin-res-edit-fecha]');
     const horaInput = el('[data-admin-res-edit-hora]');
-    const fecha = fechaInput ? String(fechaInput.value || '').trim() : '';
-    let hora = horaInput ? String(horaInput.value || '').trim() : '';
+    if (isReprogramSaving || !updateScheduleSaveState()) return;
+    const values = getReprogramValues();
+    const fecha = values.fecha;
+    const hora = values.hora;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      adminNotify('Fecha inválida', 'error');
+      setReprogramFeedback('Fecha invalida', 'error');
+      updateScheduleSaveState();
       return;
     }
     if (!/^\d{2}:\d{2}$/.test(hora)) {
-      adminNotify('Hora inválida', 'error');
+      setReprogramFeedback('Hora invalida', 'error');
+      updateScheduleSaveState();
       return;
     }
-    hora = hora + ':00';
-    const ok = await adminConfirm({
-      title: 'Reprogramar reserva',
-      message: '¿Confirmas cambiar la fecha/hora de esta reserva?',
-      confirmText: 'Guardar',
-    });
-    if (!ok) return;
+    isReprogramSaving = true;
+    setReprogramFeedback('Guardando cambios...', 'info');
+    updateScheduleSaveState();
     try {
+      const horaSql = hora + ':00';
       const res = await fetch(apiBase, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -333,32 +442,51 @@
           action: 'update',
           table: 'reservas',
           id,
-          data: JSON.stringify({ Fecha_Reserva: fecha, Hora_Reserva: hora }),
+          data: JSON.stringify({ Fecha_Reserva: fecha, Hora_Reserva: horaSql }),
         }),
       });
-      const payload = await res.json();
+      const payload = await readJsonResponse(res);
       if (res.ok && payload && payload.ok) {
         modal.setAttribute('data-admin-res-fecha', fecha);
-        modal.setAttribute('data-admin-res-hora', hora.slice(0, 5));
+        modal.setAttribute('data-admin-res-hora', hora);
         setText('[data-admin-res-fecha]', fecha);
-        setText('[data-admin-res-hora]', hora.slice(0, 5));
+        setText('[data-admin-res-hora]', hora);
+        if (fechaInput) fechaInput.value = fecha;
+        if (horaInput) horaInput.value = hora;
         const row = document.querySelector(`[data-admin-res-row-id="${id}"]`);
         if (row) {
           row.setAttribute('data-admin-reserva-fecha', fecha);
-          row.setAttribute('data-admin-reserva-hora', hora.slice(0, 5));
+          row.setAttribute('data-admin-reserva-hora', hora);
           const cells = row.querySelectorAll('td');
           if (cells[4]) cells[4].textContent = fecha;
-          if (cells[5]) cells[5].textContent = hora.slice(0, 5);
+          if (cells[5]) cells[5].textContent = hora;
         }
-        adminNotify('Reserva reprogramada', 'success');
+        setReprogramFeedback('Reserva reprogramada', 'success');
         try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}
       } else {
-        adminNotify('No se pudo reprogramar', 'error');
+        const msg = payload && payload.error ? String(payload.error) : 'No se pudo reprogramar';
+        setReprogramFeedback(msg, 'error');
       }
-    } catch (_) {
-      adminNotify('No se pudo reprogramar', 'error');
+    } catch (error) {
+      setReprogramFeedback(error && error.message ? error.message : 'No se pudo reprogramar', 'error');
+    } finally {
+      isReprogramSaving = false;
+      updateScheduleSaveState();
     }
   };
+
+  ['[data-admin-res-edit-fecha]', '[data-admin-res-edit-hora]'].forEach((selector) => {
+    const input = el(selector);
+    if (!input) return;
+    input.addEventListener('input', () => {
+      setReprogramFeedback('');
+      updateScheduleSaveState();
+    });
+    input.addEventListener('change', () => {
+      setReprogramFeedback('');
+      updateScheduleSaveState();
+    });
+  });
 
   el('[data-admin-res-guardar-fecha]')?.addEventListener('click', () => {
     actionUpdateSchedule();

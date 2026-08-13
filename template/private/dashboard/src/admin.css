@@ -3399,6 +3399,17 @@ body {
   font-size: .85rem;
   border-radius: .7rem;
 }
+
+.admin-reserva-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+}
+
+.admin-reserva-row-actions .btn {
+  white-space: nowrap;
+}
 @media (max-width: 600px) {
   .admin-main {
     --page-padding: clamp(.85rem, 0.55rem + 3vw, 1.2rem);

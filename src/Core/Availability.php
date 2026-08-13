@@ -33,7 +33,8 @@ final class Availability
         int $idCommerce,
         string $fecha,
         ?int $idService = null,
-        ?\DateTimeImmutable $now = null
+        ?\DateTimeImmutable $now = null,
+        ?int $idBarber = null
     ): array {
         $now = $now ?? new \DateTimeImmutable('now');
         $today = $now->setTime(0, 0, 0);
@@ -128,7 +129,7 @@ final class Availability
         }
 
         self::expireStalePaymentAppointments($idCommerce);
-        $busy = self::busyIntervals($idCommerce, $canonical);
+        $busy = self::busyIntervals($idCommerce, $canonical, $idBarber);
         $slots = self::buildSlots($windows, $busy, $duration, self::SLOT_STEP_MINUTES, $minStart);
 
         return [
@@ -228,13 +229,14 @@ final class Availability
         string $fecha,
         string $horaInicio,
         ?int $idService = null,
-        ?\DateTimeImmutable $now = null
+        ?\DateTimeImmutable $now = null,
+        ?int $idBarber = null
     ): bool {
         $hora = self::normalizeTime($horaInicio);
         if ($hora === null) {
             return false;
         }
-        $result = self::forCommerce($idCommerce, $fecha, $idService, $now);
+        $result = self::forCommerce($idCommerce, $fecha, $idService, $now, $idBarber);
         return in_array($hora, $result['slots'], true);
     }
 
@@ -290,11 +292,11 @@ final class Availability
     /**
      * @return list<array{0:int,1:int}>
      */
-    private static function busyIntervals(int $idCommerce, string $fecha): array
+    private static function busyIntervals(int $idCommerce, string $fecha, ?int $idBarber = null): array
     {
         $db = Database::getInstance();
         $rows = $db->fetchAll(
-            "SELECT a.hora_inicio, a.hora_fin, s.duracion_min
+            "SELECT a.hora_inicio, a.hora_fin, a.notas, s.duracion_min
              FROM appointments a
              LEFT JOIN services s ON s.id_service = a.id_service
              WHERE a.id_commerce = :c
@@ -316,6 +318,12 @@ final class Availability
 
         $busy = [];
         foreach ($rows as $row) {
+            if ($idBarber !== null && $idBarber > 0) {
+                $appointmentBarberId = self::barberIdFromNotes((string)($row['notas'] ?? ''));
+                if ($appointmentBarberId !== null && $appointmentBarberId !== $idBarber) {
+                    continue;
+                }
+            }
             $start = self::timeToMinutes((string)($row['hora_inicio'] ?? ''));
             if ($start === null) {
                 continue;
@@ -330,6 +338,15 @@ final class Availability
             $busy[] = [$start, $end];
         }
         return $busy;
+    }
+
+    private static function barberIdFromNotes(string $notes): ?int
+    {
+        if (preg_match('/(?:barber|profesional)-id\s*:\s*(\d+)/i', $notes, $match)) {
+            $id = (int)$match[1];
+            return $id > 0 ? $id : null;
+        }
+        return null;
     }
 
     private static function expireStalePaymentAppointments(int $idCommerce): void
@@ -356,30 +373,53 @@ final class Availability
                 if ($paymentId <= 0 || $appointmentId <= 0) {
                     continue;
                 }
+                $appointment = $slug !== '' ? $db->fetchOne(
+                    "SELECT a.*, cl.avatar AS client_avatar
+                     FROM appointments a
+                     LEFT JOIN clients cl ON cl.id_client = a.id_client
+                     WHERE a.id_appointment = :id
+                     LIMIT 1",
+                    [':id' => $appointmentId]
+                ) : null;
+                $canExpireAppointment = $appointment
+                    && TenantLocalDb::normalizeStatusKey((string)($appointment['status'] ?? '')) === 'pendiente';
+                $notes = '';
+                if ($canExpireAppointment) {
+                    $notes = trim((string)($appointment['notas'] ?? ''));
+                    $marker = 'mp-payment-cancelled';
+                    if ($notes === '') {
+                        $notes = $marker;
+                    } elseif (stripos($notes, $marker) === false) {
+                        $notes = $marker . ' | ' . $notes;
+                    }
+                }
+
                 $db->update('appointment_payments', [
                     'status' => 'cancelled',
                     'status_detail' => 'Pago vencido',
                     'updated_at' => date('Y-m-d H:i:s'),
                 ], 'id_appointment_payment = :id', [':id' => $paymentId]);
-                $db->update('appointments', [
+                $appointmentUpdate = [
                     'status' => 'cancelled',
                     'updated_at' => date('Y-m-d H:i:s'),
-                ], "id_appointment = :id AND id_commerce = :c AND status = 'pending'", [
+                ];
+                if ($canExpireAppointment && $notes !== '') {
+                    $appointmentUpdate['notas'] = $notes;
+                }
+                $db->update('appointments', $appointmentUpdate, "id_appointment = :id AND id_commerce = :c AND status = 'pending'", [
                     ':id' => $appointmentId,
                     ':c' => $idCommerce,
                 ]);
                 if ($slug !== '' && TenantLocalDb::exists($slug)) {
-                    $appointment = $db->fetchOne(
-                        "SELECT a.*, cl.avatar AS client_avatar
-                         FROM appointments a
-                         LEFT JOIN clients cl ON cl.id_client = a.id_client
-                         WHERE a.id_appointment = :id
-                         LIMIT 1",
-                        [':id' => $appointmentId]
-                    );
-                    if ($appointment) {
+                    if ($appointment && $canExpireAppointment) {
                         try {
-                            TenantLocalDb::mirrorAppointment($slug, $appointment);
+                            TenantLocalDb::mirrorAppointment($slug, array_replace($appointment, [
+                                'status' => 'cancelled',
+                                'notas' => $notes,
+                                'Metodo_Pago' => 'Mercado Pago',
+                                'Payment_Status' => 'cancelled',
+                                'MP_Status_Detail' => 'Pago vencido',
+                            ]));
                         } catch (\Throwable $e) {
                             error_log('[Availability.expirePayment] mirror: ' . $e->getMessage());
                         }

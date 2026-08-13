@@ -263,9 +263,9 @@ try {
     ]);
 
     $storePath = trim($slug, '/') . '/';
-    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'success']);
-    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'failure']);
-    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'pending']);
+    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'success', 'mp_ref' => $externalReference]);
+    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'failure', 'mp_ref' => $externalReference]);
+    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $storePath, ['mp_order' => $orderId, 'mp_status' => 'pending', 'mp_ref' => $externalReference]);
     $notificationUrl = MercadoPago::callbackUrl($mp, 'admin/api/webhook_mercadopago.php', ['store_slug' => $slug]);
 
     $preferencePayload = [
@@ -423,7 +423,8 @@ function markStorePaymentRejected(Database $db, string $slug, int $orderId, int 
     }
     if ($slug !== '' && $orderId > 0 && TenantLocalDb::exists($slug)) {
         TenantLocalDb::updateCartOrder($slug, $orderId, [
-            'Status' => 'Pago rechazado',
+            'Status' => \Agenduy\Core\TenantLocalDb::MP_PAYMENT_CANCEL_STATUS,
+            'Metodo_Pago' => 'Mercado Pago',
             'Payment_Status' => 'rejected',
             'MP_Status_Detail' => mb_substr($reason, 0, 250, 'UTF-8'),
         ]);

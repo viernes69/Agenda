@@ -9,19 +9,20 @@ namespace Agenduy\Core;
 final class CommercePublic
 {
     /**
-     * @return array{products:list<array<string,mixed>>,service_images:array<int,string>}
+     * @return array{products:list<array<string,mixed>>,service_images:array<int,string>,barbers:list<array<string,mixed>>}
      */
     public static function loadLocalCatalog(int $idCommerce, string $slug): array
     {
         $products = [];
         $serviceImages = [];
+        $barbers = [];
         $path = self::resolveLocalDatabasePath($idCommerce, $slug);
         if ($path === null) {
-            return ['products' => $products, 'service_images' => $serviceImages];
+            return ['products' => $products, 'service_images' => $serviceImages, 'barbers' => $barbers];
         }
         $localDb = @include $path;
         if (!is_array($localDb)) {
-            return ['products' => $products, 'service_images' => $serviceImages];
+            return ['products' => $products, 'service_images' => $serviceImages, 'barbers' => $barbers];
         }
         foreach (($localDb['servicios'] ?? []) as $idx => $srvRow) {
             if ($idx === 0 || !is_array($srvRow)) {
@@ -45,7 +46,21 @@ final class CommercePublic
             }
             $products[] = $prodRow;
         }
-        return ['products' => $products, 'service_images' => $serviceImages];
+        foreach (($localDb['barberos'] ?? []) as $idx => $barberRow) {
+            if ($idx === 0 || !is_array($barberRow)) {
+                continue;
+            }
+            $bId = $barberRow['ID_Barber'] ?? null;
+            if ($bId === null || $bId === '' || !is_numeric($bId)) {
+                continue;
+            }
+            $name = trim((string)($barberRow['Nombre'] ?? '') . ' ' . (string)($barberRow['Apellido'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $barbers[] = $barberRow;
+        }
+        return ['products' => $products, 'service_images' => $serviceImages, 'barbers' => $barbers];
     }
 
     public static function resolveLocalDatabasePath(int $idCommerce, string $slug): ?string

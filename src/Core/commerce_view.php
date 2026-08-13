@@ -49,6 +49,11 @@ if (!function_exists('agenduy_render_commerce')) {
             echo '<h1>Comercio no encontrado</h1>';
             return;
         }
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, max-age=0, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        }
 
         Auth::start();
         $commerceIdEarly = (int)$commerce['id_commerce'];
@@ -146,6 +151,13 @@ if (!function_exists('agenduy_render_commerce')) {
         $publicContent = CommerceSettings::get($commerceId, 'public_content', CommerceSettings::defaultsForSection('public_content'));
         $publicTextOverrides = is_array($publicContent['text'] ?? null) ? $publicContent['text'] : [];
         $publicImageOverrides = is_array($publicContent['images'] ?? null) ? $publicContent['images'] : [];
+        $publicContentVersion = trim((string)($publicContent['version'] ?? ''));
+        if ($publicContentVersion === '') {
+            $publicContentVersion = sha1(json_encode([
+                'text' => $publicTextOverrides,
+                'images' => $publicImageOverrides,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+        }
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
         $rubroType = trim((string)($commerce['rubro_tipo'] ?? ($legacyInfo['rubro'] ?? '')));
         $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ($legacyInfo['rubro_nombre'] ?? '')));
@@ -187,6 +199,8 @@ if (!function_exists('agenduy_render_commerce')) {
         $coverImageUrl = url($coverImageRel);
         $cssPath = dirname(__DIR__, 2) . '/assets/css/commerce-public.css';
         $cssVer = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
+        $swPath = dirname(__DIR__, 2) . '/sw.js';
+        $swVer = is_file($swPath) ? (string)filemtime($swPath) : (string)time();
 
         $titulo = (string)($commerce['nombre'] ?? 'Agenduy');
         $slogan = (string)($commerce['slogan'] ?? '');
@@ -321,6 +335,109 @@ if (!function_exists('agenduy_render_commerce')) {
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></a>';
         };
 
+        $serviceNamesById = [];
+        $serviceIdsByLocalId = [];
+        $allServiceIds = [];
+        foreach ($services as $svcRow) {
+            $sid = (int)($svcRow['id_service'] ?? 0);
+            if ($sid <= 0) {
+                continue;
+            }
+            $allServiceIds[] = $sid;
+            $serviceNamesById[$sid] = trim((string)($svcRow['nombre'] ?? ('Servicio ' . $sid)));
+            $localId = isset($svcRow['id_local']) && is_numeric($svcRow['id_local']) ? (int)$svcRow['id_local'] : 0;
+            if ($localId > 0) {
+                $serviceIdsByLocalId[$localId] = $sid;
+            }
+        }
+        $parseProfessionalSkills = static function ($raw): array {
+            $ids = [];
+            $parts = is_array($raw) ? $raw : (preg_split('/[,;|]+/', (string)$raw) ?: []);
+            foreach ($parts as $part) {
+                if (is_array($part)) {
+                    continue;
+                }
+                if (preg_match_all('/\d+/', (string)$part, $matches)) {
+                    foreach ($matches[0] as $match) {
+                        $id = (int)$match;
+                        if ($id > 0) {
+                            $ids[$id] = $id;
+                        }
+                    }
+                }
+            }
+            return array_values($ids);
+        };
+        $professionalInitials = static function (string $name): string {
+            $parts = preg_split('/\s+/', trim($name)) ?: [];
+            $initials = '';
+            foreach (array_slice($parts, 0, 2) as $part) {
+                $initials .= mb_substr($part, 0, 1, 'UTF-8');
+            }
+            return $initials !== '' ? mb_strtoupper($initials, 'UTF-8') : 'P';
+        };
+        $publicProfessionals = [];
+        foreach (($catalog['barbers'] ?? []) as $barberRow) {
+            if (!is_array($barberRow)) {
+                continue;
+            }
+            $barberId = (int)($barberRow['ID_Barber'] ?? 0);
+            $barberName = trim((string)($barberRow['Nombre'] ?? '') . ' ' . (string)($barberRow['Apellido'] ?? ''));
+            $barberStatus = strtolower(trim((string)($barberRow['Status'] ?? '')));
+            if ($barberId <= 0 || $barberName === '' || in_array($barberStatus, ['inactivo', 'inactive', 'suspendido', 'suspended', 'baja'], true)) {
+                continue;
+            }
+            $skills = $parseProfessionalSkills($barberRow['Habilidades'] ?? '');
+            $serviceIds = [];
+            if ($skills === []) {
+                $serviceIds = $allServiceIds;
+            } else {
+                foreach ($skills as $skillId) {
+                    if (isset($serviceIdsByLocalId[$skillId])) {
+                        $serviceIds[$serviceIdsByLocalId[$skillId]] = $serviceIdsByLocalId[$skillId];
+                    } elseif (isset($serviceNamesById[$skillId])) {
+                        $serviceIds[$skillId] = $skillId;
+                    }
+                }
+                $serviceIds = array_values($serviceIds);
+            }
+            $profileRel = trim((string)($barberRow['Perfil'] ?? ''));
+            $profileUrl = $profileRel !== '' ? $tenantAssetUrl($profileRel) : '';
+            $serviceLabels = [];
+            foreach ($serviceIds as $sid) {
+                if (isset($serviceNamesById[$sid])) {
+                    $serviceLabels[] = $serviceNamesById[$sid];
+                }
+            }
+            $publicProfessionals[] = [
+                'id' => $barberId,
+                'name' => $barberName,
+                'first_name' => preg_split('/\s+/', $barberName)[0] ?? $barberName,
+                'initials' => $professionalInitials($barberName),
+                'profile_url' => $profileUrl,
+                'service_ids' => array_values(array_unique(array_map('intval', $serviceIds))),
+                'service_labels' => array_values(array_unique($serviceLabels)),
+            ];
+        }
+        $showProfessionals = $showServices && !$isStoreMode && $publicProfessionals !== [];
+        $professionalsForJs = array_map(static function (array $professional): array {
+            return [
+                'id' => (string)$professional['id'],
+                'name' => (string)$professional['name'],
+                'first_name' => (string)$professional['first_name'],
+                'serviceIds' => array_map('strval', $professional['service_ids']),
+            ];
+        }, $publicProfessionals);
+        $serviceProfessionalIds = [];
+        foreach ($allServiceIds as $sid) {
+            $serviceProfessionalIds[$sid] = [];
+            foreach ($publicProfessionals as $professional) {
+                if (in_array($sid, $professional['service_ids'], true)) {
+                    $serviceProfessionalIds[$sid][] = (string)$professional['id'];
+                }
+            }
+        }
+
         $heroDefaultEyebrow = $isStoreMode
             ? ($rubroLabel !== '' ? $rubroLabel : 'Catalogo online')
             : ($rubroLabel !== '' ? $rubroLabel : 'Reservas online 24/7');
@@ -348,6 +465,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $cancelAppointmentApi = url('admin/api/cancel_appointment.php');
         $cartOrderApi = url('admin/api/cart_order.php');
         $cartMercadoPagoApi = url('admin/api/cart_mercadopago.php');
+        $mercadoPagoReturnApi = url('admin/api/mercadopago_return.php');
         $commercePlan = MembershipPlan::forCommerceId($commerceId);
         $storePlan = $isStoreMode ? $commercePlan : null;
         $storeMpConfig = $isStoreMode ? MercadoPago::commerceConfig($commerceId, $slug) : [];
@@ -432,6 +550,9 @@ if (!function_exists('agenduy_render_commerce')) {
                     </span>
                 </a>
                 <nav class="nav" aria-label="Navegación">
+                    <?php if ($showProfessionals): ?>
+                    <a href="#profesionales">Profesionales</a>
+                    <?php endif; ?>
                     <?php if ($showServices): ?>
                     <a href="#servicios">Servicios</a>
                     <?php endif; ?>
@@ -476,6 +597,9 @@ if (!function_exists('agenduy_render_commerce')) {
                 </div>
             </div>
             <div class="mobile-menu" id="mobile-menu">
+                <?php if ($showProfessionals): ?>
+                <a href="#profesionales">Profesionales</a>
+                <?php endif; ?>
                 <?php if ($showServices): ?>
                 <a href="#servicios">Servicios</a>
                 <?php endif; ?>
@@ -592,12 +716,62 @@ if (!function_exists('agenduy_render_commerce')) {
             </div>
         </section>
 
+        <?php if ($showProfessionals): ?>
+        <section id="profesionales" class="professionals-section">
+            <div class="wrap">
+                <span class="eyebrow"><?= $editableText('professionals.eyebrow', 'Profesionales disponibles', 'etiqueta de profesionales') ?></span>
+                <h2 class="section-title"><?= $editableText('professionals.title', 'Elegí con quién reservar', 'titulo de profesionales') ?></h2>
+                <p class="section-sub"><?= $editableText('professionals.subtitle', 'Seleccioná un profesional para ver únicamente los servicios que realiza.', 'texto de profesionales') ?></p>
+                <div class="professionals-grid" data-professionals-grid>
+                    <?php foreach ($publicProfessionals as $professional): ?>
+                    <?php
+                        $serviceLabels = array_slice($professional['service_labels'], 0, 4);
+                        $hasAssignedServices = !empty($professional['service_ids']);
+                    ?>
+                    <article class="professional-card" data-professional-card data-professional-id="<?= (int)$professional['id'] ?>">
+                        <div class="professional-card__avatar">
+                            <?php if ($professional['profile_url'] !== ''): ?>
+                                <img src="<?= htmlspecialchars((string)$professional['profile_url'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string)$professional['name'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
+                            <?php else: ?>
+                                <span><?= htmlspecialchars((string)$professional['initials'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="professional-card__body">
+                            <h3><?= htmlspecialchars((string)$professional['name'], ENT_QUOTES, 'UTF-8') ?></h3>
+                            <p><?= $hasAssignedServices ? count($professional['service_ids']) . ' servicio' . (count($professional['service_ids']) === 1 ? '' : 's') . ' disponible' . (count($professional['service_ids']) === 1 ? '' : 's') : 'Servicios a confirmar' ?></p>
+                            <?php if ($serviceLabels): ?>
+                            <div class="professional-card__skills">
+                                <?php foreach ($serviceLabels as $label): ?>
+                                <span><?= htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <button
+                            class="btn btn--ghost btn--block"
+                            type="button"
+                            data-professional-filter="<?= (int)$professional['id'] ?>"
+                            <?= $hasAssignedServices ? '' : 'disabled' ?>
+                        >Reservar con <?= htmlspecialchars((string)$professional['first_name'], ENT_QUOTES, 'UTF-8') ?></button>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <?php if ($showServices): ?>
         <section id="servicios" class="alt">
             <div class="wrap">
                 <span class="eyebrow"><?= $editableText('services.eyebrow', 'Servicios', 'etiqueta de servicios') ?></span>
                 <h2 class="section-title"><?= $editableText('services.title', 'Lo que ofrecemos', 'titulo de servicios') ?></h2>
                 <p class="section-sub"><?= $editableText('services.subtitle', 'Servicios profesionales con la mejor calidad. Reservá el que más te guste.', 'texto de servicios') ?></p>
+                <?php if ($showProfessionals): ?>
+                <div class="svc-filter-status" data-professional-service-filter hidden>
+                    <span data-professional-service-filter-text></span>
+                    <button type="button" class="btn btn--ghost btn--sm" data-clear-professional-filter>Ver todos</button>
+                </div>
+                <?php endif; ?>
                 <?php if (empty($services)): ?>
                     <p class="section-sub">Próximamente más servicios.</p>
                 <?php else: ?>
@@ -618,7 +792,7 @@ if (!function_exists('agenduy_render_commerce')) {
                                 }
                             }
                         ?>
-                        <article class="svc-card" data-svc-id="<?= $svcId ?>" data-svc-name="<?= htmlspecialchars($s['nombre'], ENT_QUOTES, 'UTF-8') ?>" data-svc-duration="<?= (int)$s['duracion_min'] ?>" data-svc-price="<?= (float)$s['precio'] ?>" tabindex="0">
+                        <article class="svc-card" data-svc-id="<?= $svcId ?>" data-svc-name="<?= htmlspecialchars($s['nombre'], ENT_QUOTES, 'UTF-8') ?>" data-svc-duration="<?= (int)$s['duracion_min'] ?>" data-svc-price="<?= (float)$s['precio'] ?>" data-svc-professionals="<?= htmlspecialchars(implode(',', $serviceProfessionalIds[$svcId] ?? []), ENT_QUOTES, 'UTF-8') ?>" tabindex="0">
                             <?= $dashboardEditLink('servicios', 'Modificar servicio') ?>
                             <?php if ($svcImgUrl !== ''): ?>
                             <div class="svc-card__media">
@@ -939,10 +1113,10 @@ if (!function_exists('agenduy_render_commerce')) {
                             <div id="booking-google-btn"></div>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
-                        <div class="client-history" id="booking-history" hidden>
-                            <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
+                        <details class="client-history" id="booking-history" hidden>
+                            <summary class="client-history__summary"><span><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</span><i class="bx bx-chevron-down" aria-hidden="true"></i></summary>
                             <div class="client-history__body" id="booking-history-body"></div>
-                        </div>
+                        </details>
                         <?php endif; ?>
                         <form id="booking-form" novalidate>
                             <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
@@ -952,6 +1126,13 @@ if (!function_exists('agenduy_render_commerce')) {
                                 <label>Servicio</label>
                                 <input type="text" id="booking-svc-name" readonly>
                             </div>
+                            <?php if ($showProfessionals): ?>
+                            <div class="field" id="booking-barber-field" hidden>
+                                <label for="booking-barber-select">Profesional</label>
+                                <select id="booking-barber-select" name="id_barber"></select>
+                                <p class="hint" id="booking-barber-hint" hidden></p>
+                            </div>
+                            <?php endif; ?>
                             <div class="field field--row">
                                 <div>
                                     <label for="booking-date">Fecha</label>
@@ -1087,10 +1268,10 @@ if (!function_exists('agenduy_render_commerce')) {
                             <p class="hint" id="cart-google-hint" hidden role="status"></p>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
-                        <div class="client-history" id="cart-history" hidden>
-                            <p class="client-history__title"><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</p>
+                        <details class="client-history" id="cart-history" hidden>
+                            <summary class="client-history__summary"><span><i class="bx bx-history" aria-hidden="true"></i> Tu historial en este negocio</span><i class="bx bx-chevron-down" aria-hidden="true"></i></summary>
                             <div class="client-history__body" id="cart-history-body"></div>
-                        </div>
+                        </details>
                         <?php endif; ?>
                         <div class="cart-contact" id="cart-contact">
                             <p class="cart-contact__title">Datos para confirmarte el pedido</p>
@@ -1165,6 +1346,7 @@ if (!function_exists('agenduy_render_commerce')) {
             'endpoint' => url('src/API/public_content.php'),
             'csrf' => $siteEditCsrf,
             'slug' => $slug,
+            'version' => $publicContentVersion,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         </script>
         <?php endif; ?>
@@ -1222,6 +1404,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const currencySymbol = <?= json_encode($currencySymbol, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             const currencyDecimals = <?= (int)$currencyDecimals ?>;
             const productsCatalog = <?= json_encode($productsForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            const professionalsCatalog = <?= json_encode($professionalsForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             const hasProducts = Array.isArray(productsCatalog) && productsCatalog.length > 0;
             const cartEnabled = <?= $cartEnabled ? 'true' : 'false' ?>;
             const cartWhatsAppEnabled = <?= $cartWhatsAppEnabled ? 'true' : 'false' ?>;
@@ -1229,12 +1412,18 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartKey = 'agenduy-cart-' + commerceSlug;
             const cartOrderUrl = <?= json_encode($cartOrderApi, JSON_UNESCAPED_SLASHES) ?>;
             const cartMercadoPagoUrl = <?= json_encode($cartMercadoPagoApi, JSON_UNESCAPED_SLASHES) ?>;
+            const mercadoPagoReturnUrl = <?= json_encode($mercadoPagoReturnApi, JSON_UNESCAPED_SLASHES) ?>;
             const cancelAppointmentUrl = <?= json_encode($cancelAppointmentApi, JSON_UNESCAPED_SLASHES) ?>;
             const storeMpCheckoutEnabled = <?= $storeMpCheckoutEnabled ? 'true' : 'false' ?>;
             const bookingMpCheckoutEnabled = <?= $bookingMpCheckoutEnabled ? 'true' : 'false' ?>;
             const bookingMpRequired = <?= $bookingMpRequired ? 'true' : 'false' ?>;
             let lastBooking = null;
             let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const publicContentSync = {
+                endpoint: <?= json_encode(url('src/API/public_content.php'), JSON_UNESCAPED_SLASHES) ?>,
+                slug: commerceSlug,
+                version: <?= json_encode($publicContentVersion, JSON_UNESCAPED_SLASHES) ?>,
+            };
             function syncCsrfToken(token) {
                 csrfToken = String(token || '');
                 const meta = document.querySelector('meta[name="csrf-token"]');
@@ -1253,6 +1442,83 @@ if (!function_exists('agenduy_render_commerce')) {
                     setTimeout(() => toast.remove(), 250);
                 }, 6500);
             }
+
+            const publicContentCssEscape = window.CSS && typeof window.CSS.escape === 'function'
+                ? window.CSS.escape.bind(window.CSS)
+                : (value) => String(value).replace(/["\\]/g, '\\$&');
+            const setPublicContentVersion = (version) => {
+                const next = String(version || '').trim();
+                if (!next) return;
+                publicContentSync.version = next;
+                if (window.__PUBLIC_SITE_EDITOR__) {
+                    window.__PUBLIC_SITE_EDITOR__.version = next;
+                }
+            };
+            const applyPublicContentPayload = (payload) => {
+                if (!payload || typeof payload !== 'object') return false;
+                let applied = false;
+                const text = payload.text && typeof payload.text === 'object' ? payload.text : {};
+                Object.keys(text).forEach((key) => {
+                    const value = text[key] == null ? '' : String(text[key]);
+                    document.querySelectorAll('[data-public-edit-key="' + publicContentCssEscape(key) + '"] [data-public-edit-value]').forEach((node) => {
+                        if (node.textContent !== value) {
+                            node.textContent = value;
+                            applied = true;
+                        }
+                    });
+                });
+                const images = payload.images && typeof payload.images === 'object' ? payload.images : {};
+                Object.keys(images).forEach((key) => {
+                    const url = String(images[key] || '');
+                    if (!url) return;
+                    document.querySelectorAll('img[data-public-edit-image-preview="' + publicContentCssEscape(key) + '"]').forEach((img) => {
+                        if (img.getAttribute('src') !== url) {
+                            img.src = url;
+                            applied = true;
+                        }
+                    });
+                });
+                return applied;
+            };
+
+            (function publicContentAutoRefresh() {
+                if (!publicContentSync.endpoint || !publicContentSync.slug || !publicContentSync.version) return;
+                let inFlight = false;
+                const check = async (force) => {
+                    if (inFlight) return;
+                    if (!force && (document.visibilityState !== 'visible' || navigator.onLine === false)) return;
+                    inFlight = true;
+                    try {
+                        const url = new URL(publicContentSync.endpoint, window.location.href);
+                        url.searchParams.set('action', 'state');
+                        url.searchParams.set('slug', publicContentSync.slug);
+                        url.searchParams.set('_', String(Date.now()));
+                        const response = await fetch(url.toString(), {
+                            credentials: 'same-origin',
+                            cache: 'no-store',
+                            headers: { 'Accept': 'application/json' },
+                        });
+                        const data = await response.json().catch(() => null);
+                        if (!response.ok || !data || data.ok !== true || !data.version) return;
+                        if (String(data.version) === String(publicContentSync.version)) return;
+                        const applied = applyPublicContentPayload(data);
+                        setPublicContentVersion(data.version);
+                        if (!applied && String(data.latest_type || '') === 'image') {
+                            window.location.reload();
+                        }
+                    } catch (_) {
+                        // El siguiente intervalo reintenta sin molestar al visitante.
+                    } finally {
+                        inFlight = false;
+                    }
+                };
+                window.setInterval(() => check(false), 30000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') check(true);
+                });
+                window.addEventListener('focus', () => check(true));
+                window.addEventListener('online', () => check(true));
+            })();
 
             (function publicSiteEditor() {
                 const cfg = window.__PUBLIC_SITE_EDITOR__ || {};
@@ -1384,6 +1650,9 @@ if (!function_exists('agenduy_render_commerce')) {
                         if (!response.ok || !json || !json.ok) {
                             throw new Error(json && json.error ? json.error : 'No se pudo guardar.');
                         }
+                        if (json.version) {
+                            setPublicContentVersion(json.version);
+                        }
                         if (active.type === 'text') {
                             const target = active.field?.querySelector('[data-public-edit-value]');
                             if (target) target.textContent = json.value || '';
@@ -1405,20 +1674,79 @@ if (!function_exists('agenduy_render_commerce')) {
                 });
             })();
 
-            (function showAppointmentPaymentReturn() {
+            (function showMercadoPagoReturn() {
                 const params = new URLSearchParams(window.location.search);
                 const appointmentId = params.get('mp_appointment');
-                if (!appointmentId) return;
+                const orderId = params.get('mp_order');
+                if (!appointmentId && !orderId) return;
                 const status = String(params.get('mp_status') || '').toLowerCase();
+                const returnBody = {
+                    slug: commerceSlug,
+                    kind: appointmentId ? 'appointment' : 'store',
+                    mp_status: status,
+                    mp_ref: params.get('mp_ref') || params.get('external_reference') || '',
+                    preference_id: params.get('preference_id') || params.get('preference') || '',
+                    payment_id: params.get('payment_id') || params.get('collection_id') || '',
+                    status_detail: params.get('status_detail') || '',
+                    _csrf: csrfToken
+                };
+                if (appointmentId) {
+                    returnBody.appointment_id = appointmentId;
+                } else {
+                    returnBody.order_id = orderId;
+                }
+                if (status && status !== 'success') {
+                    (async () => {
+                        const postReturn = async () => {
+                            const res = await fetch(mercadoPagoReturnUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(returnBody),
+                                credentials: 'same-origin',
+                                cache: 'no-store'
+                            });
+                            let json = null;
+                            try { json = await res.json(); } catch (_) {}
+                            return json || { ok: false };
+                        };
+                        let json = await postReturn();
+                        if (json && json.error === 'csrf_retry' && json.csrf) {
+                            syncCsrfToken(json.csrf);
+                            returnBody._csrf = csrfToken;
+                            json = await postReturn();
+                        }
+                        if (!json || !json.ok) {
+                            console.warn('No se pudo registrar el retorno de Mercado Pago.', json && json.error ? json.error : json);
+                        }
+                    })();
+                }
                 if (status === 'success') {
-                    showPublicToast('Pago recibido. La reserva queda confirmada cuando Mercado Pago informa la aprobacion.', 'success');
+                    showPublicToast(appointmentId
+                        ? 'Pago recibido. La reserva queda confirmada cuando Mercado Pago informa la aprobacion.'
+                        : 'Pago recibido. El pedido queda confirmado cuando Mercado Pago informa la aprobacion.', 'success');
                 } else if (status === 'pending') {
                     showPublicToast('El pago quedo pendiente. Te avisaremos cuando Mercado Pago lo confirme.', 'info');
                 } else {
-                    showPublicToast('No se completo el pago de la reserva. Podes intentar nuevamente con otro horario.', 'error');
+                    showPublicToast(appointmentId
+                        ? 'No se completo el pago de la reserva. Podes intentar nuevamente con otro horario.'
+                        : 'No se completo el pago del pedido. Podes intentar nuevamente.', 'error');
                 }
                 params.delete('mp_appointment');
+                params.delete('mp_order');
                 params.delete('mp_status');
+                params.delete('mp_ref');
+                [
+                    'external_reference',
+                    'preference_id',
+                    'preference',
+                    'payment_id',
+                    'collection_id',
+                    'collection_status',
+                    'status',
+                    'status_detail',
+                    'merchant_order_id',
+                    'payment_type',
+                ].forEach((key) => params.delete(key));
                 const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
                 window.history.replaceState({}, '', clean);
             })();
@@ -1517,6 +1845,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     'Hola! Acabo de reservar en ' + commerceName + ':',
                     '',
                     'Servicio: ' + (booking.servicio || ''),
+                    booking.profesional ? ('Profesional: ' + booking.profesional) : '',
                     'Fecha: ' + (booking.fecha || ''),
                     'Hora: ' + (booking.hora || ''),
                     'Nombre: ' + (booking.nombre || ''),
@@ -1526,7 +1855,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     parts.push('', 'También me interesan estos productos:', '', buildProductsMessage(items));
                 }
                 parts.push('', 'Coordinamos por este medio. Gracias!');
-                return parts.join('\n');
+                return parts.filter((part) => part !== false && part !== null && part !== undefined).join('\n');
             }
 
             function openWhatsApp(text, targetWindow) {
@@ -1967,6 +2296,9 @@ if (!function_exists('agenduy_render_commerce')) {
             const bookingPaymentRequired = document.getElementById('booking-payment-required');
             const svcIdInput = document.getElementById('booking-svc-id');
             const svcNameInput = document.getElementById('booking-svc-name');
+            const bookingBarberField = document.getElementById('booking-barber-field');
+            const bookingBarberSelect = document.getElementById('booking-barber-select');
+            const bookingBarberHint = document.getElementById('booking-barber-hint');
             const dateInput = document.getElementById('booking-date');
             const timeSelect = document.getElementById('booking-time');
             const timeHint = document.getElementById('booking-time-hint');
@@ -1994,6 +2326,7 @@ if (!function_exists('agenduy_render_commerce')) {
             let datePicker = null;
             let suppressDateChange = false;
             let currentBookingServicePrice = 0;
+            let currentProfessionalFilter = null;
             const bookingSubmitLabel = submitBtn ? submitBtn.innerHTML : 'Confirmar reserva';
             const bookingPayLabel = bookingPayBtn ? bookingPayBtn.innerHTML : 'Pagar y reservar';
 
@@ -2142,6 +2475,9 @@ if (!function_exists('agenduy_render_commerce')) {
                         fecha: fecha,
                     });
                     if (idService) params.set('id_service', idService);
+                    if (bookingBarberSelect && bookingBarberSelect.value) {
+                        params.set('id_barber', bookingBarberSelect.value);
+                    }
                     const res = await fetch(availabilityUrl + '?' + params.toString(), { cache: 'no-store' });
                     const json = await res.json();
                     if (reqId !== slotsRequestId) return;
@@ -2572,11 +2908,13 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (bookingPanel) {
                     const body = document.getElementById('booking-history-body');
                     if (body) body.innerHTML = html;
+                    bookingPanel.open = false;
                     bookingPanel.hidden = false;
                 }
                 if (cartPanel) {
                     const body = document.getElementById('cart-history-body');
                     if (body) body.innerHTML = html;
+                    cartPanel.open = false;
                     cartPanel.hidden = false;
                 }
             }
@@ -2630,6 +2968,117 @@ if (!function_exists('agenduy_render_commerce')) {
                 bookingPhoneInput.addEventListener('blur', lookupClient);
             }
 
+            function professionalById(id) {
+                const key = String(id || '');
+                return professionalsCatalog.find((item) => String(item.id) === key) || null;
+            }
+
+            function serviceProfessionalIdsFromCard(card) {
+                if (!card) return [];
+                return String(card.getAttribute('data-svc-professionals') || '')
+                    .split(',')
+                    .map((id) => id.trim())
+                    .filter(Boolean);
+            }
+
+            function serviceCardById(serviceId) {
+                return document.querySelector('.svc-card[data-svc-id="' + String(serviceId || '').replace(/["\\]/g, '\\$&') + '"]');
+            }
+
+            function professionalsForService(serviceId, card) {
+                const ids = serviceProfessionalIdsFromCard(card || serviceCardById(serviceId));
+                if (!ids.length) return [];
+                return professionalsCatalog.filter((item) => ids.includes(String(item.id)));
+            }
+
+            function setBookingBarberHint(text) {
+                if (!bookingBarberHint) return;
+                const value = String(text || '').trim();
+                bookingBarberHint.textContent = value;
+                bookingBarberHint.hidden = value === '';
+            }
+
+            function updateBookingBarberOptions(serviceId, preferredId, card) {
+                if (!bookingBarberField || !bookingBarberSelect) return;
+                const professionals = professionalsForService(serviceId, card);
+                bookingBarberSelect.innerHTML = '';
+                if (!professionals.length) {
+                    bookingBarberField.hidden = true;
+                    bookingBarberSelect.disabled = true;
+                    setBookingBarberHint('');
+                    return;
+                }
+                bookingBarberField.hidden = false;
+                bookingBarberSelect.disabled = false;
+                const preferred = preferredId ? String(preferredId) : '';
+                if (professionals.length > 1) {
+                    const empty = document.createElement('option');
+                    empty.value = '';
+                    empty.textContent = 'Elegí profesional';
+                    bookingBarberSelect.appendChild(empty);
+                }
+                professionals.forEach((professional) => {
+                    const option = document.createElement('option');
+                    option.value = String(professional.id);
+                    option.textContent = professional.name || 'Profesional';
+                    bookingBarberSelect.appendChild(option);
+                });
+                const hasPreferred = preferred && professionals.some((item) => String(item.id) === preferred);
+                if (hasPreferred) {
+                    bookingBarberSelect.value = preferred;
+                } else if (professionals.length === 1) {
+                    bookingBarberSelect.value = String(professionals[0].id);
+                } else {
+                    bookingBarberSelect.value = '';
+                }
+                const selected = professionalById(bookingBarberSelect.value);
+                setBookingBarberHint(
+                    professionals.length === 1 && selected
+                        ? 'Reserva con ' + selected.name + '.'
+                        : 'Elegí quién querés que te atienda.'
+                );
+            }
+
+            function applyProfessionalServiceFilter(professionalId) {
+                const selectedId = professionalId ? String(professionalId) : '';
+                currentProfessionalFilter = selectedId || null;
+                const selected = professionalById(selectedId);
+                document.querySelectorAll('[data-professional-card]').forEach((card) => {
+                    const isActive = selectedId && card.getAttribute('data-professional-id') === selectedId;
+                    card.classList.toggle('is-active', !!isActive);
+                });
+                document.querySelectorAll('.svc-card').forEach((card) => {
+                    const ids = serviceProfessionalIdsFromCard(card);
+                    card.hidden = !!selectedId && !ids.includes(selectedId);
+                });
+                const status = document.querySelector('[data-professional-service-filter]');
+                const statusText = document.querySelector('[data-professional-service-filter-text]');
+                if (status) status.hidden = !selectedId;
+                if (statusText && selected) {
+                    statusText.textContent = 'Mostrando servicios de ' + selected.name + '.';
+                }
+                if (selectedId) {
+                    document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+
+            document.querySelectorAll('[data-professional-filter]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    applyProfessionalServiceFilter(btn.getAttribute('data-professional-filter'));
+                });
+            });
+            document.querySelectorAll('[data-clear-professional-filter]').forEach((btn) => {
+                btn.addEventListener('click', () => applyProfessionalServiceFilter(null));
+            });
+            if (bookingBarberSelect) {
+                bookingBarberSelect.addEventListener('change', () => {
+                    const selected = professionalById(bookingBarberSelect.value);
+                    setBookingBarberHint(selected ? ('Reserva con ' + selected.name + '.') : 'Elegí quién querés que te atienda.');
+                    loadSlots();
+                });
+            }
+
             function showUpsellStep(booking) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
@@ -2648,12 +3097,13 @@ if (!function_exists('agenduy_render_commerce')) {
                 renderCartUI();
             }
 
-            function openModal(svcId, svcName, svcPrice) {
+            function openModal(svcId, svcName, svcPrice, preferredProfessionalId = null) {
                 alertBox.hidden = true;
                 form.reset();
                 svcIdInput.value = svcId;
                 svcNameInput.value = svcName;
                 currentBookingServicePrice = Math.max(0, Number(svcPrice) || 0);
+                updateBookingBarberOptions(svcId, preferredProfessionalId, serviceCardById(svcId));
                 setBookingPaymentMethod('manual');
                 applyDateLimits(null, bookingCalendar);
                 const defaultDate = preferredBookingDate(null);
@@ -2689,7 +3139,11 @@ if (!function_exists('agenduy_render_commerce')) {
             document.querySelectorAll('[data-book]').forEach(btn => {
                 btn.addEventListener('click', e => {
                     const card = e.target.closest('.svc-card');
-                    openModal(card.dataset.svcId, card.dataset.svcName, card.dataset.svcPrice);
+                    const ids = serviceProfessionalIdsFromCard(card);
+                    const preferredProfessionalId = currentProfessionalFilter && ids.includes(currentProfessionalFilter)
+                        ? currentProfessionalFilter
+                        : null;
+                    openModal(card.dataset.svcId, card.dataset.svcName, card.dataset.svcPrice, preferredProfessionalId);
                 });
             });
             document.querySelectorAll('[data-booking-submit]').forEach(btn => {
@@ -2909,6 +3363,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     (bookingEmailInput || bookingPhoneInput)?.focus();
                     return;
                 }
+                if (bookingBarberField && !bookingBarberField.hidden && bookingBarberSelect && !bookingBarberSelect.value) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Elegí el profesional que querés para este servicio.';
+                    alertBox.hidden = false;
+                    bookingBarberSelect.focus();
+                    return;
+                }
                 const paymentMethod = bookingPaymentMethodInput && bookingPaymentMethodInput.value === 'mercadopago'
                     ? 'mercadopago'
                     : 'manual';
@@ -2939,6 +3400,9 @@ if (!function_exists('agenduy_render_commerce')) {
                     const booking = {
                         id: json.id_appointment || '',
                         servicio: svcNameInput.value || '',
+                        profesional: bookingBarberSelect && bookingBarberSelect.value
+                            ? (professionalById(bookingBarberSelect.value)?.name || '')
+                            : '',
                         fecha: dateInput.value || '',
                         hora: timeSelect.value || '',
                         nombre: (bookingNameInput || {}).value || '',
@@ -3047,10 +3511,12 @@ if (!function_exists('agenduy_render_commerce')) {
 
             // Service worker registration
             if ('serviceWorker' in navigator) {
-                var swUrl = <?= json_encode(url('sw.js'), JSON_UNESCAPED_SLASHES) ?>;
+                var swUrl = <?= json_encode(url('sw.js?v=' . $swVer), JSON_UNESCAPED_SLASHES) ?>;
                 window.addEventListener('load', function() {
                     navigator.serviceWorker.register(swUrl, { scope: '/' }).then(function(reg) {
-                        // registered
+                        if (reg && typeof reg.update === 'function') {
+                            reg.update().catch(function(){});
+                        }
                     }).catch(function(err) {
                         // service worker not available
                     });

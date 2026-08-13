@@ -93,4 +93,7 @@ ServerSignature Off
     <FilesMatch "\.(css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?)$">
         Header set Cache-Control "public, max-age=2592000"
     </FilesMatch>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+    </Files>
 </IfModule>
