@@ -172,6 +172,15 @@ function deleteProductImage(string $relative): void
         return;
     }
     $clean = str_replace(['..', '\\'], ['', '/'], $relative);
+    $commerceId = tenantCommerceId();
+    $slug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 4));
+    if ($commerceId !== null && $commerceId > 0 && CommerceStorage::isCentralPath($clean)) {
+        $full = CommerceStorage::absolutePath($commerceId, $slug, $clean);
+        if ($full !== null) {
+            @unlink($full);
+        }
+        return;
+    }
     if (strpos($clean, 'src/img/products/') !== 0) {
         return;
     }
