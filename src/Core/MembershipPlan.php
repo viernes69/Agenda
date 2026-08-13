@@ -478,7 +478,7 @@ final class MembershipPlan
     public static function displayDescription(array $plan): string
     {
         return match (self::displayKey($plan)) {
-            'free' => 'Ideal para empezar: recibí tus primeras reservas y ordená un comercio pequeño.',
+            'free' => 'Ideal para empezar: recibí tus primeras reservas y probá tu tienda con hasta 3 productos.',
             'basic' => 'Para comercios en pleno crecimiento: más capacidad, tienda inicial y recordatorios.',
             'pro' => 'Ideal para olvidarte de tu membresía: agenda, equipo, tienda y soporte sin límites.',
             default => trim((string)($plan['descripcion'] ?? '')) ?: 'Plan flexible para gestionar tu negocio en Agendarte UY.',
@@ -524,7 +524,7 @@ final class MembershipPlan
             [
                 'label' => 'Productos en tienda',
                 'value' => $maxProducts === 0 ? 'No incluido' : self::limitLabel($maxProducts, 'producto', 'productos'),
-                'included' => $maxProducts !== 0 && !$isFree,
+                'included' => $maxProducts !== 0,
             ],
             [
                 'label' => 'Configuración básica',
@@ -641,19 +641,19 @@ final class MembershipPlan
     {
         return [
             'Free' => [
-                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 6 productos en tu tienda.',
+                'descripcion' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 3 productos en tu tienda.',
                 'features' => [
                     'Hasta 25 reservas al mes',
                     'Hasta 25 clientes',
                     '1 profesional',
                     'Hasta 4 servicios',
-                    'Hasta 6 productos en la tienda',
+                    'Hasta 3 productos en la tienda',
                     'Configuración básica (nombre, logo, redes)',
                     'Agenda online básica',
                     'Soporte por email',
                 ],
                 'limits' => [
-                    self::LIMIT_MAX_PRODUCTS => 6,
+                    self::LIMIT_MAX_PRODUCTS => 3,
                     self::LIMIT_MAX_SERVICES => 4,
                     self::LIMIT_MAX_APPOINTMENTS_MONTH => 25,
                     self::LIMIT_MAX_PROFESSIONALS => 1,

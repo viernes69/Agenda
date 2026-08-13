@@ -35,7 +35,7 @@
     const labels = {
       pendiente: 'Pendiente',
       aprobado: 'Reservado',
-      'en progreso': 'Atendiendo',
+      'en progreso': 'En atención',
       rechazado: 'Rechazado',
       cancelado: 'Cancelado',
       finalizado: 'Finalizado',
@@ -123,9 +123,20 @@
   closeEls.forEach((x) => x.addEventListener('click', close));
 
   // Fetch helpers
-  const apiBase = (window.AdminApiBase
-    ? String(window.AdminApiBase).replace(/\/?$/, '/') + 'Autoload.php'
-    : '../../../src/API/Autoload.php');
+  const apiBase = (() => {
+    let base = window.AdminApiBase ? String(window.AdminApiBase) : '';
+    if (!base) {
+      const publicUrl = window.__TENANT_CONFIG__ && window.__TENANT_CONFIG__.publicUrl
+        ? String(window.__TENANT_CONFIG__.publicUrl)
+        : '';
+      if (publicUrl) {
+        try { base = new URL('src/API/', publicUrl).href; } catch (_) { base = ''; }
+      }
+    }
+    if (!base) return '../../../src/API/Autoload.php';
+    if (/Autoload\.php(?:[?#].*)?$/i.test(base)) return base;
+    return base.replace(/\/?$/, '/') + 'Autoload.php';
+  })();
   const fetchJson = async (url) => {
     const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
     try { return await r.json(); } catch (_) { return null; }
@@ -197,6 +208,47 @@
     button.textContent = isReprogramSaving ? 'Guardando...' : 'Guardar cambios';
     return ready;
   };
+  const rowCellText = (row, heading) => {
+    if (!row) return '';
+    const cell = row.querySelector(`td[data-heading="${heading}"]`);
+    return cell ? String(cell.textContent || '').trim() : '';
+  };
+  const dataFromRow = (row, id) => {
+    if (!row) return null;
+    return {
+      id,
+      cliente: rowCellText(row, 'Cliente') || 'Cliente',
+      barbero: rowCellText(row, 'Profesional') || 'Profesional',
+      servicio: rowCellText(row, 'Servicio') || 'Servicio',
+      precio: row.getAttribute('data-admin-reserva-price') || rowCellText(row, 'Precio') || '-',
+      fecha: row.getAttribute('data-admin-reserva-fecha') || rowCellText(row, 'Fecha') || '-',
+      hora: normalizeModalTime(row.getAttribute('data-admin-reserva-hora') || rowCellText(row, 'Hora')) || '-',
+      payment: row.getAttribute('data-admin-reserva-payment') || rowCellText(row, 'Tipo de pago') || 'Pago local',
+      status: row.getAttribute('data-admin-reserva-status') || rowCellText(row, 'Status') || 'Pendiente',
+      duration: 30,
+    };
+  };
+  const openReservationData = (data) => {
+    modal.setAttribute('data-admin-reserva-id', String(data.id || ''));
+    modal.setAttribute('data-admin-res-cliente-id', String(data.clienteId || ''));
+    modal.setAttribute('data-admin-res-fecha', String(data.fecha || ''));
+    modal.setAttribute('data-admin-res-hora', String(data.hora || ''));
+    modal.setAttribute('data-admin-res-duration', String(data.duration || 30));
+    const fechaInput = el('[data-admin-res-edit-fecha]');
+    const horaInput = el('[data-admin-res-edit-hora]');
+    if (fechaInput) fechaInput.value = normalizeModalDate(data.fecha);
+    if (horaInput) horaInput.value = normalizeModalTime(data.hora);
+    const reprogramWrap = el('[data-admin-res-reprogram-wrap]');
+    if (reprogramWrap) {
+      const statusKey = normalizeStatusKey(data.status);
+      const locked = ['cancelado', 'finalizado', 'rechazado'].includes(statusKey);
+      reprogramWrap.hidden = locked;
+    }
+    fill(data);
+    setReprogramFeedback('');
+    updateScheduleSaveState();
+    open();
+  };
 
   const isInsideReservationSlot = () => {
     const fecha = modal.getAttribute('data-admin-res-fecha') || '';
@@ -254,11 +306,17 @@
     if (btn.disabled) return;
     const id = btn.getAttribute('data-admin-view-reserva');
     if (!id) return;
+    const rowForFallback = btn.closest('[data-admin-reserva-item]');
     if (modalLoading) modalLoading.show(modal);
     try {
       const payload = await fetchJson(`${apiBase}?action=get&table=reservas&id=${encodeURIComponent(id)}`);
       const r = payload && payload.data ? payload.data : null;
       if (!r) {
+        const fallbackData = dataFromRow(rowForFallback, id);
+        if (fallbackData) {
+          openReservationData(fallbackData);
+          return;
+        }
         adminNotify('No se pudo cargar la reserva', 'error');
         return;
       }
@@ -314,11 +372,13 @@
       const rowPaymentLabel = getRowPaymentLabel();
 
       const serviceEntry = serviceMap[String(r.ID_Servicio || '')] || {};
+      const fallbackData = dataFromRow(rowForFallback, r.ID_Reserva || id) || {};
       const data = {
         id: r.ID_Reserva,
-        cliente: cliMap[String(r.ID_Cliente||'')] || 'Cliente',
-        barbero: barbMap[String(r.ID_Barber||'')] || 'Profesional',
-        servicio: serviceEntry.Nombre || serviceEntry.nombre || 'Servicio',
+        clienteId: r.ID_Cliente || '',
+        cliente: cliMap[String(r.ID_Cliente||'')] || fallbackData.cliente || 'Cliente',
+        barbero: barbMap[String(r.ID_Barber||'')] || fallbackData.barbero || 'Profesional',
+        servicio: serviceEntry.Nombre || serviceEntry.nombre || fallbackData.servicio || 'Servicio',
         precio: (() => {
           const parsed = parseAmount(serviceEntry.Precio ?? serviceEntry.precio ?? null);
           if (parsed !== null) {
@@ -329,32 +389,19 @@
           }
           return '-';
         })(),
-        fecha: r.Fecha_Reserva || '-',
-        hora: String(r.Hora_Reserva || '').slice(0,5),
-        payment: rowPaymentLabel || paymentTypeLabel(r, 'Pago local'),
+        fecha: r.Fecha_Reserva || fallbackData.fecha || '-',
+        hora: normalizeModalTime(r.Hora_Reserva || fallbackData.hora) || '-',
+        payment: rowPaymentLabel || fallbackData.payment || paymentTypeLabel(r, 'Pago local'),
         status: r.Status || 'Pendiente',
         duration: parseInt(serviceEntry.Duracion ?? serviceEntry.duracion ?? serviceEntry.duracion_min ?? serviceEntry.Duracion_Min ?? 30, 10) || 30,
       };
-      modal.setAttribute('data-admin-reserva-id', String(data.id||''));
-      modal.setAttribute('data-admin-res-cliente-id', String(r.ID_Cliente || ''));
-      modal.setAttribute('data-admin-res-fecha', String(data.fecha||''));
-      modal.setAttribute('data-admin-res-hora', String(data.hora||''));
-      modal.setAttribute('data-admin-res-duration', String(data.duration || 30));
-      const fechaInput = el('[data-admin-res-edit-fecha]');
-      const horaInput = el('[data-admin-res-edit-hora]');
-      if (fechaInput) fechaInput.value = (data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)) ? data.fecha : '';
-      if (horaInput) horaInput.value = (data.hora && data.hora !== '-') ? String(data.hora).slice(0, 5) : '';
-      const reprogramWrap = el('[data-admin-res-reprogram-wrap]');
-      if (reprogramWrap) {
-        const statusKey = normalizeStatusKey(data.status);
-        const locked = ['cancelado', 'finalizado', 'rechazado'].includes(statusKey);
-        reprogramWrap.hidden = locked;
-      }
-      fill(data);
-      setReprogramFeedback('');
-      updateScheduleSaveState();
-      open();
+      openReservationData(data);
     } catch (_) {
+      const fallbackData = dataFromRow(rowForFallback, id);
+      if (fallbackData) {
+        openReservationData(fallbackData);
+        return;
+      }
       adminNotify('No se pudo abrir la reserva', 'error');
     } finally {
       if (modalLoading) modalLoading.hide(modal);
@@ -457,9 +504,10 @@
         if (row) {
           row.setAttribute('data-admin-reserva-fecha', fecha);
           row.setAttribute('data-admin-reserva-hora', hora);
-          const cells = row.querySelectorAll('td');
-          if (cells[4]) cells[4].textContent = fecha;
-          if (cells[5]) cells[5].textContent = hora;
+          const fechaCell = row.querySelector('td[data-heading="Fecha"]');
+          const horaCell = row.querySelector('td[data-heading="Hora"]');
+          if (fechaCell) fechaCell.textContent = fecha;
+          if (horaCell) horaCell.textContent = hora;
         }
         setReprogramFeedback('Reserva reprogramada', 'success');
         try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}

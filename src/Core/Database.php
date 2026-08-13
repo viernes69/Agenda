@@ -694,6 +694,12 @@ final class Database
                         $currentMaxProfessionals = $decodedLimits[MembershipPlan::LIMIT_MAX_PROFESSIONALS] ?? null;
                         $limitsNeedUpgrade = $defaultMaxProfessionals !== null
                             && (string)$currentMaxProfessionals !== (string)$defaultMaxProfessionals;
+                        if (!$limitsNeedUpgrade) {
+                            $defaultMaxProducts = $def['limits'][MembershipPlan::LIMIT_MAX_PRODUCTS] ?? null;
+                            $currentMaxProducts = $decodedLimits[MembershipPlan::LIMIT_MAX_PRODUCTS] ?? null;
+                            $limitsNeedUpgrade = $defaultMaxProducts !== null
+                                && (string)$currentMaxProducts !== (string)$defaultMaxProducts;
+                        }
                     }
                 } elseif ($name === 'Profesional') {
                     $featRaw = (string)($row['features'] ?? '');

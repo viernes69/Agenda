@@ -745,7 +745,7 @@ final class TenantLocalDb
         return match ($key) {
             'pendiente' => 'Pendiente',
             'aprobado' => 'Reservado',
-            'en progreso' => 'Atendiendo',
+            'en progreso' => 'En atención',
             'rechazado' => 'Rechazado',
             'cancelado' => 'Cancelado',
             'finalizado' => 'Finalizado',

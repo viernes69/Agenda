@@ -3,7 +3,7 @@
   "short_name": "Agendarte",
   "description": "Panel para gestionar reservas, clientes y servicios.",
   "display": "standalone",
-  "background_color": "#0f1115",
+  "background_color": "#ffffff",
   "theme_color": "#7c3aed",
   "icons": [
     {

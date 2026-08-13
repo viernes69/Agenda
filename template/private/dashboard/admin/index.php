@@ -1464,7 +1464,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                       class="btn btn-secondary btn-sm"
                       data-admin-reserva-quick-status="En progreso"
                       data-admin-reserva-id="<?php echo $idReserva; ?>"
-                    >Atendiendo</button>
+                    >Atención</button>
                   <?php endif; ?>
                   <?php if ($canFinish): ?>
                     <button
@@ -1472,7 +1472,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                       class="btn btn-primary btn-sm"
                       data-admin-reserva-quick-status="Finalizado"
                       data-admin-reserva-id="<?php echo $idReserva; ?>"
-                    >Finalizado</button>
+                    >Finalizar</button>
                   <?php endif; ?>
                   <?php if ($canModify): ?>
                     <button

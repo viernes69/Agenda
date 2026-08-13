@@ -201,6 +201,8 @@ if (!function_exists('agenduy_render_commerce')) {
         $cssVer = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
         $swPath = dirname(__DIR__, 2) . '/sw.js';
         $swVer = is_file($swPath) ? (string)filemtime($swPath) : (string)time();
+        $manifestPath = dirname(__DIR__, 2) . '/template/manifest.webmanifest';
+        $manifestVer = is_file($manifestPath) ? (string)filemtime($manifestPath) : (string)time();
 
         $titulo = (string)($commerce['nombre'] ?? 'Agenduy');
         $slogan = (string)($commerce['slogan'] ?? '');
@@ -524,9 +526,9 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($hasDlocalPlans): ?>
         <link rel="stylesheet" href="<?= htmlspecialchars(url('public/assets/css/dlocal-plans.css'), ENT_QUOTES, 'UTF-8') ?>">
         <?php endif; ?>
-        <link rel="icon" type="image/png" href="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>">
-        <link rel="apple-touch-icon" href="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>">
-        <link rel="manifest" href="<?= htmlspecialchars(url('template/manifest.webmanifest'), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="icon" type="image/png" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="apple-touch-icon" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="manifest" href="<?= htmlspecialchars(url('template/manifest.webmanifest?v=' . $manifestVer), ENT_QUOTES, 'UTF-8') ?>">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="csrf-token" content="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
@@ -1089,7 +1091,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <div class="footer__legal">
                     <a href="<?= htmlspecialchars(url(''), ENT_QUOTES, 'UTF-8') ?>" class="footer__brand-link">
                         <span class="footer__brand-logo">
-                            <img src="<?= htmlspecialchars(url('src/img/favicon/favicon.png'), ENT_QUOTES, 'UTF-8') ?>" alt="Agendarte UY">
+                            <img src="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>" alt="Agendarte UY">
                         </span>
                         <span>Agendarte UY</span>
                     </a>

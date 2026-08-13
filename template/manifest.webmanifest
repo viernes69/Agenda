@@ -4,7 +4,7 @@
   "start_url": "./",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#6366f1",
+  "background_color": "#ffffff",
   "theme_color": "#6366f1",
   "description": "Reserva turnos y pedí productos online con Agendarte UY.",
   "categories": ["business", "productivity", "lifestyle"],

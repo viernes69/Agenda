@@ -97,9 +97,9 @@ echo "--- PLANES ---" . $br;
 $memberships = [
     [
         'id' => 4, 'nombre' => 'Free', 'precio' => 0, 'trial' => 30,
-        'desc' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes y 25 reservas al mes.',
-        'features' => '["Hasta 25 reservas al mes","Hasta 25 clientes","1 profesional","Hasta 4 servicios","Sin productos en la tienda","Configuración básica (nombre, logo, redes)","Agenda online básica","Soporte por email"]',
-        'limits' => '{"max_products":0,"max_services":4,"max_appointments_month":25,"max_professionals":1,"max_clients":25,"settings_tier":"basic"}',
+        'desc' => 'Ideal para empezar: 1 profesional, hasta 4 servicios, 25 clientes, 25 reservas al mes y hasta 3 productos en tu tienda.',
+        'features' => '["Hasta 25 reservas al mes","Hasta 25 clientes","1 profesional","Hasta 4 servicios","Hasta 3 productos en la tienda","Configuración básica (nombre, logo, redes)","Agenda online básica","Soporte por email"]',
+        'limits' => '{"max_products":3,"max_services":4,"max_appointments_month":25,"max_professionals":1,"max_clients":25,"settings_tier":"basic"}',
     ],
     [
         'id' => 5, 'nombre' => 'Básico', 'precio' => 299, 'trial' => 0,

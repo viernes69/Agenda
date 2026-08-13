@@ -147,7 +147,7 @@ final class PlatformTemplates
                         'subject' => 'Bienvenido a Agendarte',
                         'body' => '<p>{logo}</p>'
                             . '<p>Hola {nombre},</p>'
-                            . '<p>Creamos tu cuenta para <strong>{negocio}</strong>.</p>'
+                            . '<p>Creamos tu cuenta para <strong>{negocio}</strong> en Agendarte.</p>'
                             . '<p>Prueba gratis hasta <strong>{trial_end}</strong>.</p>'
                             . '<p>Tu sitio: <a href="{site_url}">{site_url}</a></p>'
                             . '<p>Panel: <a href="{panel_url}">{panel_url}</a></p>',
@@ -208,7 +208,7 @@ final class PlatformTemplates
                     'hint' => 'WhatsApp al crear una cuenta de comercio.',
                     'fields' => ['body'],
                     'defaults' => [
-                        'body' => "Hola {nombre}, creamos tu cuenta para {negocio} en Agendarte UY.\nSitio: {site_url}\nPanel: {panel_url}",
+                        'body' => "Hola {nombre}, creamos tu cuenta para {negocio} en Agendarte.\nSitio: {site_url}\nPanel: {panel_url}",
                     ],
                 ],
                 'store_order_created_owner' => [
@@ -300,7 +300,7 @@ final class PlatformTemplates
     public static function emailBranding(): array
     {
         $defaults = [
-            'logo_url' => 'src/media/logo/logo-horizontal.png',
+            'logo_url' => 'src/media/logo/logo-email.png',
             'show_logo_in_emails' => true,
         ];
         try {
@@ -334,7 +334,7 @@ final class PlatformTemplates
             'show_logo_in_emails' => true,
         ];
         if ($clean['logo_url'] === '') {
-            $clean['logo_url'] = 'src/media/logo/logo-horizontal.png';
+            $clean['logo_url'] = 'src/media/logo/logo-email.png';
         }
         self::persistSection(self::BRANDING_SECTION, json_encode($clean, JSON_UNESCAPED_UNICODE));
         self::$sampleVarsCache = null;
@@ -519,11 +519,11 @@ final class PlatformTemplates
 
     private static function wrapEmailDocument(string $innerHtml): string
     {
-        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937">'
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6"><tr><td align="center" style="padding:28px 12px">'
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.08)">'
-            . '<tr><td style="padding:28px 24px 24px;font-size:15px;line-height:1.55">' . $innerHtml . '</td></tr></table>'
-            . '<p style="margin:16px 0 0;font-size:12px;color:#9ca3af">Agendarte UY - Vista previa</p>'
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center" style="padding:28px 12px">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:0;overflow:hidden">'
+            . '<tr><td style="padding:24px;font-size:15px;line-height:1.55;color:#111827">' . $innerHtml . '</td></tr></table>'
+            . '<p style="margin:16px 0 0;font-size:12px;color:#6b7280">Agendarte - Vista previa</p>'
             . '</td></tr></table></body></html>';
     }
 
@@ -546,6 +546,7 @@ final class PlatformTemplates
     {
         return stripos($html, 'alt="Agendarte"') !== false
             || stripos($html, 'src/media/logo/') !== false
+            || stripos($html, 'logo-email') !== false
             || stripos($html, 'logo-horizontal') !== false
             || stripos($html, 'logo-icon') !== false
             || stripos($html, 'logo-vertical') !== false;

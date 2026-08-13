@@ -254,7 +254,7 @@ final class NotificationOutbox
             $phone,
             'registration_welcome',
             $tplVars,
-            "Hola {nombre}, creamos tu cuenta para {negocio} en Agendarte UY.\nSitio: {site_url}\nPanel: {panel_url}",
+            "Hola {nombre}, creamos tu cuenta para {negocio} en Agendarte.\nSitio: {site_url}\nPanel: {panel_url}",
             $payload,
             date('Y-m-d H:i:s'),
             "commerce:{$idCommerce}:registration:wa"

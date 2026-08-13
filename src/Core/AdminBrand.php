@@ -182,7 +182,7 @@ final class AdminBrand
             'description'      => 'Panel para gestionar reservas, clientes y servicios.',
             'start_url'        => $startUrl,
             'display'          => 'standalone',
-            'background_color' => '#0f1115',
+            'background_color' => '#ffffff',
             'theme_color'      => self::THEME_COLOR,
             'icons'            => [
                 [

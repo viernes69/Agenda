@@ -99,7 +99,7 @@ require __DIR__ . '/partials/header.php';
         <div class="form-grid">
             <div class="field">
                 <label for="logo_url">Ruta del logo (relativa al sitio)</label>
-                <input type="text" id="logo_url" name="logo_url" value="<?= htmlspecialchars((string)$branding['logo_url'], ENT_QUOTES, 'UTF-8') ?>" placeholder="src/media/logo/logo-horizontal.png">
+                <input type="text" id="logo_url" name="logo_url" value="<?= htmlspecialchars((string)$branding['logo_url'], ENT_QUOTES, 'UTF-8') ?>" placeholder="src/media/logo/logo-email.png">
             </div>
             <div class="field">
                 <label><input type="checkbox" name="show_logo_in_emails" value="1" <?= !empty($branding['show_logo_in_emails']) ? 'checked' : '' ?>> Mostrar logo cuando uses <code>{logo}</code></label>

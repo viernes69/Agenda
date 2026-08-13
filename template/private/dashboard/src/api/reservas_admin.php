@@ -348,10 +348,10 @@ foreach ($prepared as $row) {
     $rowHtml .= '<td data-heading="Status"><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
     $rowHtml .= '<td data-heading="Acciones"><div class="admin-reserva-row-actions">';
     if ($canAttend) {
-        $rowHtml .= '<button type="button" class="btn btn-secondary btn-sm" data-admin-reserva-quick-status="En progreso" data-admin-reserva-id="' . $idReserva . '">Atendiendo</button>';
+        $rowHtml .= '<button type="button" class="btn btn-secondary btn-sm" data-admin-reserva-quick-status="En progreso" data-admin-reserva-id="' . $idReserva . '">Atención</button>';
     }
     if ($canFinish) {
-        $rowHtml .= '<button type="button" class="btn btn-primary btn-sm" data-admin-reserva-quick-status="Finalizado" data-admin-reserva-id="' . $idReserva . '">Finalizado</button>';
+        $rowHtml .= '<button type="button" class="btn btn-primary btn-sm" data-admin-reserva-quick-status="Finalizado" data-admin-reserva-id="' . $idReserva . '">Finalizar</button>';
     }
 
     if ($canModify) {

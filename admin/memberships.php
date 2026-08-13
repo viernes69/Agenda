@@ -180,7 +180,7 @@ if (is_array($edit)) {
             <div class="field">
                 <label>Máx. productos</label>
                 <input type="number" name="max_products" min="0" step="1" value="<?= htmlspecialchars($editMaxProducts, ENT_QUOTES, 'UTF-8') ?>" placeholder="Vacío = sin límite">
-                <span class="hint">Free = 10, Básico = 20. Vacío = ilimitado.</span>
+                <span class="hint">Free = 3, Básico = 20. Vacío = ilimitado.</span>
             </div>
             <div class="field">
                 <label>Máx. servicios</label>

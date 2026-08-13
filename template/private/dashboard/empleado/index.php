@@ -1292,7 +1292,7 @@ $summaryCards = [
                       class="btn btn-secondary btn-sm"
                       data-admin-reserva-quick-status="En progreso"
                       data-admin-reserva-id="<?php echo $idReserva; ?>"
-                    >Atendiendo</button>
+                    >Atención</button>
                   <?php endif; ?>
                   <?php if ($canFinish): ?>
                     <button
@@ -1300,7 +1300,7 @@ $summaryCards = [
                       class="btn btn-primary btn-sm"
                       data-admin-reserva-quick-status="Finalizado"
                       data-admin-reserva-id="<?php echo $idReserva; ?>"
-                    >Finalizado</button>
+                    >Finalizar</button>
                   <?php endif; ?>
                   <?php if ($canModify): ?>
                     <button
@@ -2015,6 +2015,16 @@ $summaryCards = [
     </div>
   </div>
 
+  <?php
+    $employeeApiBase = '../../../src/API/';
+    try {
+      if ($tenantSlug !== '' && $tenantSlug !== 'template') {
+        $employeeApiBase = rtrim(\Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug), '/') . '/src/API/';
+      }
+    } catch (Throwable $e) {
+      $employeeApiBase = '../../../src/API/';
+    }
+  ?>
   <script>
     window.__TENANT_CONFIG__ = {
       slug: <?php echo json_encode($tenantSlug, JSON_UNESCAPED_SLASHES); ?>,
@@ -2022,6 +2032,7 @@ $summaryCards = [
       publicUrl: <?php echo json_encode($tenantPublicUrl, JSON_UNESCAPED_SLASHES); ?>,
       logoutUrl: <?php echo json_encode(url('admin/logout.php'), JSON_UNESCAPED_SLASHES); ?>
     };
+    window.AdminApiBase = <?php echo json_encode($employeeApiBase, JSON_UNESCAPED_SLASHES); ?>;
     window.ADMIN_PUSH_PUBLIC_KEY = '<?php echo e($pushPublicKey); ?>';
     window.ADMIN_PUSH_ENDPOINT = '../../../src/API/AdminPush.php';
   </script>
