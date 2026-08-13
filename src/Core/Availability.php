@@ -121,6 +121,7 @@ final class Availability
             ];
         }
 
+        self::expireStalePaymentAppointments($idCommerce);
         $busy = self::busyIntervals($idCommerce, $canonical);
         $slots = self::buildSlots($windows, $busy, $duration, self::SLOT_STEP_MINUTES, $minStart);
 
@@ -292,7 +293,18 @@ final class Availability
              LEFT JOIN services s ON s.id_service = a.id_service
              WHERE a.id_commerce = :c
                AND a.fecha = :f
-               AND a.status NOT IN ('cancelled')",
+               AND a.status NOT IN ('cancelled')
+               AND NOT (
+                   a.status = 'pending'
+                   AND EXISTS (
+                       SELECT 1
+                       FROM appointment_payments ap
+                       WHERE ap.id_appointment = a.id_appointment
+                         AND ap.status IN ('created','pending')
+                         AND ap.expires_at <> ''
+                         AND datetime(ap.expires_at) <= datetime('now')
+                   )
+               )",
             [':c' => $idCommerce, ':f' => $fecha]
         );
 
@@ -312,6 +324,65 @@ final class Availability
             $busy[] = [$start, $end];
         }
         return $busy;
+    }
+
+    private static function expireStalePaymentAppointments(int $idCommerce): void
+    {
+        if ($idCommerce <= 0) {
+            return;
+        }
+        try {
+            $db = Database::getInstance();
+            $rows = $db->fetchAll(
+                "SELECT id_appointment_payment, id_appointment, slug
+                 FROM appointment_payments
+                 WHERE id_commerce = :c
+                   AND status IN ('created','pending')
+                   AND expires_at <> ''
+                   AND datetime(expires_at) <= datetime('now')
+                 LIMIT 50",
+                [':c' => $idCommerce]
+            );
+            foreach ($rows as $row) {
+                $paymentId = (int)($row['id_appointment_payment'] ?? 0);
+                $appointmentId = (int)($row['id_appointment'] ?? 0);
+                $slug = trim((string)($row['slug'] ?? ''));
+                if ($paymentId <= 0 || $appointmentId <= 0) {
+                    continue;
+                }
+                $db->update('appointment_payments', [
+                    'status' => 'cancelled',
+                    'status_detail' => 'Pago vencido',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], 'id_appointment_payment = :id', [':id' => $paymentId]);
+                $db->update('appointments', [
+                    'status' => 'cancelled',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], "id_appointment = :id AND id_commerce = :c AND status = 'pending'", [
+                    ':id' => $appointmentId,
+                    ':c' => $idCommerce,
+                ]);
+                if ($slug !== '' && TenantLocalDb::exists($slug)) {
+                    $appointment = $db->fetchOne(
+                        "SELECT a.*, cl.avatar AS client_avatar
+                         FROM appointments a
+                         LEFT JOIN clients cl ON cl.id_client = a.id_client
+                         WHERE a.id_appointment = :id
+                         LIMIT 1",
+                        [':id' => $appointmentId]
+                    );
+                    if ($appointment) {
+                        try {
+                            TenantLocalDb::mirrorAppointment($slug, $appointment);
+                        } catch (\Throwable $e) {
+                            error_log('[Availability.expirePayment] mirror: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[Availability.expirePayment] ' . $e->getMessage());
+        }
     }
 
     /**

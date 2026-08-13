@@ -83,9 +83,9 @@ final class MercadoPago
     }
 
     /**
-     * Tienda puede cobrar online en planes pagos con configuracion completa.
+     * Los comercios pueden cobrar online en planes pagos con configuracion completa.
      */
-    public static function isStoreCheckoutAllowed(?array $plan): bool
+    public static function isCommerceCheckoutAllowed(?array $plan): bool
     {
         if (!is_array($plan)) {
             return false;
@@ -99,6 +99,11 @@ final class MercadoPago
         }
 
         return true;
+    }
+
+    public static function isStoreCheckoutAllowed(?array $plan): bool
+    {
+        return self::isCommerceCheckoutAllowed($plan);
     }
 
     /**

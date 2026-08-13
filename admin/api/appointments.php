@@ -18,11 +18,13 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\Availability;
+use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\MagicLink;
 use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\MercadoPago;
 use Agenduy\Core\NotificationOutbox;
 use Agenduy\Core\RateLimiter;
 use Agenduy\Core\Security;
@@ -84,12 +86,18 @@ try {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) throw new InvalidArgumentException('Fecha inválida.');
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $horaInicio)) throw new InvalidArgumentException('Hora inválida.');
     if ($clienteNombre === '') throw new InvalidArgumentException('Falta el nombre del cliente.');
-    if ($clienteEmail === '' || !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
+    if (!preg_match('/\S+\s+\S+/', $clienteNombre)) {
+        throw new InvalidArgumentException('Ingresa tu nombre y apellido.');
+    }
+    if ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email inválido.');
     }
     $phoneDigits = preg_replace('/\D+/', '', $clienteTelefono) ?? '';
-    if (strlen($phoneDigits) < 7) {
+    if ($clienteTelefono !== '' && strlen($phoneDigits) < 7) {
         throw new InvalidArgumentException('Teléfono inválido.');
+    }
+    if ($clienteEmail === '' && strlen($phoneDigits) < 7) {
+        throw new InvalidArgumentException('Ingresa un email o un telefono para poder confirmarte la reserva.');
     }
     if ($clienteCedula === '') {
         throw new InvalidArgumentException('Ingresá tu cédula para poder cancelar tu reserva si lo necesitás.');
@@ -142,6 +150,32 @@ try {
             if ($currentAppts >= $maxAppts) {
                 $waitlist = true;
             }
+        }
+    }
+    $reservasCfg = CommerceSettings::get(
+        (int)$commerce['id_commerce'],
+        'reservas',
+        CommerceSettings::defaultsForSection('reservas')
+    );
+    $paymentRequiredBySettings = !empty($reservasCfg['mercado_pago_required']) && $precio > 0;
+    $wantsMercadoPago = appointmentMercadoPagoRequested($payload) || $paymentRequiredBySettings;
+    $mpConfig = [];
+    if ($wantsMercadoPago) {
+        if ($waitlist) {
+            throw new RuntimeException('No se puede cobrar online porque el comercio alcanzo el limite de reservas del plan.');
+        }
+        if (empty($reservasCfg['mercado_pago_enabled'])) {
+            throw new RuntimeException('El comercio no tiene Mercado Pago habilitado para reservas.');
+        }
+        if (!MercadoPago::isCommerceCheckoutAllowed($plan)) {
+            throw new RuntimeException('Mercado Pago para reservas esta disponible con un plan pago de configuracion completa.');
+        }
+        if ($precio <= 0) {
+            throw new InvalidArgumentException('Este servicio no tiene precio para cobrar online.');
+        }
+        $mpConfig = MercadoPago::commerceConfig((int)$commerce['id_commerce'], $slug);
+        if (empty($mpConfig['enabled']) || trim((string)($mpConfig['access_token'] ?? '')) === '') {
+            throw new RuntimeException('El comercio no tiene Mercado Pago configurado.');
         }
     }
 
@@ -211,7 +245,11 @@ try {
         $marker = MembershipPlan::APPOINTMENT_NOTA_PLAN_WAITLIST;
         $apptNotas = $apptNotas !== '' ? ($marker . ' | ' . $apptNotas) : $marker;
     }
-    $appointmentStatus = $waitlist ? 'pending' : 'confirmed';
+    if ($wantsMercadoPago) {
+        $marker = 'mp-payment-pending';
+        $apptNotas = $apptNotas !== '' ? ($marker . ' | ' . $apptNotas) : $marker;
+    }
+    $appointmentStatus = ($waitlist || $wantsMercadoPago) ? 'pending' : 'confirmed';
     $idAppt = (int)$db->insert('appointments', [
         'id_commerce'      => (int)$commerce['id_commerce'],
         'id_client'        => $idClient,
@@ -220,6 +258,7 @@ try {
         'hora_inicio'      => $horaInicio,
         'hora_fin'         => $horaFin,
         'cliente_nombre'   => $clienteNombre,
+        'cliente_cedula'   => $clienteCedula,
         'cliente_email'    => $clienteEmail,
         'cliente_telefono' => $clienteTelefono,
         'notas'            => $apptNotas,
@@ -255,6 +294,7 @@ try {
                 'fecha'            => $fecha,
                 'hora_inicio'      => $horaInicio,
                 'cliente_nombre'   => $clienteNombre,
+                'cliente_cedula'   => $clienteCedula,
                 'cliente_email'    => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,
                 'cliente_avatar'   => $clienteAvatar,
@@ -278,6 +318,62 @@ try {
         }
     } catch (Throwable $e) {
         error_log('[appointments.api] mirror local: ' . $e->getMessage());
+    }
+
+    if ($wantsMercadoPago) {
+        try {
+            $payment = createAppointmentMercadoPagoCheckout(
+                $db,
+                $commerce,
+                $slug,
+                is_array($svc) ? $svc : [],
+                $mpConfig,
+                $idAppt,
+                is_numeric($localReservaId) ? (int)$localReservaId : null,
+                $precio,
+                $clienteNombre,
+                $clienteEmail,
+                $clienteTelefono,
+                $fecha,
+                $horaInicio
+            );
+        } catch (Throwable $mpError) {
+            markAppointmentPaymentSetupFailed(
+                $db,
+                $slug,
+                [
+                    'id_appointment' => $idAppt,
+                    'id_commerce' => (int)$commerce['id_commerce'],
+                    'id_service' => $idService,
+                    'fecha' => $fecha,
+                    'hora_inicio' => $horaInicio,
+                    'cliente_nombre' => $clienteNombre,
+                    'cliente_cedula' => $clienteCedula,
+                    'cliente_email' => $clienteEmail,
+                    'cliente_telefono' => $clienteTelefono,
+                    'status' => 'cancelled',
+                    'precio' => $precio,
+                ],
+                $mpError->getMessage()
+            );
+            throw $mpError;
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'id_appointment' => $idAppt,
+            'id_reserva_local' => $localReservaId,
+            'status' => 'pending',
+            'payment_required' => true,
+            'payment_status' => 'pending',
+            'checkout_url' => $payment['checkout_url'],
+            'preference_id' => $payment['preference_id'],
+            'expires_at' => $payment['expires_at'],
+            'notificaciones' => 'pending_payment',
+            'waitlist' => false,
+            'over_plan' => false,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     // 1) Google Calendar (best-effort, no rompe si falla)
@@ -379,4 +475,193 @@ try {
     $code = $e instanceof InvalidArgumentException ? 400 : 422;
     http_response_code($code);
     echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+}
+
+function appointmentMercadoPagoRequested(array $payload): bool
+{
+    $method = strtolower(trim((string)($payload['payment_method'] ?? $payload['metodo_pago'] ?? '')));
+    if (in_array($method, ['mercadopago', 'mercado_pago', 'mp'], true)) {
+        return true;
+    }
+    return appointmentTruthy($payload['pay_online'] ?? $payload['pago_online'] ?? false);
+}
+
+function appointmentTruthy(mixed $value): bool
+{
+    if (is_bool($value)) {
+        return $value;
+    }
+    if (is_numeric($value)) {
+        return (int)$value === 1;
+    }
+    $normalized = strtolower(trim((string)$value));
+    return in_array($normalized, ['1', 'true', 'yes', 'si', 'sí', 'on', 'mercadopago', 'mercado_pago'], true);
+}
+
+/**
+ * @param array<string,mixed> $commerce
+ * @param array<string,mixed> $service
+ * @param array<string,mixed> $mp
+ * @return array{preference_id:string,checkout_url:string,expires_at:string}
+ */
+function createAppointmentMercadoPagoCheckout(
+    Database $db,
+    array $commerce,
+    string $slug,
+    array $service,
+    array $mp,
+    int $appointmentId,
+    ?int $localReservationId,
+    float $amount,
+    string $clientName,
+    string $clientEmail,
+    string $clientPhone,
+    string $date,
+    string $time
+): array {
+    $commerceId = (int)($commerce['id_commerce'] ?? 0);
+    if ($commerceId <= 0 || $appointmentId <= 0) {
+        throw new RuntimeException('No se pudo identificar la reserva para Mercado Pago.');
+    }
+
+    $currency = strtoupper(trim((string)($mp['currency'] ?? 'UYU'))) ?: 'UYU';
+    $serviceName = trim((string)($service['nombre'] ?? 'Reserva'));
+    if ($serviceName === '') {
+        $serviceName = 'Reserva';
+    }
+    $externalReference = sprintf('agenduy_appt_c%d_a%d_%s', $commerceId, $appointmentId, bin2hex(random_bytes(6)));
+    $expiresAt = date('Y-m-d H:i:s', time() + 1800);
+
+    $paymentRowId = $db->insert('appointment_payments', [
+        'id_commerce' => $commerceId,
+        'slug' => $slug,
+        'id_appointment' => $appointmentId,
+        'local_reservation_id' => $localReservationId,
+        'external_reference' => $externalReference,
+        'status' => 'created',
+        'amount' => round($amount, 2),
+        'currency' => $currency,
+        'payer_email' => strtolower(trim($clientEmail)),
+        'expires_at' => $expiresAt,
+    ]);
+
+    $publicPath = trim($slug, '/') . '/';
+    $successUrl = MercadoPago::preferredCallbackUrl($mp, 'success_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'success']);
+    $failureUrl = MercadoPago::preferredCallbackUrl($mp, 'failure_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'failure']);
+    $pendingUrl = MercadoPago::preferredCallbackUrl($mp, 'pending_url', $publicPath, ['mp_appointment' => $appointmentId, 'mp_status' => 'pending']);
+    $notificationUrl = MercadoPago::callbackUrl($mp, 'admin/api/webhook_mercadopago.php', ['appointment_slug' => $slug]);
+
+    $preferencePayload = [
+        'items' => [[
+            'id' => 'appointment-' . $appointmentId,
+            'title' => mb_substr($serviceName . ' - ' . $date . ' ' . substr($time, 0, 5), 0, 120, 'UTF-8'),
+            'quantity' => 1,
+            'currency_id' => $currency,
+            'unit_price' => round($amount, 2),
+        ]],
+        'external_reference' => $externalReference,
+        'notification_url' => $notificationUrl,
+        'expires' => true,
+        'expiration_date_from' => date('c'),
+        'expiration_date_to' => date('c', strtotime($expiresAt) ?: (time() + 1800)),
+        'back_urls' => [
+            'success' => $successUrl,
+            'failure' => $failureUrl,
+            'pending' => $pendingUrl,
+        ],
+        'auto_return' => 'approved',
+        'metadata' => [
+            'kind' => 'appointment_payment',
+            'slug' => $slug,
+            'id_commerce' => $commerceId,
+            'id_appointment' => $appointmentId,
+            'local_reservation_id' => $localReservationId,
+        ],
+    ];
+    $descriptor = appointmentStatementDescriptor((string)($mp['statement_descriptor'] ?? $commerce['nombre'] ?? ''));
+    if ($descriptor !== '') {
+        $preferencePayload['statement_descriptor'] = $descriptor;
+    }
+    $payer = appointmentPreferencePayer($clientName, $clientEmail, $clientPhone);
+    if ($payer !== []) {
+        $preferencePayload['payer'] = $payer;
+    }
+
+    try {
+        $preference = MercadoPago::createPreference($mp, $preferencePayload);
+        $preferenceId = trim((string)($preference['id'] ?? ''));
+        $checkoutUrl = MercadoPago::checkoutUrl($preference, !empty($mp['sandbox']));
+        if ($preferenceId === '' || $checkoutUrl === '') {
+            throw new RuntimeException('Mercado Pago no devolvio una URL de checkout.');
+        }
+
+        $db->update('appointment_payments', [
+            'preference_id' => $preferenceId,
+            'status' => 'pending',
+            'checkout_url' => $checkoutUrl,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id_appointment_payment = :id', [':id' => $paymentRowId]);
+
+        return [
+            'preference_id' => $preferenceId,
+            'checkout_url' => $checkoutUrl,
+            'expires_at' => $expiresAt,
+        ];
+    } catch (Throwable $e) {
+        $db->update('appointment_payments', [
+            'status' => 'rejected',
+            'status_detail' => mb_substr($e->getMessage(), 0, 250, 'UTF-8'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id_appointment_payment = :id', [':id' => $paymentRowId]);
+        throw $e;
+    }
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function appointmentPreferencePayer(string $name, string $email, string $phone): array
+{
+    $payer = [];
+    if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $payer['email'] = strtolower(trim($email));
+    }
+    if (trim($name) !== '') {
+        $payer['name'] = mb_substr(trim($name), 0, 80, 'UTF-8');
+    }
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    if (strlen($digits) >= 8) {
+        $payer['phone'] = ['number' => $digits];
+    }
+    return $payer;
+}
+
+function appointmentStatementDescriptor(string $value): string
+{
+    $value = strtoupper(trim($value));
+    $value = preg_replace('/[^A-Z0-9 ]+/', '', $value) ?? '';
+    $value = trim(preg_replace('/\s+/', ' ', $value) ?? '');
+    return mb_substr($value, 0, 22, 'UTF-8');
+}
+
+/**
+ * @param array<string,mixed> $appointment
+ */
+function markAppointmentPaymentSetupFailed(Database $db, string $slug, array $appointment, string $reason): void
+{
+    $appointmentId = (int)($appointment['id_appointment'] ?? 0);
+    if ($appointmentId > 0) {
+        $db->update('appointments', [
+            'status' => 'cancelled',
+            'notas' => trim('mp-payment-failed | ' . $reason),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id_appointment = :id', [':id' => $appointmentId]);
+    }
+    if ($slug !== '' && TenantLocalDb::exists($slug)) {
+        try {
+            TenantLocalDb::mirrorAppointment($slug, array_replace($appointment, ['status' => 'cancelled']));
+        } catch (Throwable $e) {
+            error_log('[appointments.api] mirror payment failed: ' . $e->getMessage());
+        }
+    }
 }

@@ -72,6 +72,27 @@ ob_start();
           </select>
         </label>
       </section>
+      <section class="admin-form__group">
+        <h3 class="admin-form__title">Pagos online</h3>
+        <div class="admin-form__switch-grid admin-form__switch-grid--compact">
+          <label class="admin-form__switch">
+            <input type="checkbox" data-admin-config-reservas-toggle="mercado_pago_enabled">
+            <span class="admin-form__switch-control" aria-hidden="true"></span>
+            <span>
+              <strong>Mercado Pago en reservas</strong>
+              <small>Permite que el cliente pague el servicio desde la web si tu cuenta y plan lo habilitan.</small>
+            </span>
+          </label>
+          <label class="admin-form__switch">
+            <input type="checkbox" data-admin-config-reservas-toggle="mercado_pago_required">
+            <span class="admin-form__switch-control" aria-hidden="true"></span>
+            <span>
+              <strong>Pago obligatorio</strong>
+              <small>Para servicios con precio, la reserva se confirma cuando Mercado Pago aprueba el cobro.</small>
+            </span>
+          </label>
+        </div>
+      </section>
       <p class="admin-form__error" data-admin-config-reservas-error hidden></p>
       <footer class="modal__footer">
         <button type="submit" class="btn btn-success" data-admin-config-reservas-submit>Guardar configuraci&oacute;n</button>

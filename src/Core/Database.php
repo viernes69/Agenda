@@ -111,6 +111,8 @@ final class Database
         $this->ensureMembershipPlanColumns();
         $this->ensureSubscriptionBillingPeriod();
         $this->ensureServicesIdLocal();
+        $this->ensureAppointmentColumns();
+        $this->ensureAppointmentStatusInProgress();
         $this->seedMembershipPlanDefaults();
         $this->retireLegacySeedMembership();
         $this->ensureDlocalEnums();
@@ -119,6 +121,7 @@ final class Database
         $this->ensureRateLimitsTable();
         $this->ensurePlatformSettingsTable();
         $this->ensureStoreOrderPaymentsTable();
+        $this->ensureAppointmentPaymentsTable();
     }
 
     /**
@@ -236,6 +239,40 @@ final class Database
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_status ON store_order_payments(status)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_payment ON store_order_payments(payment_id)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_preference ON store_order_payments(preference_id)');
+    }
+
+    private function ensureAppointmentPaymentsTable(): void
+    {
+        $this->pdo->exec(
+            "CREATE TABLE IF NOT EXISTS appointment_payments (
+                id_appointment_payment INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce       INTEGER NOT NULL,
+                slug              TEXT    NOT NULL,
+                id_appointment    INTEGER NOT NULL,
+                local_reservation_id INTEGER DEFAULT NULL,
+                external_reference TEXT   NOT NULL UNIQUE,
+                preference_id     TEXT    DEFAULT '',
+                payment_id        TEXT    DEFAULT '',
+                merchant_order_id TEXT    DEFAULT '',
+                status            TEXT    NOT NULL DEFAULT 'created'
+                                  CHECK (status IN ('created','pending','approved','rejected','cancelled','refunded','charged_back','unknown')),
+                status_detail     TEXT    DEFAULT '',
+                amount            REAL    NOT NULL DEFAULT 0,
+                currency          TEXT    NOT NULL DEFAULT 'UYU',
+                payer_email       TEXT    DEFAULT '',
+                checkout_url      TEXT    DEFAULT '',
+                expires_at        TEXT    DEFAULT '',
+                created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE CASCADE,
+                FOREIGN KEY (id_appointment) REFERENCES appointments(id_appointment) ON DELETE CASCADE
+            )"
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_payments_commerce ON appointment_payments(id_commerce)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_payments_appt ON appointment_payments(id_appointment)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_payments_status ON appointment_payments(status)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_payments_payment ON appointment_payments(payment_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_payments_preference ON appointment_payments(preference_id)');
     }
 
     private function ensureRateLimitsTable(): void
@@ -405,6 +442,64 @@ final class Database
         );
     }
 
+    private function ensureAppointmentColumns(): void
+    {
+        $cols = $this->pdo->query('PRAGMA table_info(appointments)')->fetchAll(PDO::FETCH_ASSOC);
+        $names = array_column($cols, 'name');
+        if (!in_array('cliente_cedula', $names, true)) {
+            $this->pdo->exec("ALTER TABLE appointments ADD COLUMN cliente_cedula TEXT DEFAULT ''");
+        }
+    }
+
+    private function ensureAppointmentStatusInProgress(): void
+    {
+        $this->ensureCheckContains(
+            'appointments',
+            'in_progress',
+            "CREATE TABLE IF NOT EXISTS appointments_new (
+                id_appointment   INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce      INTEGER NOT NULL,
+                id_client        INTEGER,
+                id_service       INTEGER,
+                id_user_admin    INTEGER,
+                fecha            TEXT    NOT NULL,
+                hora_inicio      TEXT    NOT NULL,
+                hora_fin         TEXT    DEFAULT '',
+                cliente_nombre   TEXT    DEFAULT '',
+                cliente_cedula   TEXT    DEFAULT '',
+                cliente_email    TEXT    DEFAULT '',
+                cliente_telefono TEXT    DEFAULT '',
+                notas            TEXT    DEFAULT '',
+                precio           REAL    DEFAULT 0,
+                status           TEXT    NOT NULL DEFAULT 'pending'
+                                 CHECK (status IN ('pending','confirmed','in_progress','cancelled','done','no_show')),
+                google_event_id  TEXT    DEFAULT '',
+                email_sent_to_client    INTEGER NOT NULL DEFAULT 0,
+                email_sent_to_commerce  INTEGER NOT NULL DEFAULT 0,
+                created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce)   REFERENCES commerces(id_commerce) ON DELETE CASCADE,
+                FOREIGN KEY (id_client)     REFERENCES clients(id_client) ON DELETE SET NULL,
+                FOREIGN KEY (id_service)    REFERENCES services(id_service) ON DELETE SET NULL,
+                FOREIGN KEY (id_user_admin) REFERENCES users(id_user) ON DELETE SET NULL
+            )",
+            "INSERT INTO appointments_new
+                (id_appointment, id_commerce, id_client, id_service, id_user_admin,
+                 fecha, hora_inicio, hora_fin, cliente_nombre, cliente_cedula,
+                 cliente_email, cliente_telefono, notas, precio, status,
+                 google_event_id, email_sent_to_client, email_sent_to_commerce,
+                 created_at, updated_at)
+             SELECT
+                id_appointment, id_commerce, id_client, id_service, id_user_admin,
+                fecha, hora_inicio, COALESCE(hora_fin, ''), COALESCE(cliente_nombre, ''),
+                COALESCE(cliente_cedula, ''), COALESCE(cliente_email, ''),
+                COALESCE(cliente_telefono, ''), COALESCE(notas, ''), COALESCE(precio, 0),
+                status, COALESCE(google_event_id, ''), COALESCE(email_sent_to_client, 0),
+                COALESCE(email_sent_to_commerce, 0), created_at, updated_at
+             FROM appointments"
+        );
+    }
+
     /**
      * Si la definicion de la tabla no contiene $needle en su CHECK, la recrea
      * copiando los datos con un INSERT selectivo que sanea NULLs.
@@ -434,6 +529,11 @@ final class Database
                 $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_keys_commerce  ON api_keys(id_commerce)');
                 $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_keys_provider  ON api_keys(provider)');
                 $this->pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_keys_unique ON api_keys(IFNULL(id_commerce,0), provider, key_name)');
+            }
+            if ($table === 'appointments') {
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_commerce ON appointments(id_commerce)');
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_fecha    ON appointments(fecha)');
+                $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_appt_status   ON appointments(status)');
             }
             $this->pdo->commit();
         } catch (Throwable $e) {
@@ -589,6 +689,12 @@ final class Database
                         MembershipPlan::LIMIT_MAX_CLIENTS,
                         $decodedLimits
                     );
+                    if (!$limitsNeedUpgrade && $name === 'Free') {
+                        $defaultMaxProfessionals = $def['limits'][MembershipPlan::LIMIT_MAX_PROFESSIONALS] ?? null;
+                        $currentMaxProfessionals = $decodedLimits[MembershipPlan::LIMIT_MAX_PROFESSIONALS] ?? null;
+                        $limitsNeedUpgrade = $defaultMaxProfessionals !== null
+                            && (string)$currentMaxProfessionals !== (string)$defaultMaxProfessionals;
+                    }
                 } elseif ($name === 'Profesional') {
                     $featRaw = (string)($row['features'] ?? '');
                     $limitsNeedUpgrade = stripos($featRaw, 'Profesionales ilimitados') === false

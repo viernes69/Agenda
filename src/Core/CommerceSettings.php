@@ -77,6 +77,8 @@ final class CommerceSettings
                 'max_dias_adelante' => 60,
                 'cancelacion_min_horas' => 24,
                 'requiere_login' => false,
+                'mercado_pago_enabled' => false,
+                'mercado_pago_required' => false,
             ],
             'moneda' => ['codigo' => 'UYU', 'simbolo' => '$', 'decimales' => 0],
             'seo' => ['title' => '', 'description' => '', 'keywords' => [], 'canonical' => '', 'robots' => 'index,follow', 'og_image' => 'src/media/logo/og-image.png'],

@@ -93,7 +93,7 @@ if (!function_exists('agenduy_render_commerce')) {
                  FROM appointments
                  WHERE id_commerce = :c
                    AND id_service IS NOT NULL
-                   AND status IN ('pending', 'confirmed', 'done')
+                   AND status IN ('pending', 'confirmed', 'in_progress', 'done')
                  GROUP BY id_service",
                 [':c' => (int)$commerce['id_commerce']]
             );
@@ -237,7 +237,8 @@ if (!function_exists('agenduy_render_commerce')) {
         $cancelAppointmentApi = url('admin/api/cancel_appointment.php');
         $cartOrderApi = url('admin/api/cart_order.php');
         $cartMercadoPagoApi = url('admin/api/cart_mercadopago.php');
-        $storePlan = $isStoreMode ? MembershipPlan::forCommerceId($commerceId) : null;
+        $commercePlan = MembershipPlan::forCommerceId($commerceId);
+        $storePlan = $isStoreMode ? $commercePlan : null;
         $storeMpConfig = $isStoreMode ? MercadoPago::commerceConfig($commerceId, $slug) : [];
         $storeMpCheckoutEnabled = $showProducts
             && $cartMpSettingEnabled
@@ -245,6 +246,13 @@ if (!function_exists('agenduy_render_commerce')) {
             && MercadoPago::isStoreCheckoutAllowed($storePlan)
             && !empty($storeMpConfig['enabled'])
             && trim((string)($storeMpConfig['access_token'] ?? '')) !== '';
+        $bookingMpConfig = $showBooking ? MercadoPago::commerceConfig($commerceId, $slug) : [];
+        $bookingMpCheckoutEnabled = $showBooking
+            && !empty($reservasCfg['mercado_pago_enabled'])
+            && MercadoPago::isCommerceCheckoutAllowed($commercePlan)
+            && !empty($bookingMpConfig['enabled'])
+            && trim((string)($bookingMpConfig['access_token'] ?? '')) !== '';
+        $bookingMpRequired = $bookingMpCheckoutEnabled && !empty($reservasCfg['mercado_pago_required']);
         $availabilityApi = url('admin/api/availability.php');
         $maxDiasAdelante = max(0, (int)($reservasCfg['max_dias_adelante'] ?? 60));
         $bookingMinDate = new \DateTimeImmutable('today');
@@ -751,7 +759,7 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap">
                 <span class="eyebrow">Reservar</span>
                 <h2 class="section-title">Listo para reservar</h2>
-                <p class="section-sub" style="margin: 0 auto 1.8rem">Elegí un servicio arriba y hacé clic en "Reservar". Vas a recibir confirmación por email y WhatsApp.</p>
+                <p class="section-sub" style="margin: 0 auto 1.8rem">Elegí un servicio arriba y hacé clic en "Reservar". Vas a recibir confirmación por email o WhatsApp.</p>
                 <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap">
                     <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Ver servicios y reservar</a>
                     <button type="button" class="btn btn--ghost btn--lg" data-open-cancel-appointment><i class="bx bx-calendar-x"></i> Cancelar reserva</button>
@@ -815,6 +823,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         <form id="booking-form" novalidate>
                             <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="id_service" id="booking-svc-id" value="">
+                            <input type="hidden" name="payment_method" id="booking-payment-method" value="manual">
                             <div class="field">
                                 <label>Servicio</label>
                                 <input type="text" id="booking-svc-name" readonly>
@@ -833,13 +842,13 @@ if (!function_exists('agenduy_render_commerce')) {
                                 </div>
                             </div>
                             <div class="field">
-                                <label for="booking-name">Tu nombre</label>
-                                <input type="text" id="booking-name" name="cliente_nombre" required autocomplete="name">
+                                <label for="booking-name">Nombre y apellido</label>
+                                <input type="text" id="booking-name" name="cliente_nombre" required autocomplete="name" placeholder="Ej: Ana Pereira">
                             </div>
                             <div class="field field--row">
                                 <div>
                                     <label for="booking-email">Email</label>
-                                    <input type="email" id="booking-email" name="cliente_email" autocomplete="email" required>
+                                    <input type="email" id="booking-email" name="cliente_email" autocomplete="email" placeholder="tu@email.com">
                                 </div>
                                 <div>
                                     <label for="booking-cedula">Cédula</label>
@@ -848,19 +857,28 @@ if (!function_exists('agenduy_render_commerce')) {
                             </div>
                             <div class="field">
                                 <label for="booking-phone">Teléfono</label>
-                                <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456" required>
+                                <input type="tel" id="booking-phone" name="cliente_telefono" autocomplete="tel" placeholder="099 123 456">
                             </div>
                             <p class="hint" id="booking-lookup-hint" hidden role="status"></p>
                             <div class="field">
                                 <label for="booking-notes">Notas (opcional)</label>
                                 <textarea id="booking-notes" name="notas" rows="2"></textarea>
                             </div>
+                            <?php if ($bookingMpCheckoutEnabled): ?>
+                            <div class="booking-payment" id="booking-payment-box" hidden>
+                                <div>
+                                    <span>Pago online disponible</span>
+                                    <strong id="booking-payment-amount"></strong>
+                                </div>
+                                <small id="booking-payment-required" hidden>Este comercio solicita pago online para confirmar la reserva.</small>
+                            </div>
+                            <?php endif; ?>
                         </form>
                     </div>
                     <?php if ($showProducts): ?>
                     <div id="booking-step-upsell" hidden>
                         <div class="alert alert--ok" id="booking-upsell-ok">
-                            <i class="bx bx-check-circle"></i> ¡Reserva confirmada! Te enviamos email y WhatsApp.
+                            <i class="bx bx-check-circle"></i> Reserva confirmada.
                         </div>
                         <p class="upsell-lead" id="booking-upsell-lead">¿Desea alguno de nuestros productos?</p>
                         <p class="section-sub" style="margin:0 0 1rem">Podés agregarlos al carrito y coordinar todo por WhatsApp junto con tu reserva.</p>
@@ -872,7 +890,12 @@ if (!function_exists('agenduy_render_commerce')) {
                 </div>
                 <div class="modal__foot" id="booking-foot-form">
                     <button type="button" class="btn btn--ghost" data-close-modal>Cancelar</button>
-                    <button type="submit" form="booking-form" class="btn btn--primary" id="booking-submit">Confirmar reserva</button>
+                    <button type="submit" form="booking-form" class="btn btn--primary" id="booking-submit" data-booking-submit="manual">Confirmar reserva</button>
+                    <?php if ($bookingMpCheckoutEnabled): ?>
+                    <button type="submit" form="booking-form" class="btn btn--primary" id="booking-pay-submit" data-booking-submit="mercadopago" hidden>
+                        <i class="bx bx-credit-card" aria-hidden="true"></i> Pagar y reservar
+                    </button>
+                    <?php endif; ?>
                 </div>
                 <?php if ($showProducts): ?>
                 <div class="modal__foot" id="booking-foot-upsell" hidden>
@@ -1023,7 +1046,11 @@ if (!function_exists('agenduy_render_commerce')) {
                 'carrito' => $carritoCfg,
                 'redes' => $redes,
                 'tema' => $tema,
-                'payments' => ['mercado_pago_tienda' => $storeMpCheckoutEnabled],
+                'payments' => [
+                    'mercado_pago_tienda' => $storeMpCheckoutEnabled,
+                    'mercado_pago_reservas' => $bookingMpCheckoutEnabled,
+                    'mercado_pago_reservas_required' => $bookingMpRequired,
+                ],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
             const commerceSlug = <?= json_encode($slug, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1041,6 +1068,8 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartMercadoPagoUrl = <?= json_encode($cartMercadoPagoApi, JSON_UNESCAPED_SLASHES) ?>;
             const cancelAppointmentUrl = <?= json_encode($cancelAppointmentApi, JSON_UNESCAPED_SLASHES) ?>;
             const storeMpCheckoutEnabled = <?= $storeMpCheckoutEnabled ? 'true' : 'false' ?>;
+            const bookingMpCheckoutEnabled = <?= $bookingMpCheckoutEnabled ? 'true' : 'false' ?>;
+            const bookingMpRequired = <?= $bookingMpRequired ? 'true' : 'false' ?>;
             let lastBooking = null;
             let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             function syncCsrfToken(token) {
@@ -1049,6 +1078,36 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (meta) meta.setAttribute('content', csrfToken);
             }
             let orderSubmitInFlight = false;
+
+            function showPublicToast(message, type) {
+                const toast = document.createElement('div');
+                toast.className = 'public-toast public-toast--' + (type || 'info');
+                toast.innerHTML = '<i class="bx ' + (type === 'error' ? 'bx-error-circle' : 'bx-check-circle') + '" aria-hidden="true"></i><span>' + escapeHtml(message) + '</span>';
+                document.body.appendChild(toast);
+                requestAnimationFrame(() => toast.classList.add('is-visible'));
+                setTimeout(() => {
+                    toast.classList.remove('is-visible');
+                    setTimeout(() => toast.remove(), 250);
+                }, 6500);
+            }
+
+            (function showAppointmentPaymentReturn() {
+                const params = new URLSearchParams(window.location.search);
+                const appointmentId = params.get('mp_appointment');
+                if (!appointmentId) return;
+                const status = String(params.get('mp_status') || '').toLowerCase();
+                if (status === 'success') {
+                    showPublicToast('Pago recibido. La reserva queda confirmada cuando Mercado Pago informa la aprobacion.', 'success');
+                } else if (status === 'pending') {
+                    showPublicToast('El pago quedo pendiente. Te avisaremos cuando Mercado Pago lo confirme.', 'info');
+                } else {
+                    showPublicToast('No se completo el pago de la reserva. Podes intentar nuevamente con otro horario.', 'error');
+                }
+                params.delete('mp_appointment');
+                params.delete('mp_status');
+                const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+                window.history.replaceState({}, '', clean);
+            })();
 
             function formatMoney(n) {
                 const num = Number(n) || 0;
@@ -1587,6 +1646,11 @@ if (!function_exists('agenduy_render_commerce')) {
             const form = document.getElementById('booking-form');
             const alertBox = document.getElementById('booking-alert');
             const submitBtn = document.getElementById('booking-submit');
+            const bookingPayBtn = document.getElementById('booking-pay-submit');
+            const bookingPaymentMethodInput = document.getElementById('booking-payment-method');
+            const bookingPaymentBox = document.getElementById('booking-payment-box');
+            const bookingPaymentAmount = document.getElementById('booking-payment-amount');
+            const bookingPaymentRequired = document.getElementById('booking-payment-required');
             const svcIdInput = document.getElementById('booking-svc-id');
             const svcNameInput = document.getElementById('booking-svc-name');
             const dateInput = document.getElementById('booking-date');
@@ -1615,6 +1679,9 @@ if (!function_exists('agenduy_render_commerce')) {
             let bookingCalendar = <?= json_encode($bookingCalendar, JSON_UNESCAPED_UNICODE) ?>;
             let datePicker = null;
             let suppressDateChange = false;
+            let currentBookingServicePrice = 0;
+            const bookingSubmitLabel = submitBtn ? submitBtn.innerHTML : 'Confirmar reserva';
+            const bookingPayLabel = bookingPayBtn ? bookingPayBtn.innerHTML : 'Pagar y reservar';
 
             function ymdLocal(date) {
                 const pad = (n) => String(n).padStart(2, '0');
@@ -1823,6 +1890,55 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (footForm) footForm.hidden = false;
                 if (footUpsell) footUpsell.hidden = true;
                 if (bookingTitle) bookingTitle.textContent = 'Reservar turno';
+                syncBookingPaymentUI();
+            }
+
+            function setBookingPaymentMethod(method) {
+                const normalized = method === 'mercadopago' ? 'mercadopago' : 'manual';
+                if (bookingPaymentMethodInput) {
+                    bookingPaymentMethodInput.value = normalized;
+                }
+            }
+
+            function syncBookingPaymentUI() {
+                const canPayOnline = bookingMpCheckoutEnabled && currentBookingServicePrice > 0;
+                if (!canPayOnline) {
+                    setBookingPaymentMethod('manual');
+                } else if (bookingMpRequired) {
+                    setBookingPaymentMethod('mercadopago');
+                }
+                if (bookingPaymentBox) {
+                    bookingPaymentBox.hidden = !canPayOnline;
+                }
+                if (bookingPaymentAmount) {
+                    bookingPaymentAmount.textContent = canPayOnline ? formatMoney(currentBookingServicePrice) : '';
+                }
+                if (bookingPaymentRequired) {
+                    bookingPaymentRequired.hidden = !(canPayOnline && bookingMpRequired);
+                }
+                if (bookingPayBtn) {
+                    bookingPayBtn.hidden = !canPayOnline;
+                }
+                if (submitBtn) {
+                    submitBtn.hidden = canPayOnline && bookingMpRequired;
+                }
+            }
+
+            function setBookingSubmitting(isSubmitting, paymentMethod) {
+                [submitBtn, bookingPayBtn].forEach((btn) => {
+                    if (btn) btn.disabled = isSubmitting;
+                });
+                if (isSubmitting) {
+                    if (paymentMethod === 'mercadopago' && bookingPayBtn) {
+                        bookingPayBtn.innerHTML = '<span class="spinner"></span> Redirigiendo...';
+                    } else if (submitBtn) {
+                        submitBtn.innerHTML = '<span class="spinner"></span> Enviando...';
+                    }
+                    return;
+                }
+                if (submitBtn) submitBtn.innerHTML = bookingSubmitLabel;
+                if (bookingPayBtn) bookingPayBtn.innerHTML = bookingPayLabel;
+                syncBookingPaymentUI();
             }
 
             function renderUpsellGrid() {
@@ -1867,14 +1983,34 @@ if (!function_exists('agenduy_render_commerce')) {
 
             function saveGuest(data) {
                 if (!data) return;
+                const previous = loadSavedGuest() || {};
+                const hasCedula = Object.prototype.hasOwnProperty.call(data, 'cedula');
                 const payload = {
                     nombre: String(data.nombre || '').trim(),
                     email: String(data.email || '').trim(),
                     telefono: String(data.telefono || '').trim(),
-                    cedula: String(data.cedula || '').trim(),
+                    cedula: hasCedula ? String(data.cedula || '').trim() : String(previous.cedula || '').trim(),
                 };
-                if (!payload.nombre && !payload.email && !payload.telefono && !payload.cedula) return;
+                if (!payload.nombre && !payload.email && !payload.telefono && !payload.cedula) {
+                    localStorage.removeItem(bookingGuestKey);
+                    return;
+                }
                 localStorage.setItem(bookingGuestKey, JSON.stringify(payload));
+            }
+
+            function currentBookingGuest() {
+                return {
+                    nombre: String(bookingNameInput?.value || '').trim(),
+                    email: String(bookingEmailInput?.value || '').trim(),
+                    telefono: String(bookingPhoneInput?.value || '').trim(),
+                    cedula: String(bookingCedulaInput?.value || '').trim(),
+                };
+            }
+
+            let saveBookingGuestTimer = null;
+            function scheduleSaveBookingGuest() {
+                clearTimeout(saveBookingGuestTimer);
+                saveBookingGuestTimer = setTimeout(() => saveGuest(currentBookingGuest()), 250);
             }
 
             function setLookupHint(text, isError) {
@@ -1909,16 +2045,17 @@ if (!function_exists('agenduy_render_commerce')) {
             }
 
             async function lookupClient() {
+                const cedula = String(bookingCedulaInput?.value || '').replace(/\D/g, '');
                 const email = String(bookingEmailInput?.value || '').trim();
                 const telefono = String(bookingPhoneInput?.value || '').trim();
                 const phoneDigits = telefono.replace(/\D/g, '');
                 const emailOk = email.includes('@') && email.length > 5;
-                if (!emailOk && phoneDigits.length < 8) {
+                if (cedula.length < 7 && !emailOk && phoneDigits.length < 8) {
                     setLookupHint('');
                     return;
                 }
 
-                const key = email.toLowerCase() + '|' + phoneDigits;
+                const key = cedula + '|' + email.toLowerCase() + '|' + phoneDigits;
                 if (key === lastLookupKey || lookupInFlight) return;
                 lastLookupKey = key;
                 lookupInFlight = true;
@@ -1932,6 +2069,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         },
                         body: JSON.stringify({
                             slug: commerceSlug,
+                            cedula,
                             email: emailOk ? email : '',
                             telefono,
                             _csrf: csrfToken,
@@ -1944,6 +2082,9 @@ if (!function_exists('agenduy_render_commerce')) {
                         if (json.historial) {
                             renderClientHistory(json.historial);
                         }
+                    } else if (json && json.ok) {
+                        setLookupHint('');
+                        hideClientHistory();
                     }
                 } catch (_) {
                     // Silencioso: el usuario puede seguir completando manualmente.
@@ -2065,6 +2206,7 @@ if (!function_exists('agenduy_render_commerce')) {
             const APPT_STATUS_LABELS = {
                 pending: 'Pendiente',
                 confirmed: 'Confirmada',
+                in_progress: 'Atendiendo',
                 cancelled: 'Cancelada',
                 done: 'Realizada',
                 no_show: 'No asistió',
@@ -2151,14 +2293,23 @@ if (!function_exists('agenduy_render_commerce')) {
             function prefillBookingGuest() {
                 const guest = loadSavedGuest();
                 applyGuestFields(guest, 'local');
-                if (guest && (guest.email || guest.telefono)) {
+                if (guest && (guest.cedula || guest.email || guest.telefono)) {
                     scheduleClientLookup();
                 }
             }
 
+            [bookingNameInput, bookingEmailInput, bookingCedulaInput, bookingPhoneInput].forEach((input) => {
+                if (!input) return;
+                input.addEventListener('input', scheduleSaveBookingGuest);
+                input.addEventListener('change', scheduleSaveBookingGuest);
+            });
             if (bookingEmailInput) {
                 bookingEmailInput.addEventListener('input', scheduleClientLookup);
                 bookingEmailInput.addEventListener('blur', lookupClient);
+            }
+            if (bookingCedulaInput) {
+                bookingCedulaInput.addEventListener('input', scheduleClientLookup);
+                bookingCedulaInput.addEventListener('blur', lookupClient);
             }
             if (bookingPhoneInput) {
                 bookingPhoneInput.addEventListener('input', scheduleClientLookup);
@@ -2169,7 +2320,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 lastBooking = booking;
                 if (!hasProducts || !stepUpsell) {
                     alertBox.className = 'alert alert--ok';
-                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> ¡Listo! Te enviamos email y WhatsApp con la confirmación.';
+                    alertBox.innerHTML = '<i class="bx bx-check-circle"></i> Listo. Te enviamos la confirmacion por el medio que ingresaste.';
                     alertBox.hidden = false;
                     setTimeout(closeModal, 2500);
                     return;
@@ -2183,11 +2334,13 @@ if (!function_exists('agenduy_render_commerce')) {
                 renderCartUI();
             }
 
-            function openModal(svcId, svcName) {
+            function openModal(svcId, svcName, svcPrice) {
                 alertBox.hidden = true;
                 form.reset();
                 svcIdInput.value = svcId;
                 svcNameInput.value = svcName;
+                currentBookingServicePrice = Math.max(0, Number(svcPrice) || 0);
+                setBookingPaymentMethod('manual');
                 applyDateLimits(null, bookingCalendar);
                 const defaultDate = preferredBookingDate(null);
                 if (datePicker) {
@@ -2214,6 +2367,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 setTimeout(() => focusEl?.focus(), 200);
             }
             function closeModal() {
+                saveGuest(currentBookingGuest());
                 modal.classList.remove('is-open');
                 showBookingFormStep();
             }
@@ -2221,7 +2375,12 @@ if (!function_exists('agenduy_render_commerce')) {
             document.querySelectorAll('[data-book]').forEach(btn => {
                 btn.addEventListener('click', e => {
                     const card = e.target.closest('.svc-card');
-                    openModal(card.dataset.svcId, card.dataset.svcName);
+                    openModal(card.dataset.svcId, card.dataset.svcName, card.dataset.svcPrice);
+                });
+            });
+            document.querySelectorAll('[data-booking-submit]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setBookingPaymentMethod(btn.getAttribute('data-booking-submit'));
                 });
             });
             document.querySelectorAll('[data-close-modal]').forEach(btn => {
@@ -2397,6 +2556,15 @@ if (!function_exists('agenduy_render_commerce')) {
                     alertBox.hidden = false;
                     return;
                 }
+                const bookingName = String(bookingNameInput?.value || '').trim().replace(/\s+/g, ' ');
+                if (!/\S+\s+\S+/.test(bookingName)) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa tu nombre y apellido.';
+                    alertBox.hidden = false;
+                    bookingNameInput?.focus();
+                    return;
+                }
+                if (bookingNameInput) bookingNameInput.value = bookingName;
                 const bookingCedula = String(bookingCedulaInput?.value || '').replace(/\D/g, '');
                 if (bookingCedula.length < 7) {
                     alertBox.className = 'alert alert--error';
@@ -2405,7 +2573,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     return;
                 }
                 const bookingEmail = String(bookingEmailInput?.value || '').trim();
-                if (!isValidEmail(bookingEmail)) {
+                if (bookingEmail !== '' && !isValidEmail(bookingEmail)) {
                     alertBox.className = 'alert alert--error';
                     alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa un email valido para enviarte la confirmacion.';
                     alertBox.hidden = false;
@@ -2413,15 +2581,24 @@ if (!function_exists('agenduy_render_commerce')) {
                     return;
                 }
                 const bookingPhoneDigits = String(bookingPhoneInput?.value || '').replace(/\D/g, '');
-                if (bookingPhoneDigits.length < 7) {
+                if (String(bookingPhoneInput?.value || '').trim() !== '' && bookingPhoneDigits.length < 7) {
                     alertBox.className = 'alert alert--error';
                     alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa un telefono valido para enviarte WhatsApp.';
                     alertBox.hidden = false;
                     bookingPhoneInput?.focus();
                     return;
                 }
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner"></span> Enviando...';
+                if (bookingEmail === '' && bookingPhoneDigits.length < 7) {
+                    alertBox.className = 'alert alert--error';
+                    alertBox.innerHTML = '<i class="bx bx-error-circle"></i> Ingresa un email o un telefono para poder confirmarte la reserva.';
+                    alertBox.hidden = false;
+                    (bookingEmailInput || bookingPhoneInput)?.focus();
+                    return;
+                }
+                const paymentMethod = bookingPaymentMethodInput && bookingPaymentMethodInput.value === 'mercadopago'
+                    ? 'mercadopago'
+                    : 'manual';
+                setBookingSubmitting(true, paymentMethod);
                 alertBox.hidden = true;
 
                 try {
@@ -2437,6 +2614,13 @@ if (!function_exists('agenduy_render_commerce')) {
                             ? 'No se pudo completar la reserva. Recargá la página e intentá de nuevo.'
                             : json.error;
                         throw new Error(msg);
+                    }
+                    if (json.payment_required && json.checkout_url) {
+                        alertBox.className = 'alert alert--ok';
+                        alertBox.innerHTML = '<i class="bx bx-check-circle"></i> Reserva creada. Te llevamos a Mercado Pago para completar el pago.';
+                        alertBox.hidden = false;
+                        window.location.href = json.checkout_url;
+                        return;
                     }
                     const booking = {
                         id: json.id_appointment || '',
@@ -2464,8 +2648,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         loadSlots();
                     }
                 } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Confirmar reserva';
+                    setBookingSubmitting(false, paymentMethod);
                 }
             });
         })();

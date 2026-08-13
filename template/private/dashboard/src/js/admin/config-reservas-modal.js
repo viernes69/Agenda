@@ -17,6 +17,7 @@
   const errorEl = form.querySelector('[data-admin-config-reservas-error]');
   const submitBtn = form.querySelector('[data-admin-config-reservas-submit]');
   const fieldNodes = Array.from(form.querySelectorAll('[data-admin-config-reservas-field]'));
+  const toggleNodes = Array.from(form.querySelectorAll('[data-admin-config-reservas-toggle]'));
 
   const clone = (obj) => {
     try {
@@ -31,7 +32,9 @@
     max_dias_adelante: 30,
     politica_cancelacion_horas: 1,
     requiere_login: false,
-    max_reservas_por_dia_por_cliente: 1
+    max_reservas_por_dia_por_cliente: 1,
+    mercado_pago_enabled: false,
+    mercado_pago_required: false
   });
 
   const ensureNumber = (value, fallback, min) => {
@@ -72,6 +75,12 @@
     if (source.hasOwnProperty('requiere_login')) {
       base.requiere_login = toBool(source.requiere_login);
     }
+    if (source.hasOwnProperty('mercado_pago_enabled')) {
+      base.mercado_pago_enabled = toBool(source.mercado_pago_enabled);
+    }
+    if (source.hasOwnProperty('mercado_pago_required')) {
+      base.mercado_pago_required = toBool(source.mercado_pago_required);
+    }
     return base;
   };
 
@@ -88,6 +97,11 @@
       } else {
         field.value = '';
       }
+    });
+    toggleNodes.forEach((field) => {
+      const key = field.getAttribute('data-admin-config-reservas-toggle');
+      if (!key) return;
+      field.checked = !!data[key];
     });
   };
 
@@ -108,6 +122,14 @@
         result[key] = ensureNumber(field.value, currentConfig[key], 0);
       }
     });
+    toggleNodes.forEach((field) => {
+      const key = field.getAttribute('data-admin-config-reservas-toggle');
+      if (!key) return;
+      result[key] = !!field.checked;
+    });
+    if (!result.mercado_pago_enabled) {
+      result.mercado_pago_required = false;
+    }
     return result;
   };
 
@@ -189,4 +211,3 @@
 
   window.AdminConfigReservasModal = { open, close };
 })();
-

@@ -231,6 +231,39 @@ CREATE INDEX IF NOT EXISTS idx_store_payments_payment ON store_order_payments(pa
 CREATE INDEX IF NOT EXISTS idx_store_payments_preference ON store_order_payments(preference_id);
 
 -- ---------------------------------------------------------------------
+-- APPOINTMENT PAYMENTS (reservas cobradas online)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS appointment_payments (
+    id_appointment_payment INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_commerce       INTEGER NOT NULL,
+    slug              TEXT    NOT NULL,
+    id_appointment    INTEGER NOT NULL,
+    local_reservation_id INTEGER DEFAULT NULL,
+    external_reference TEXT   NOT NULL UNIQUE,
+    preference_id     TEXT    DEFAULT '',
+    payment_id        TEXT    DEFAULT '',
+    merchant_order_id TEXT    DEFAULT '',
+    status            TEXT    NOT NULL DEFAULT 'created'
+                      CHECK (status IN ('created','pending','approved','rejected','cancelled','refunded','charged_back','unknown')),
+    status_detail     TEXT    DEFAULT '',
+    amount            REAL    NOT NULL DEFAULT 0,
+    currency          TEXT    NOT NULL DEFAULT 'UYU',
+    payer_email       TEXT    DEFAULT '',
+    checkout_url      TEXT    DEFAULT '',
+    expires_at        TEXT    DEFAULT '',
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE CASCADE,
+    FOREIGN KEY (id_appointment) REFERENCES appointments(id_appointment) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_appt_payments_commerce ON appointment_payments(id_commerce);
+CREATE INDEX IF NOT EXISTS idx_appt_payments_appt ON appointment_payments(id_appointment);
+CREATE INDEX IF NOT EXISTS idx_appt_payments_status ON appointment_payments(status);
+CREATE INDEX IF NOT EXISTS idx_appt_payments_payment ON appointment_payments(payment_id);
+CREATE INDEX IF NOT EXISTS idx_appt_payments_preference ON appointment_payments(preference_id);
+
+-- ---------------------------------------------------------------------
 -- 8. APPOINTMENTS (turnos / reservas)
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS appointments (
@@ -243,12 +276,13 @@ CREATE TABLE IF NOT EXISTS appointments (
     hora_inicio      TEXT    NOT NULL,  -- HH:MM
     hora_fin         TEXT    DEFAULT '',
     cliente_nombre   TEXT    DEFAULT '',
+    cliente_cedula   TEXT    DEFAULT '',
     cliente_email    TEXT    DEFAULT '',
     cliente_telefono TEXT    DEFAULT '',
     notas            TEXT    DEFAULT '',
     precio           REAL    DEFAULT 0,
     status           TEXT    NOT NULL DEFAULT 'pending'
-                     CHECK (status IN ('pending','confirmed','cancelled','done','no_show')),
+                     CHECK (status IN ('pending','confirmed','in_progress','cancelled','done','no_show')),
     google_event_id  TEXT    DEFAULT '',
     email_sent_to_client     INTEGER NOT NULL DEFAULT 0,
     email_sent_to_commerce  INTEGER NOT NULL DEFAULT 0,
