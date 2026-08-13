@@ -1072,7 +1072,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=5">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=6">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1131,7 +1131,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             <?php echo e($modeLabel); ?>
           </span>
         </div>
-        <details class="admin-orders"<?php echo $hasAnyCartOrders ? '' : ' data-empty="1"'; ?> data-active-status="<?php echo e($cartActiveStatus); ?>">
+        <details class="admin-orders"<?php echo $hasAnyCartOrders ? '' : ' data-empty="1"'; ?> data-active-status="<?php echo e($cartActiveStatus); ?>" hidden aria-hidden="true">
           <summary class="admin-orders__summary" aria-label="Pedidos">
             <i class="bx bx-cart" aria-hidden="true"></i>
             <span class="admin-orders__badge"><?php echo $cartActiveStatusCount; ?></span>
@@ -1339,13 +1339,10 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
       <section class="admin-section" id="pedidos">
         <div class="admin-section-tools">
           <span class="admin-section-count">Total: <?php echo (int)$cartTotalOrders; ?> pedidos</span>
-          <button type="button" class="btn btn-success" onclick="document.querySelector('.admin-orders__summary').click()">
-            <i class="bx bx-cart"></i> Ver pedidos
-          </button>
         </div>
         <?php if ($cartTotalOrders > 0): ?>
         <div class="table-wrap table-wrap--scroll">
-          <table class="table">
+          <table class="table" data-admin-orders-table>
             <thead>
               <tr>
                 <th>Pedido</th>
@@ -1358,13 +1355,57 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             </thead>
             <tbody>
               <?php foreach (array_slice($cartOrders, 0, 50) as $order): ?>
-              <tr>
+              <?php
+                $orderItemsJson = json_encode($order['items_data'] ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
+                if ($orderItemsJson === false) { $orderItemsJson = '[]'; }
+              ?>
+              <tr
+                data-admin-order-row
+                data-order-status="<?php echo e($order['status_key']); ?>"
+                data-order-id="<?php echo (int)$order['id']; ?>"
+                data-items='<?php echo $orderItemsJson; ?>'>
                 <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
                 <td><?php echo e($order['client']); ?></td>
-                <td><?php echo e(implode(', ', array_map(function($i) { return $i['quantity'] . 'x ' . $i['name']; }, $order['items_data'] ?? []))); ?></td>
+                <td><?php echo e(implode(', ', array_map(function($i) {
+                  $variant = trim((string)($i['variant_label'] ?? ''));
+                  return $i['quantity'] . 'x ' . $i['name'] . ($variant !== '' ? ' - ' . $variant : '');
+                }, $order['items_data'] ?? []))); ?></td>
                 <td><?php echo e($order['date']); ?></td>
                 <td><?php echo e($order['payment_type']); ?></td>
-                <td><span class="status-pill st-<?php echo e($order['status_key']); ?>"><?php echo e($order['status_label']); ?></span></td>
+                <td>
+                  <div class="admin-order-table-status">
+                    <span class="status-pill st-<?php echo e($order['status_key']); ?>" data-admin-order-status-label><?php echo e($order['status_label']); ?></span>
+                    <div class="admin-orders__sale-actions"<?php echo $order['status_key'] === 'pendiente' ? '' : ' hidden'; ?>>
+                      <button
+                        type="button"
+                        class="admin-orders__sale-btn admin-orders__sale-btn--finalize"
+                        data-order-action="finalize"
+                        data-order-id="<?php echo (int)$order['id']; ?>">
+                        Finalizar venta
+                      </button>
+                      <button
+                        type="button"
+                        class="admin-orders__sale-btn admin-orders__sale-btn--cancel"
+                        data-order-action="cancel"
+                        data-order-id="<?php echo (int)$order['id']; ?>">
+                        Cancelar venta
+                      </button>
+                      <button
+                        type="button"
+                        class="admin-orders__sale-btn admin-orders__sale-btn--edit"
+                        data-order-action="edit"
+                        data-order-id="<?php echo (int)$order['id']; ?>"
+                        aria-expanded="false">
+                        Cambiar venta
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr class="admin-order-edit-row" data-admin-order-edit-row="<?php echo (int)$order['id']; ?>" hidden>
+                <td colspan="6">
+                  <div class="admin-orders__edit admin-orders__edit--table" data-order-edit="<?php echo (int)$order['id']; ?>" hidden></div>
+                </td>
               </tr>
               <?php endforeach; ?>
             </tbody>

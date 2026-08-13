@@ -912,7 +912,7 @@ if (!function_exists('agenduy_render_commerce')) {
                                             data-variant-price="<?= htmlspecialchars((string)$variantPrice, ENT_QUOTES, 'UTF-8') ?>"
                                             data-variant-original-price="<?= htmlspecialchars((string)round($rawPrice, 2), ENT_QUOTES, 'UTF-8') ?>"
                                             data-variant-label="<?= htmlspecialchars((string)($mediaItem['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-                                            <img src="<?= htmlspecialchars($gUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($pName . ($gi > 0 ? ' - ' . ($gi + 1) : ''), ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
+                                            <img src="<?= htmlspecialchars($gUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($pName . (($mediaItem['label'] ?? '') !== '' ? ' - ' . (string)$mediaItem['label'] : ''), ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
                                         </div>
                                         <?php endforeach; ?>
                                     </div>
@@ -920,8 +920,8 @@ if (!function_exists('agenduy_render_commerce')) {
                                     <button type="button" class="prod-gallery__arrow prod-gallery__arrow--prev" data-dir="-1" aria-label="Anterior"><i class="bx bx-chevron-left"></i></button>
                                     <button type="button" class="prod-gallery__arrow prod-gallery__arrow--next" data-dir="1" aria-label="Siguiente"><i class="bx bx-chevron-right"></i></button>
                                     <div class="prod-gallery__dots" data-dots>
-                                        <?php foreach ($allImages as $di => $_): ?>
-                                        <button type="button" class="prod-gallery__dot<?= $di === 0 ? ' is-active' : '' ?>" data-slide="<?= $di ?>" aria-label="Imagen <?= $di + 1 ?>"></button>
+                                        <?php foreach ($pMedia as $di => $dotMedia): ?>
+                                        <button type="button" class="prod-gallery__dot<?= $di === 0 ? ' is-active' : '' ?>" data-slide="<?= $di ?>" aria-label="<?= htmlspecialchars((string)($dotMedia['label'] ?? ('Imagen ' . ($di + 1))), ENT_QUOTES, 'UTF-8') ?>"></button>
                                         <?php endforeach; ?>
                                     </div>
                                     <?php endif; ?>
@@ -941,6 +941,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             <?php if ($pDesc !== '' && $pDesc !== $pName): ?>
                                 <p class="prod-card__desc"><?= htmlspecialchars(mb_substr($pDesc, 0, 110, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
+                            <p class="prod-card__variant" data-product-variant-label-view<?= ($pMedia[0]['label'] ?? '') !== '' ? '' : ' hidden' ?>><?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
                             <div class="prod-card__footer">
                                 <div class="prod-card__price" data-product-price-label>
                                     <?php if ($pDiscount > 0 && $pBasePrice > $pPrice): ?>
@@ -3547,6 +3548,11 @@ if (!function_exists('agenduy_render_commerce')) {
                             ? '<span class="prod-card__price-old">' + moneyLabel(original) + '</span>'
                             : '';
                         priceEl.innerHTML = old + '<strong>' + moneyLabel(price) + '</strong>';
+                    }
+                    var labelEl = card.querySelector('[data-product-variant-label-view]');
+                    if (labelEl) {
+                        labelEl.textContent = label;
+                        labelEl.hidden = !label;
                     }
                 }
 

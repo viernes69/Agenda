@@ -23,7 +23,10 @@
   const coverField = form?.querySelector('[data-admin-product-field="cover-index"]');
   const imageSlots = Array.from(form?.querySelectorAll('[data-admin-product-image-slot]') || []);
   const imageInputs = Array.from(form?.querySelectorAll('[data-admin-product-image-input]') || []);
+  const imagePriceInputs = Array.from(form?.querySelectorAll('[data-admin-product-image-price]') || []);
+  const imageLabelInputs = Array.from(form?.querySelectorAll('[data-admin-product-image-label]') || []);
   const coverRadios = Array.from(form?.querySelectorAll('[data-admin-product-cover-radio]') || []);
+  const basePriceInput = form?.querySelector('input[name="Precio"]');
   const typeSelect = form?.querySelector('[data-admin-product-field="tipo-select"]')
     || form?.querySelector('select[name="Tipo"]');
   const tipoCustomWrap = modal.querySelector('[data-admin-product-tipo-custom-wrap]');
@@ -288,6 +291,11 @@
     const checked = coverRadios.find((radio) => radio.checked);
     if (coverField && checked) coverField.value = checked.value || '0';
   };
+  const filenameLabel = (name) => String(name || '')
+    .replace(/\.[a-z0-9]{2,6}$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const setSlotPreview = (slot, src, alt) => {
     const slotEl = form?.querySelector(`[data-admin-product-image-slot="${slot}"]`);
     const img = form?.querySelector(`[data-admin-product-image-preview="${slot}"]`);
@@ -301,6 +309,7 @@
       img.alt = alt || 'Vista previa';
     }
     if (empty) empty.hidden = Boolean(url);
+    syncSlotMeta(slot);
   };
   const clearImageSlot = (slot) => {
     revokePreviewObjectUrl(slot);
@@ -308,10 +317,12 @@
     const current = form?.querySelector(`[data-admin-product-image-current="${slot}"]`);
     const remove = form?.querySelector(`[data-admin-product-image-remove-value="${slot}"]`);
     const price = form?.querySelector(`[data-admin-product-image-price="${slot}"]`);
+    const label = form?.querySelector(`[data-admin-product-image-label="${slot}"]`);
     if (input) { try { input.value = ''; } catch (_) {} }
     if (current) current.value = '';
     if (remove) remove.value = String(slot);
     if (price) price.value = '';
+    if (label) label.value = '';
     setSlotPreview(slot, '', 'Vista previa');
   };
   const resetImageSlots = () => {
@@ -332,10 +343,12 @@
       const current = form?.querySelector(`[data-admin-product-image-current="${slot}"]`);
       const remove = form?.querySelector(`[data-admin-product-image-remove-value="${slot}"]`);
       const price = form?.querySelector(`[data-admin-product-image-price="${slot}"]`);
+      const label = form?.querySelector(`[data-admin-product-image-label="${slot}"]`);
       const radio = form?.querySelector(`[data-admin-product-cover-radio][value="${slot}"]`);
       if (current) current.value = item.src || '';
       if (remove) remove.value = '';
       if (price) price.value = item.price === null || item.price === undefined ? '' : String(item.price);
+      if (label) label.value = item.label === null || item.label === undefined ? '' : String(item.label);
       if (radio) radio.checked = Boolean(item.cover);
       setSlotPreview(slot, item.src || '', data?.Nombre || 'Producto');
     });
@@ -358,6 +371,29 @@
     const num = Number(val);
     if (!Number.isFinite(num)) return 'Sin puntos';
     return new Intl.NumberFormat('es-UY', { maximumFractionDigits: 0 }).format(num);
+  };
+  const imagePriceLabel = (slot) => {
+    const custom = form?.querySelector(`[data-admin-product-image-price="${slot}"]`)?.value || '';
+    const base = basePriceInput?.value || '';
+    const raw = String(custom || base || '').trim();
+    if (!raw || !Number.isFinite(Number(raw))) {
+      return custom ? 'Revisa el precio' : 'Precio base';
+    }
+    const suffix = custom ? 'precio propio' : 'precio base';
+    return '$ ' + formatPrice(raw) + ' - ' + suffix;
+  };
+  const syncSlotMeta = (slot) => {
+    const titleEl = form?.querySelector(`[data-admin-product-image-title-preview="${slot}"]`);
+    const priceEl = form?.querySelector(`[data-admin-product-image-price-preview="${slot}"]`);
+    const labelInput = form?.querySelector(`[data-admin-product-image-label="${slot}"]`);
+    const title = String(labelInput?.value || '').trim() || ('Imagen ' + (Number(slot) + 1));
+    if (titleEl) titleEl.textContent = title;
+    if (priceEl) priceEl.textContent = imagePriceLabel(slot);
+  };
+  const syncAllSlotMeta = () => {
+    imageSlots.forEach((slotEl) => {
+      syncSlotMeta(slotEl.getAttribute('data-admin-product-image-slot') || '0');
+    });
   };
   const applyDataset = (el, data) => {
     el.dataset.adminProductId = String(data.ID_Product ?? data.id ?? '');
@@ -595,9 +631,24 @@
         return;
       }
       previewObjectUrls[String(slot)] = URL.createObjectURL(file);
+      const labelInput = form?.querySelector(`[data-admin-product-image-label="${slot}"]`);
+      if (labelInput && !String(labelInput.value || '').trim()) {
+        labelInput.value = filenameLabel(file.name) || ('Imagen ' + (Number(slot) + 1));
+      }
       setSlotPreview(slot, previewObjectUrls[String(slot)], file.name || 'Vista previa');
     });
   });
+  imagePriceInputs.forEach((input) => {
+    input.addEventListener('input', () => {
+      syncSlotMeta(input.getAttribute('data-admin-product-image-price') || '0');
+    });
+  });
+  imageLabelInputs.forEach((input) => {
+    input.addEventListener('input', () => {
+      syncSlotMeta(input.getAttribute('data-admin-product-image-label') || '0');
+    });
+  });
+  basePriceInput?.addEventListener('input', syncAllSlotMeta);
   form?.querySelectorAll('.admin-product-image-slot__preview').forEach((preview) => {
     preview.addEventListener('keydown', (evt) => {
       if (evt.key !== 'Enter' && evt.key !== ' ') return;

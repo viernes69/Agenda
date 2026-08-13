@@ -1071,6 +1071,24 @@ body {
   justify-content: flex-end;
 }
 
+.admin-order-table-status {
+  display: grid;
+  gap: .5rem;
+  min-width: min(26rem, 100%);
+}
+
+.admin-order-table-status .admin-orders__sale-actions {
+  justify-content: flex-start;
+}
+
+.admin-order-edit-row[hidden] {
+  display: none !important;
+}
+
+.admin-order-edit-row td {
+  background: rgba(15, 23, 42, 0.38);
+}
+
 .admin-orders__sale-btn {
   appearance: none;
   border: 1px solid transparent;
@@ -3248,6 +3266,10 @@ body {
   height: 16px;
 }
 
+.admin-orders__edit--table {
+  margin: .15rem 0 .55rem;
+}
+
 .modal__dialog--product {
   max-width: min(980px, calc(100vw - 24px));
   width: min(100%, 980px);
@@ -3367,6 +3389,7 @@ body {
   cursor: pointer;
 }
 
+.admin-product-image-slot__label,
 .admin-product-image-slot__price {
   display: grid;
   gap: .3rem;
@@ -3375,6 +3398,7 @@ body {
   color: var(--muted);
 }
 
+.admin-product-image-slot__label input,
 .admin-product-image-slot__price input {
   width: 100%;
   min-width: 0;
@@ -3383,6 +3407,34 @@ body {
   background: rgba(15, 20, 30, 0.9);
   color: var(--text);
   padding: .48rem .55rem;
+}
+
+.admin-product-image-slot__caption {
+  display: grid;
+  gap: .1rem;
+  min-width: 0;
+  padding: .52rem .6rem;
+  border-radius: .65rem;
+  background: rgba(2, 6, 23, 0.26);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.admin-product-image-slot__caption strong,
+.admin-product-image-slot__caption span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-product-image-slot__caption strong {
+  color: var(--text);
+  font-size: .8rem;
+}
+
+.admin-product-image-slot__caption span {
+  color: var(--muted);
+  font-size: .74rem;
 }
 
 .admin-product-sale-label {

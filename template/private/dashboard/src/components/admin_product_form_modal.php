@@ -95,10 +95,18 @@ $tipos = array_values(array_unique(array_map('trim', $tipos)));
                 <i class="bx bx-trash"></i>
               </button>
             </div>
+            <label class="admin-product-image-slot__label">
+              <span>Nombre de imagen</span>
+              <input name="Imagenes_Titulos[<?php echo $i; ?>]" type="text" maxlength="80" placeholder="Ej: Frasco grande" data-admin-product-image-label="<?php echo $i; ?>">
+            </label>
             <label class="admin-product-image-slot__price">
               <span>Precio imagen</span>
               <input name="Imagenes_Precios[<?php echo $i; ?>]" type="number" inputmode="decimal" min="0" max="999999" step="0.01" placeholder="Usa precio base" data-admin-product-image-price="<?php echo $i; ?>">
             </label>
+            <div class="admin-product-image-slot__caption">
+              <strong data-admin-product-image-title-preview="<?php echo $i; ?>">Imagen <?php echo $i + 1; ?></strong>
+              <span data-admin-product-image-price-preview="<?php echo $i; ?>">Precio base</span>
+            </div>
           </div>
           <?php endfor; ?>
         </div>

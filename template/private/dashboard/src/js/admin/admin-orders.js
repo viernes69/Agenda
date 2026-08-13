@@ -7,7 +7,8 @@
   if (!list || !filterButtons.length) return;
 
   const items = Array.from(list.querySelectorAll('.admin-orders__item'));
-  const selects = Array.from(ordersDetails.querySelectorAll('.admin-orders__status-select'));
+  const table = document.querySelector('[data-admin-orders-table]');
+  const selects = Array.from(document.querySelectorAll('.admin-orders__status-select'));
   const badge = ordersDetails.querySelector('.admin-orders__badge');
   const emptyState = ordersDetails.querySelector('.admin-orders__empty[data-role="no-results"]');
   const apiUrl = '../../../src/API/Autoload.php';
@@ -73,6 +74,23 @@
   };
 
   const productById = (id) => productCatalog.find((p) => Number(p.id) === Number(id)) || null;
+  const cleanOrderId = (orderId) => String(orderId || '').replace(/[^0-9]/g, '');
+  const orderSelector = (orderId) => '[data-order-id="' + cleanOrderId(orderId) + '"]';
+  const orderElements = (orderId) => Array.from(document.querySelectorAll(
+    '.admin-orders__item' + orderSelector(orderId) + ', [data-admin-order-row]' + orderSelector(orderId)
+  ));
+  const orderElement = (node) => node && node.closest
+    ? node.closest('.admin-orders__item, [data-admin-order-row]')
+    : null;
+  const editPanelFor = (itemEl) => {
+    if (!itemEl) return null;
+    const orderId = itemEl.dataset.orderId || '';
+    if (itemEl.matches('[data-admin-order-row]')) {
+      return document.querySelector('[data-admin-order-edit-row="' + cleanOrderId(orderId) + '"] [data-order-edit]');
+    }
+    return itemEl.querySelector('[data-order-edit]');
+  };
+  const editRowFor = (orderId) => document.querySelector('[data-admin-order-edit-row="' + cleanOrderId(orderId) + '"]');
 
   const parseItemsData = (itemEl) => {
     try {
@@ -120,7 +138,20 @@
 
   const renderItemsList = (itemEl, rows) => {
     const ul = itemEl.querySelector('.admin-orders__items');
-    if (!ul) return;
+    if (!ul) {
+      if (itemEl.matches('[data-admin-order-row]')) {
+        const productsCell = itemEl.children[2];
+        if (productsCell) {
+          productsCell.textContent = rows
+            .map((row) => {
+              const variant = row.variant_label ? ' - ' + row.variant_label : '';
+              return row.quantity + 'x ' + (row.name || productNameById(row.product)) + variant;
+            })
+            .join(', ');
+        }
+      }
+      return;
+    }
     if (!rows.length) {
       ul.innerHTML = '';
       ul.hidden = true;
@@ -206,27 +237,40 @@
     const isPending = statusKey === 'pendiente';
     saleActions.hidden = !isPending;
     if (!isPending) {
-      const editPanel = itemEl.querySelector('[data-order-edit]');
+      const editPanel = editPanelFor(itemEl);
       if (editPanel) {
         editPanel.hidden = true;
         editPanel.innerHTML = '';
       }
+      const editRow = editRowFor(itemEl.dataset.orderId || '');
+      if (editRow) editRow.hidden = true;
     }
   };
 
   const setOrderStatusLocal = (itemEl, selectEl, prevStatus, nextStatus) => {
+    const nextStatusLabel = statusLabelMap[nextStatus] || formatStatusForDB(nextStatus);
+    const orderId = (itemEl && itemEl.dataset.orderId) || (selectEl && selectEl.dataset.orderId) || '';
+    orderElements(orderId).forEach((el) => {
+      el.dataset.orderStatus = nextStatus;
+      el.classList.toggle('is-pending', nextStatus === 'pendiente');
+      syncSaleActionsVisibility(el, nextStatus);
+      const statusTextEl = el.querySelector('.admin-orders__item-status');
+      if (statusTextEl) statusTextEl.textContent = nextStatusLabel;
+      const pill = el.querySelector('[data-admin-order-status-label]');
+      if (pill) {
+        pill.textContent = nextStatusLabel;
+        pill.className = 'status-pill st-' + nextStatus;
+      }
+      const localSelect = el.querySelector('.admin-orders__status-select');
+      if (localSelect) {
+        localSelect.dataset.currentStatus = nextStatus;
+        localSelect.value = nextStatus;
+      }
+    });
     if (selectEl) {
       selectEl.dataset.currentStatus = nextStatus;
       selectEl.value = nextStatus;
     }
-    if (itemEl) {
-      itemEl.dataset.orderStatus = nextStatus;
-      itemEl.classList.toggle('is-pending', nextStatus === 'pendiente');
-      syncSaleActionsVisibility(itemEl, nextStatus);
-    }
-    const nextStatusLabel = statusLabelMap[nextStatus] || formatStatusForDB(nextStatus);
-    const statusTextEl = itemEl ? itemEl.querySelector('.admin-orders__item-status') : null;
-    if (statusTextEl) statusTextEl.textContent = nextStatusLabel;
     if (selectEl) {
       const option = Array.from(selectEl.options).find((opt) => opt.value === nextStatus);
       if (option) statusLabelMap[nextStatus] = option.textContent.trim();
@@ -290,16 +334,20 @@
   };
 
   const closeEditPanel = (itemEl) => {
-    const panel = itemEl.querySelector('[data-order-edit]');
+    const panel = editPanelFor(itemEl);
     if (!panel) return;
     panel.hidden = true;
     panel.innerHTML = '';
-    const editBtn = itemEl.querySelector('[data-order-action="edit"]');
-    if (editBtn) editBtn.setAttribute('aria-expanded', 'false');
+    const orderId = itemEl.dataset.orderId || '';
+    const editRow = editRowFor(orderId);
+    if (editRow) editRow.hidden = true;
+    document.querySelectorAll('[data-order-action="edit"][data-order-id="' + cleanOrderId(orderId) + '"]').forEach((editBtn) => {
+      editBtn.setAttribute('aria-expanded', 'false');
+    });
   };
 
   const openEditPanel = (itemEl) => {
-    const panel = itemEl.querySelector('[data-order-edit]');
+    const panel = editPanelFor(itemEl);
     if (!panel) return;
     const orderId = itemEl.dataset.orderId || '';
     let rows = parseItemsData(itemEl).map((row) => ({ ...row }));
@@ -340,6 +388,8 @@
         </div>
       `;
       panel.hidden = false;
+      const editRow = editRowFor(orderId);
+      if (editRow) editRow.hidden = false;
     };
 
     const syncRowsFromDom = () => {
@@ -361,8 +411,9 @@
     };
 
     renderEditor();
-    const editBtn = itemEl.querySelector('[data-order-action="edit"]');
-    if (editBtn) editBtn.setAttribute('aria-expanded', 'true');
+    document.querySelectorAll('[data-order-action="edit"][data-order-id="' + cleanOrderId(orderId) + '"]').forEach((editBtn) => {
+      editBtn.setAttribute('aria-expanded', 'true');
+    });
 
     panel.onclick = async (event) => {
       const target = event.target;
@@ -460,7 +511,10 @@
             variant_label: row.variant_label || '',
             price: row.price,
           }))));
-          renderItemsList(itemEl, rows);
+          orderElements(orderId).forEach((el) => {
+            el.setAttribute('data-items', itemEl.getAttribute('data-items') || '[]');
+            renderItemsList(el, rows);
+          });
           closeEditPanel(itemEl);
           notify('Venta actualizada.', 'success');
         } catch (error) {
@@ -506,13 +560,14 @@
     });
   });
 
-  list.addEventListener('click', async (event) => {
+  document.addEventListener('click', async (event) => {
     const target = event.target;
     if (!target || !target.closest) return;
     const actionBtn = target.closest('[data-order-action]');
-    if (!actionBtn || !list.contains(actionBtn)) return;
+    if (!actionBtn) return;
+    if (!ordersDetails.contains(actionBtn) && !(table && table.contains(actionBtn))) return;
 
-    const itemEl = actionBtn.closest('.admin-orders__item');
+    const itemEl = orderElement(actionBtn);
     const orderId = actionBtn.getAttribute('data-order-id')
       || (itemEl && itemEl.dataset.orderId)
       || '';

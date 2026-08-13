@@ -135,9 +135,11 @@ function collectProductImages(array $current, array &$errors): array
 {
     $currentPosted = $_POST['Imagenes_Actuales'] ?? [];
     $pricesPosted = $_POST['Imagenes_Precios'] ?? [];
+    $labelsPosted = $_POST['Imagenes_Titulos'] ?? [];
     $removePosted = $_POST['Imagenes_Quitar'] ?? [];
     $currentPosted = is_array($currentPosted) ? $currentPosted : [];
     $pricesPosted = is_array($pricesPosted) ? $pricesPosted : [];
+    $labelsPosted = is_array($labelsPosted) ? $labelsPosted : [];
     $removePosted = is_array($removePosted) ? $removePosted : [];
     $removeSet = [];
     foreach ($removePosted as $slot) {
@@ -151,6 +153,9 @@ function collectProductImages(array $current, array &$errors): array
             $currentPosted[$slot] = (string)($media['src'] ?? '');
             if (($media['price'] ?? null) !== null) {
                 $pricesPosted[$slot] = (string)$media['price'];
+            }
+            if (($media['label'] ?? '') !== '') {
+                $labelsPosted[$slot] = (string)$media['label'];
             }
         }
     }
@@ -180,11 +185,19 @@ function collectProductImages(array $current, array &$errors): array
             }
         }
 
+        $label = trim((string)($labelsPosted[$slot] ?? ''));
+        if ($label === '') {
+            $label = 'Imagen ' . ($slot + 1);
+        }
+        if (mb_strlen($label, 'UTF-8') > 80) {
+            $label = mb_substr($label, 0, 80, 'UTF-8');
+        }
+
         $media[] = [
             '_slot' => $slot,
             'src' => $src,
             'price' => $price,
-            'label' => 'Imagen ' . ($slot + 1),
+            'label' => $label,
             'cover' => false,
         ];
     }

@@ -215,7 +215,7 @@ final class ProductCatalog
                 'src' => $src,
                 'price' => $hasCustomPrice ? max(0.0, (float)$priceRaw) : null,
                 'cover' => !empty($item['cover']) || !empty($item['portada']),
-                'label' => trim((string)($item['label'] ?? '')),
+                'label' => trim((string)($item['label'] ?? $item['title'] ?? $item['titulo'] ?? $item['name'] ?? '')),
                 'has_custom_price' => $hasCustomPrice,
             ];
         }

@@ -572,6 +572,20 @@ section.alt { background: var(--bg-soft); }
   font-size: .88rem;
   line-height: 1.4;
 }
+.prod-card__variant {
+  width: fit-content;
+  max-width: 100%;
+  margin: .1rem 0 0;
+  padding: .24rem .58rem;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, .12);
+  color: #6d28d9;
+  font-size: .78rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .prod-card__price {
   margin-top: .35rem;
   font-weight: 700;
