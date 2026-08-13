@@ -50,12 +50,19 @@ final class CommerceConfig
         if (is_array($info['mercado_pago'] ?? null)) {
             $mp = array_replace_recursive($mp, $info['mercado_pago']);
         }
+        $legacyMp = $mp;
+        $centralMp = CommerceSettings::get($commerceId, 'mercado_pago', []);
+        $previews = self::mercadopagoPreviews($commerceId);
         $mp = array_replace_recursive(
             CommerceSettings::defaultsForSection('mercado_pago'),
             $mp,
-            CommerceSettings::get($commerceId, 'mercado_pago', []),
-            self::mercadopagoPreviews($commerceId)
+            $centralMp,
+            $previews
         );
+        $hasExplicitEnabled = array_key_exists('enabled', $legacyMp) || array_key_exists('enabled', $centralMp);
+        if (!$hasExplicitEnabled && (($previews['access_token'] ?? '') !== '' || ($previews['public_key'] ?? '') !== '')) {
+            $mp['enabled'] = true;
+        }
         $info['mercado_pago'] = $mp;
         $info['mercadopago'] = $mp;
 
