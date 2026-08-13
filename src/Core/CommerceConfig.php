@@ -51,8 +51,8 @@ final class CommerceConfig
             $mp = array_replace_recursive($mp, $info['mercado_pago']);
         }
         $mp = array_replace_recursive(
-            CommerceSettings::get($commerceId, 'mercado_pago', CommerceSettings::defaultsForSection('mercado_pago')),
             $mp,
+            CommerceSettings::get($commerceId, 'mercado_pago', CommerceSettings::defaultsForSection('mercado_pago')),
             self::mercadopagoPreviews($commerceId)
         );
         $info['mercado_pago'] = $mp;

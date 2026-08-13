@@ -200,7 +200,7 @@ $error   = $_GET['err'] ?? '';
   padding: 0;
   margin: .5rem 0;
   display: grid;
-  gap: .35rem;
+  gap: .45rem;
   font-size: .85rem;
   color: var(--text-soft, #5b6271);
 }
@@ -209,6 +209,51 @@ $error   = $_GET['err'] ?? '';
   color: var(--success, #10b981);
   font-weight: 800;
   margin-right: .5rem;
+}
+.plan-card__features li {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: .5rem;
+  align-items: start;
+  min-width: 0;
+}
+.plan-card__features li::before {
+  content: none;
+}
+.plan-card__feature-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: .05rem;
+}
+.plan-card__features li.is-included .plan-card__feature-icon {
+  background: rgba(16, 185, 129, .14);
+  color: var(--success, #10b981);
+}
+.plan-card__features li.is-excluded .plan-card__feature-icon {
+  background: rgba(239, 68, 68, .14);
+  color: #ef4444;
+}
+.plan-card__feature-copy {
+  display: grid;
+  gap: .05rem;
+  min-width: 0;
+}
+.plan-card__feature-label {
+  color: var(--text, #111827);
+  font-weight: 700;
+}
+.plan-card__feature-value {
+  color: var(--text-soft, #5b6271);
+  font-size: .78rem;
+}
+.plan-card__features li.is-excluded .plan-card__feature-label {
+  color: var(--text-soft, #5b6271);
 }
 .plan-billing-toggle {
   display: inline-flex;
