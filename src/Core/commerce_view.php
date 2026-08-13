@@ -398,7 +398,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     </a>
                     <?php endif; ?>
                     <?php if ($showBooking): ?>
-                    <a href="#reservar" class="btn btn--primary">Reservar</a>
+                    <a href="#servicios" class="btn btn--primary">Reservar</a>
                     <?php elseif ($showCatalogSection): ?>
                     <a href="#productos" class="btn btn--primary">Catalogo</a>
                     <?php endif; ?>
@@ -423,7 +423,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php endif; ?>
                 <a href="#contacto">Contacto</a>
                 <?php if ($showBooking): ?>
-                <a href="#reservar">Reservar ahora</a>
+                <a href="#servicios">Reservar ahora</a>
                 <?php endif; ?>
             </div>
         </header>
@@ -452,7 +452,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     <h1>Reservá tu turno en <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> en segundos</h1>
                     <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Elegí tu servicio, día y horario. Sin llamadas, sin esperas.' ?></p>
                     <div class="hero__actions">
-                        <a href="#reservar" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Reservar ahora</a>
+                        <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Reservar ahora</a>
                         <a href="#servicios" class="btn btn--ghost btn--lg">Ver servicios</a>
                     </div>
                     <div class="hero__stats">
