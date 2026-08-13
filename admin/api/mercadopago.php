@@ -13,6 +13,7 @@ $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 use Agenduy\Core\Auth;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
+use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\MercadoPago;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -78,10 +79,25 @@ try {
     $installments = (int)($payload['card']['installments'] ?? 0);
     $issuerId = trim((string)($payload['card']['issuerId'] ?? ''));
 
+    $billingPeriod = strtolower(trim((string)($payload['billing_period'] ?? 'monthly')));
+    if ($billingPeriod !== 'yearly') {
+        $billingPeriod = 'monthly';
+    }
+    if ($billingPeriod === 'yearly' && !MembershipPlan::isAnnualEnabled($membership)) {
+        $billingPeriod = 'monthly';
+    }
+
+    $amount = $billingPeriod === 'yearly'
+        ? (float)(MembershipPlan::yearlyPrice($membership) ?? $membership['precio'])
+        : (float)$membership['precio'];
+    if ($amount <= 0) {
+        throw new InvalidArgumentException('Este plan no requiere pago.');
+    }
+
     $autoRecurring = [
-        'frequency'          => 1,
+        'frequency'          => $billingPeriod === 'yearly' ? 12 : 1,
         'frequency_type'     => 'months',
-        'transaction_amount' => (float)$membership['precio'],
+        'transaction_amount' => round($amount, 2),
         'currency_id'        => (string)$membership['moneda'],
     ];
 
@@ -110,7 +126,9 @@ try {
         'back_url'           => $backUrl,
         'notification_url'   => $notificationUrl,
     ];
-    if (!empty($membership['mp_preapproval_id'])) {
+    $request['reason'] = 'Suscripcion ' . $membership['nombre'] . ($billingPeriod === 'yearly' ? ' anual' : ' mensual') . ' - ' . $commerce['nombre'];
+    $request['external_reference'] = sprintf('agenduy_c%d_m%d_%s_%s', $idCommerce, $idMembership, $billingPeriod, uniqid());
+    if ($billingPeriod === 'monthly' && !empty($membership['mp_preapproval_id'])) {
         $request['preapproval_plan_id'] = (string)$membership['mp_preapproval_id'];
     }
     if ($cardToken !== '') {
@@ -128,7 +146,8 @@ try {
     // Si quedó autorizada o pending, registramos la subscription local
     $mpStatus = (string)($decoded['status'] ?? 'pending');
     $localStatus = $mpStatus === 'authorized' ? 'active' : 'past_due';
-    $newEnd = date('Y-m-d', strtotime('+' . (int)$membership['duracion_dias'] . ' days'));
+    $periodDays = $billingPeriod === 'yearly' ? 365 : max(1, (int)$membership['duracion_dias']);
+    $newEnd = date('Y-m-d', strtotime("+{$periodDays} days"));
     $trialEnd = $trialDias > 0 ? date('Y-m-d', strtotime("+{$trialDias} days")) : null;
 
     // Insertar/actualizar subscription
@@ -145,6 +164,7 @@ try {
             'current_period_start' => date('Y-m-d'),
             'current_period_end'   => $newEnd,
             'trial_expires_at'     => $trialEnd,
+            'billing_period'        => $billingPeriod,
             'updated_at'           => date('Y-m-d H:i:s'),
         ], 'id_subscription = :id', [':id' => $existing['id_subscription']]);
     } else {
@@ -157,6 +177,7 @@ try {
             'current_period_start'=> date('Y-m-d'),
             'current_period_end' => $newEnd,
             'trial_expires_at'   => $trialEnd,
+            'billing_period'     => $billingPeriod,
         ]);
     }
     if ($localStatus === 'active' || $trialEnd) {
@@ -180,6 +201,9 @@ try {
         'public_key'         => (string)($mpConfig['public_key'] ?? ''),
         'local_status'       => $localStatus,
         'trial_expires_at'   => $trialEnd,
+        'amount'             => $amount,
+        'currency'           => (string)$membership['moneda'],
+        'billing_period'     => $billingPeriod,
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     $code = $e instanceof InvalidArgumentException ? 400 : 422;

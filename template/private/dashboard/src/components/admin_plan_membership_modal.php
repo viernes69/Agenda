@@ -253,7 +253,7 @@ $useCarousel = $planTotal > 3;
             Al elegir un plan pago, el cobro queda pendiente hasta confirmarse. Contactá a soporte si no ves métodos de pago.
           <?php endif; ?>
           <?php if ($anyAnnual): ?>
-            La preferencia anual se guarda; el gateway puede seguir cobrando el ciclo mensual hasta configurar el plan anual.
+            Si elegis anual, el checkout usa el total anual con el descuento configurado.
           <?php endif; ?>
         </p>
       <?php endif; ?>
