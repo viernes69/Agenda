@@ -23,6 +23,7 @@ use Agenduy\Core\CommerceSettings;
 use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\MercadoPago;
+use Agenduy\Core\ProductCatalog;
 
 if (!function_exists('agenduy_render_commerce')) {
     /**
@@ -169,7 +170,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $isStoreMode = $businessType === 'tienda';
         $showServices = !$isStoreMode && !empty($funciones['servicios']);
         $showBooking = $showServices && !empty($funciones['reservas']);
-        $showProducts = !empty($funciones['productos']) && $localProducts !== [];
+        $showProducts = ($isStoreMode || !empty($funciones['productos'])) && $localProducts !== [];
         $showCatalogSection = $showProducts || $isStoreMode;
         $cartEnabled = $showProducts && !empty($carritoCfg['enabled']);
         $cartWhatsAppEnabled = $cartEnabled && !empty($carritoCfg['whatsapp_enabled']);
@@ -272,11 +273,36 @@ if (!function_exists('agenduy_render_commerce')) {
         $productsForJs = [];
         if ($showProducts) {
             foreach ($localProducts as $pRow) {
+                $media = ProductCatalog::mediaForRow($pRow);
+                $discount = ProductCatalog::discountPercent($pRow);
+                $basePrice = ProductCatalog::basePrice($pRow);
+                $variants = [];
+                foreach ($media as $mediaItem) {
+                    $rawPrice = ($mediaItem['price'] ?? null) !== null ? (float)$mediaItem['price'] : $basePrice;
+                    $variants[] = [
+                        'index' => (int)($mediaItem['index'] ?? count($variants)),
+                        'label' => (string)($mediaItem['label'] ?? ''),
+                        'price' => ProductCatalog::effectivePrice($rawPrice, $discount),
+                        'originalPrice' => round($rawPrice, 2),
+                    ];
+                }
+                if ($variants === []) {
+                    $variants[] = [
+                        'index' => 0,
+                        'label' => '',
+                        'price' => ProductCatalog::effectivePrice($basePrice, $discount),
+                        'originalPrice' => round($basePrice, 2),
+                    ];
+                }
                 $productsForJs[] = [
                     'id' => (string)($pRow['ID_Product'] ?? ''),
                     'name' => trim((string)($pRow['Nombre'] ?? 'Producto')),
                     'tipo' => trim((string)($pRow['Tipo'] ?? '')),
-                    'price' => is_numeric($pRow['Precio'] ?? null) ? (float)$pRow['Precio'] : 0.0,
+                    'price' => (float)$variants[0]['price'],
+                    'originalPrice' => (float)$variants[0]['originalPrice'],
+                    'discountPercent' => $discount,
+                    'saleLabel' => ProductCatalog::saleLabel($pRow),
+                    'variants' => $variants,
                     'desc' => trim((string)($pRow['Descripcion'] ?? '')),
                 ];
             }
@@ -855,40 +881,36 @@ if (!function_exists('agenduy_render_commerce')) {
                         $pName = trim((string)($p['Nombre'] ?? 'Producto'));
                         $pTipo = trim((string)($p['Tipo'] ?? ''));
                         $pDesc = trim((string)($p['Descripcion'] ?? ''));
-                        $pImgRel = trim((string)($p['Img_src'] ?? ''));
-                        $pImgUrl = $pImgRel !== '' ? $tenantAssetUrl($pImgRel) : '';
-                        $pPrice = is_numeric($p['Precio'] ?? null) ? (float)$p['Precio'] : 0;
-                        // Gallery: additional images from Img_Gallery (pipe-separated)
-                        $allImages = [];
-                        if ($pImgUrl !== '') {
-                            $allImages[] = $pImgUrl;
-                        }
-                        $pGalleryRaw = $p['Img_Gallery'] ?? '';
-                        if ($pGalleryRaw !== '') {
-                            $parts = is_array($pGalleryRaw) ? $pGalleryRaw : explode('|', (string)$pGalleryRaw);
-                            foreach ($parts as $g) {
-                                $g = trim((string)$g);
-                                if ($g !== '') {
-                                    $gUrl = $tenantAssetUrl($g);
-                                    if ($gUrl !== '') {
-                                        $allImages[] = $gUrl;
-                                    }
-                                }
-                            }
-                        }
-                        $hasMultiple = count($allImages) > 1;
+                        $pBasePrice = ProductCatalog::basePrice($p);
+                        $pDiscount = ProductCatalog::discountPercent($p);
+                        $pSaleLabel = ProductCatalog::saleLabel($p);
+                        $pMedia = ProductCatalog::mediaForRow($p);
+                        $pPrice = ProductCatalog::effectivePrice($pBasePrice, $pDiscount);
+                        $hasMultiple = count($pMedia) > 1;
                     ?>
                     <article class="prod-card"
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-name="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>"
-                        data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>">
+                        data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-original-price="<?= htmlspecialchars((string)$pBasePrice, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-variant="0"
+                        data-product-variant-label="<?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                         <?= $dashboardEditLink('productos', 'Modificar producto') ?>
                         <div class="prod-card__media">
-                            <?php if (!empty($allImages)): ?>
+                            <?php if (!empty($pMedia)): ?>
                                 <div class="prod-gallery" data-gallery>
                                     <div class="prod-gallery__track" data-track>
-                                        <?php foreach ($allImages as $gi => $gUrl): ?>
-                                        <div class="prod-gallery__slide<?= $gi === 0 ? ' is-active' : '' ?>" data-slide="<?= $gi ?>">
+                                        <?php foreach ($pMedia as $gi => $mediaItem):
+                                            $gUrl = $tenantAssetUrl((string)$mediaItem['src']);
+                                            $rawPrice = ($mediaItem['price'] ?? null) !== null ? (float)$mediaItem['price'] : $pBasePrice;
+                                            $variantPrice = ProductCatalog::effectivePrice($rawPrice, $pDiscount);
+                                        ?>
+                                        <div class="prod-gallery__slide<?= $gi === 0 ? ' is-active' : '' ?>"
+                                            data-slide="<?= $gi ?>"
+                                            data-variant-index="<?= $gi ?>"
+                                            data-variant-price="<?= htmlspecialchars((string)$variantPrice, ENT_QUOTES, 'UTF-8') ?>"
+                                            data-variant-original-price="<?= htmlspecialchars((string)round($rawPrice, 2), ENT_QUOTES, 'UTF-8') ?>"
+                                            data-variant-label="<?= htmlspecialchars((string)($mediaItem['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                             <img src="<?= htmlspecialchars($gUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($pName . ($gi > 0 ? ' - ' . ($gi + 1) : ''), ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
                                         </div>
                                         <?php endforeach; ?>
@@ -908,6 +930,9 @@ if (!function_exists('agenduy_render_commerce')) {
                             <?php endif; ?>
                         </div>
                         <div class="prod-card__body">
+                            <?php if ($pSaleLabel !== '' || $pDiscount > 0): ?>
+                                <span class="prod-card__offer"><?= htmlspecialchars($pSaleLabel !== '' ? $pSaleLabel : ('Oferta ' . rtrim(rtrim(number_format($pDiscount, 2, ',', '.'), '0'), ',') . '%'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php endif; ?>
                             <?php if ($pTipo !== ''): ?>
                                 <span class="prod-card__type"><?= htmlspecialchars($pTipo, ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
@@ -916,7 +941,12 @@ if (!function_exists('agenduy_render_commerce')) {
                                 <p class="prod-card__desc"><?= htmlspecialchars(mb_substr($pDesc, 0, 110, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                             <div class="prod-card__footer">
-                                <div class="prod-card__price"><?= htmlspecialchars($currencySymbol, ENT_QUOTES, 'UTF-8') ?><?= number_format($pPrice, $currencyDecimals, ',', '.') ?></div>
+                                <div class="prod-card__price" data-product-price-label>
+                                    <?php if ($pDiscount > 0 && $pBasePrice > $pPrice): ?>
+                                        <span class="prod-card__price-old"><?= htmlspecialchars($currencySymbol, ENT_QUOTES, 'UTF-8') ?><?= number_format($pBasePrice, $currencyDecimals, ',', '.') ?></span>
+                                    <?php endif; ?>
+                                    <strong><?= htmlspecialchars($currencySymbol, ENT_QUOTES, 'UTF-8') ?><?= number_format($pPrice, $currencyDecimals, ',', '.') ?></strong>
+                                </div>
                                 <?php if ($cartEnabled): ?>
                                 <button type="button" class="btn btn--ghost btn--sm" data-add-to-cart>
                                     <i class="bx bx-cart-add" aria-hidden="true"></i> Agregar
@@ -1788,32 +1818,57 @@ if (!function_exists('agenduy_render_commerce')) {
                 return items.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
             }
 
-            function addToCart(id, name, price, qty) {
+            function cartItemKey(id, variant) {
+                return String(id) + '@' + String(Math.max(0, Number(variant) || 0));
+            }
+
+            function productById(id) {
+                return productsCatalog.find(p => String(p.id) === String(id)) || null;
+            }
+
+            function variantForProduct(product, variantIndex) {
+                const variants = Array.isArray(product && product.variants) ? product.variants : [];
+                const normalized = Math.max(0, Number(variantIndex) || 0);
+                return variants.find(v => Number(v.index) === normalized) || variants[0] || {
+                    index: 0,
+                    label: '',
+                    price: product ? product.price : 0,
+                    originalPrice: product ? (product.originalPrice || product.price || 0) : 0
+                };
+            }
+
+            function addToCart(id, name, price, qty, variant, variantLabel, originalPrice) {
                 const items = loadCart();
                 const pid = String(id);
-                const existing = items.find(i => String(i.id) === pid);
+                const variantIndex = Math.max(0, Number(variant) || 0);
+                const key = cartItemKey(pid, variantIndex);
+                const existing = items.find(i => String(i.key || cartItemKey(i.id, i.variant || 0)) === key);
                 const addQty = Math.max(1, Number(qty) || 1);
                 if (existing) {
                     existing.qty = (Number(existing.qty) || 0) + addQty;
                 } else {
                     items.push({
+                        key,
                         id: pid,
+                        variant: variantIndex,
+                        variantLabel: String(variantLabel || ''),
                         name: String(name || 'Producto'),
                         price: Number(price) || 0,
+                        originalPrice: Number(originalPrice) || Number(price) || 0,
                         qty: addQty
                     });
                 }
                 saveCart(items);
             }
 
-            function setCartQty(id, qty) {
+            function setCartQty(key, qty) {
                 let items = loadCart();
-                const pid = String(id);
+                const itemKey = String(key);
                 const nextQty = Math.max(0, Number(qty) || 0);
                 if (nextQty <= 0) {
-                    items = items.filter(i => String(i.id) !== pid);
+                    items = items.filter(i => String(i.key || cartItemKey(i.id, i.variant || 0)) !== itemKey);
                 } else {
-                    const row = items.find(i => String(i.id) === pid);
+                    const row = items.find(i => String(i.key || cartItemKey(i.id, i.variant || 0)) === itemKey);
                     if (row) row.qty = nextQty;
                 }
                 saveCart(items);
@@ -1822,7 +1877,7 @@ if (!function_exists('agenduy_render_commerce')) {
             function buildProductsMessage(items) {
                 if (!items.length) return '';
                 const lines = items.map(i =>
-                    '- ' + (Number(i.qty) || 1) + 'x ' + i.name + ' (' + formatMoney((Number(i.price) || 0) * (Number(i.qty) || 1)) + ')'
+                    '- ' + (Number(i.qty) || 1) + 'x ' + i.name + (i.variantLabel ? ' - ' + i.variantLabel : '') + ' (' + formatMoney((Number(i.price) || 0) * (Number(i.qty) || 1)) + ')'
                 );
                 lines.push('Total productos: ' + formatMoney(cartTotal(items)));
                 return lines.join('\n');
@@ -1885,6 +1940,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     slug: commerceSlug,
                     items: items.map(i => ({
                         id: String(i.id),
+                        variant: Math.max(0, Number(i.variant) || 0),
                         qty: Math.max(1, Number(i.qty) || 1)
                     })),
                     cliente_nombre: meta.nombre || '',
@@ -1935,6 +1991,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     slug: commerceSlug,
                     items: items.map(i => ({
                         id: String(i.id),
+                        variant: Math.max(0, Number(i.variant) || 0),
                         qty: Math.max(1, Number(i.qty) || 1)
                     })),
                     cliente_nombre: meta.nombre || '',
@@ -2072,16 +2129,18 @@ if (!function_exists('agenduy_render_commerce')) {
                 }
                 container.innerHTML = items.map(i => {
                     const lineTotal = formatMoney((Number(i.price) || 0) * (Number(i.qty) || 0));
+                    const key = String(i.key || cartItemKey(i.id, i.variant || 0));
+                    const subtitle = formatMoney(i.price) + ' c/u' + (i.variantLabel ? ' - ' + escapeHtml(i.variantLabel) : '');
                     const controls = showControls
                         ? '<div class="cart-line__qty">' +
-                            '<button type="button" class="qty-btn" data-cart-dec="' + i.id + '" aria-label="Quitar uno">−</button>' +
+                            '<button type="button" class="qty-btn" data-cart-dec="' + escapeHtml(key) + '" aria-label="Quitar uno">-</button>' +
                             '<span>' + (Number(i.qty) || 0) + '</span>' +
-                            '<button type="button" class="qty-btn" data-cart-inc="' + i.id + '" aria-label="Agregar uno">+</button>' +
-                            '<button type="button" class="qty-btn qty-btn--remove" data-cart-remove="' + i.id + '" aria-label="Eliminar"><i class="bx bx-trash"></i></button>' +
+                            '<button type="button" class="qty-btn" data-cart-inc="' + escapeHtml(key) + '" aria-label="Agregar uno">+</button>' +
+                            '<button type="button" class="qty-btn qty-btn--remove" data-cart-remove="' + escapeHtml(key) + '" aria-label="Eliminar"><i class="bx bx-trash"></i></button>' +
                           '</div>'
                         : '<span class="cart-line__qty-label">x' + (Number(i.qty) || 0) + '</span>';
-                    return '<div class="cart-line" data-id="' + i.id + '">' +
-                        '<div class="cart-line__info"><strong>' + escapeHtml(i.name) + '</strong><span>' + formatMoney(i.price) + ' c/u</span></div>' +
+                    return '<div class="cart-line" data-id="' + escapeHtml(i.id) + '" data-key="' + escapeHtml(key) + '">' +
+                        '<div class="cart-line__info"><strong>' + escapeHtml(i.name) + '</strong><span>' + subtitle + '</span></div>' +
                         controls +
                         '<div class="cart-line__total">' + lineTotal + '</div>' +
                       '</div>';
@@ -2104,13 +2163,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     const inc = e.target.closest('[data-cart-inc]');
                     const rem = e.target.closest('[data-cart-remove]');
                     if (dec) {
-                        const id = dec.getAttribute('data-cart-dec');
-                        const row = loadCart().find(i => String(i.id) === String(id));
-                        setCartQty(id, (row ? Number(row.qty) : 1) - 1);
+                        const key = dec.getAttribute('data-cart-dec');
+                        const row = loadCart().find(i => String(i.key || cartItemKey(i.id, i.variant || 0)) === String(key));
+                        setCartQty(key, (row ? Number(row.qty) : 1) - 1);
                     } else if (inc) {
-                        const id = inc.getAttribute('data-cart-inc');
-                        const row = loadCart().find(i => String(i.id) === String(id));
-                        setCartQty(id, (row ? Number(row.qty) : 0) + 1);
+                        const key = inc.getAttribute('data-cart-inc');
+                        const row = loadCart().find(i => String(i.key || cartItemKey(i.id, i.variant || 0)) === String(key));
+                        setCartQty(key, (row ? Number(row.qty) : 0) + 1);
                     } else if (rem) {
                         setCartQty(rem.getAttribute('data-cart-remove'), 0);
                     }
@@ -2238,7 +2297,15 @@ if (!function_exists('agenduy_render_commerce')) {
                     btn.addEventListener('click', (e) => {
                         const card = e.target.closest('.prod-card');
                         if (!card) return;
-                        addToCart(card.dataset.productId, card.dataset.productName, card.dataset.productPrice, 1);
+                        addToCart(
+                            card.dataset.productId,
+                            card.dataset.productName,
+                            card.dataset.productPrice,
+                            1,
+                            card.dataset.productVariant || 0,
+                            card.dataset.productVariantLabel || '',
+                            card.dataset.productOriginalPrice || card.dataset.productPrice
+                        );
                         btn.classList.add('is-added');
                         const prev = btn.innerHTML;
                         btn.innerHTML = '<i class="bx bx-check" aria-hidden="true"></i> Agregado';
@@ -2611,9 +2678,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 grid.querySelectorAll('[data-upsell-add]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const id = btn.getAttribute('data-upsell-add');
-                        const p = productsCatalog.find(x => String(x.id) === String(id));
+                        const p = productById(id);
                         if (!p) return;
-                        addToCart(p.id, p.name, p.price, 1);
+                        const variant = variantForProduct(p, 0);
+                        addToCart(p.id, p.name, variant.price, 1, variant.index || 0, variant.label || '', variant.originalPrice || variant.price);
                         btn.innerHTML = '<i class="bx bx-check" aria-hidden="true"></i> Agregado';
                         setTimeout(() => {
                             btn.innerHTML = '<i class="bx bx-cart-add" aria-hidden="true"></i> Agregar';
@@ -3436,16 +3504,50 @@ if (!function_exists('agenduy_render_commerce')) {
         <script>
         // Product gallery carousel
         (function(){
+            var currencySymbol = <?= json_encode($currencySymbol, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            var currencyDecimals = <?= (int)$currencyDecimals ?>;
+            function moneyLabel(value) {
+                var num = Number(value);
+                if (!Number.isFinite(num)) num = 0;
+                try {
+                    return currencySymbol + new Intl.NumberFormat('es-UY', {
+                        minimumFractionDigits: currencyDecimals,
+                        maximumFractionDigits: currencyDecimals
+                    }).format(num);
+                } catch (_) {
+                    return currencySymbol + num.toFixed(currencyDecimals);
+                }
+            }
             document.querySelectorAll('[data-gallery]').forEach(function(gallery) {
                 var track = gallery.querySelector('[data-track]');
                 var prev = gallery.querySelector('[data-dir="-1"]');
                 var next = gallery.querySelector('[data-dir="1"]');
                 var dots = gallery.querySelector('[data-dots]');
                 var slides = track ? track.querySelectorAll('.prod-gallery__slide') : [];
-                if (!track || slides.length < 2) return;
+                if (!track || slides.length < 1) return;
 
                 var current = 0;
                 var total = slides.length;
+
+                function syncProductVariant() {
+                    var slide = slides[current];
+                    var card = gallery.closest('.prod-card');
+                    if (!slide || !card) return;
+                    var price = Number(slide.getAttribute('data-variant-price') || card.dataset.productPrice || 0);
+                    var original = Number(slide.getAttribute('data-variant-original-price') || price);
+                    var label = slide.getAttribute('data-variant-label') || '';
+                    card.dataset.productPrice = String(price);
+                    card.dataset.productOriginalPrice = String(original);
+                    card.dataset.productVariant = slide.getAttribute('data-variant-index') || String(current);
+                    card.dataset.productVariantLabel = label;
+                    var priceEl = card.querySelector('[data-product-price-label]');
+                    if (priceEl) {
+                        var old = original > price
+                            ? '<span class="prod-card__price-old">' + moneyLabel(original) + '</span>'
+                            : '';
+                        priceEl.innerHTML = old + '<strong>' + moneyLabel(price) + '</strong>';
+                    }
+                }
 
                 function goTo(index) {
                     if (index < 0) index = total - 1;
@@ -3460,7 +3562,11 @@ if (!function_exists('agenduy_render_commerce')) {
                             d.classList.toggle('is-active', i === current);
                         });
                     }
+                    syncProductVariant();
                 }
+
+                syncProductVariant();
+                if (slides.length < 2) return;
 
                 if (prev) prev.addEventListener('click', function() { goTo(current - 1); });
                 if (next) next.addEventListener('click', function() { goTo(current + 1); });
@@ -3474,13 +3580,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     });
                 }
 
-                // Auto-rotate every 5 seconds, pause on hover
-                var autoTimer = setInterval(function() { goTo(current + 1); }, 5000);
-                gallery.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
-                gallery.addEventListener('mouseleave', function() {
-                    clearInterval(autoTimer);
-                    autoTimer = setInterval(function() { goTo(current + 1); }, 5000);
-                });
+                gallery.setAttribute('data-gallery-ready', '1');
             });
         })();
 

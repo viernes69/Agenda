@@ -300,6 +300,10 @@ Los reintegros se realizan por el mismo medio de pago utilizado. Dependiendo de 
       'Descripcion' => NULL,
       'Puntos' => NULL,
       'Img_src' => NULL,
+      'Img_Gallery' => '',
+      'Imagenes' => '',
+      'Descuento_Porcentaje' => '',
+      'Etiqueta_Venta' => '',
     ),
   ),
   'reservas' => 
@@ -341,6 +345,7 @@ Los reintegros se realizan por el mismo medio de pago utilizado. Dependiendo de 
       'MP_External_Reference' => '',
       'MP_Status_Detail' => '',
       'Total' => '',
+      'Detalle_Items' => '',
     ),
   ),
   'servicios' => 

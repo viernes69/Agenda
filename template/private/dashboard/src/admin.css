@@ -3248,6 +3248,132 @@ body {
   height: 16px;
 }
 
+.modal__dialog--product {
+  max-width: min(980px, calc(100vw - 24px));
+}
+
+.admin-product-images {
+  display: grid;
+  gap: .75rem;
+}
+
+.admin-product-images__head {
+  display: grid;
+  gap: .2rem;
+}
+
+.admin-product-images__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.admin-product-image-slot {
+  display: grid;
+  gap: .55rem;
+  padding: .7rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.admin-product-image-slot__preview {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px dashed rgba(148, 163, 184, .42);
+  background: var(--input-bg);
+  cursor: pointer;
+}
+
+.admin-product-image-slot__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-product-image-slot__preview span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(124, 58, 237, .14);
+  font-size: 1.45rem;
+}
+
+.admin-product-image-slot__file {
+  max-width: 100%;
+  font-size: .78rem;
+}
+
+.admin-product-image-slot__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .82rem;
+}
+
+.admin-product-image-slot__controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.admin-product-image-slot__remove {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(239, 68, 68, .3);
+  border-radius: 9px;
+  color: #dc2626;
+  background: rgba(239, 68, 68, .1);
+  cursor: pointer;
+}
+
+.admin-product-image-slot__price {
+  display: grid;
+  gap: .3rem;
+  font-size: .78rem;
+  color: var(--muted);
+}
+
+.admin-product-image-slot__price input {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-product-sale-label {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: .22rem .55rem;
+  border-radius: 999px;
+  color: #6d28d9;
+  background: rgba(124, 58, 237, .13);
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .admin-product-images__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-product-images__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-form__current {
   display: flex;
   align-items: center;

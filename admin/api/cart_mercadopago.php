@@ -17,6 +17,7 @@ use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\MercadoPago;
 use Agenduy\Core\NotificationOutbox;
+use Agenduy\Core\ProductCatalog;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -130,12 +131,13 @@ try {
         throw new RuntimeException('Este comercio no tiene productos configurados.');
     }
 
-    $qtyByProduct = [];
+    $qtyByVariant = [];
     foreach ($itemsRaw as $item) {
         if (!is_array($item)) {
             continue;
         }
         $pid = trim((string)($item['id'] ?? $item['ID_Product'] ?? ''));
+        $variantIndex = max(0, (int)($item['variant'] ?? $item['variante'] ?? 0));
         $qty = (int)($item['qty'] ?? $item['cantidad'] ?? 0);
         if ($pid === '' || $qty <= 0) {
             continue;
@@ -144,35 +146,69 @@ try {
             throw new InvalidArgumentException('Producto no valido en el catalogo.');
         }
         $qty = min(20, $qty);
-        $qtyByProduct[$pid] = min(20, ($qtyByProduct[$pid] ?? 0) + $qty);
+        $variant = ProductCatalog::resolveVariant($catalog[$pid], $variantIndex);
+        $key = $pid . '@' . (int)$variant['variant'];
+        if (!isset($qtyByVariant[$key])) {
+            $qtyByVariant[$key] = [
+                'pid' => $pid,
+                'variant' => (int)$variant['variant'],
+                'variant_label' => (string)$variant['variant_label'],
+                'name' => (string)$variant['name'],
+                'price' => (float)$variant['price'],
+                'original_price' => (float)$variant['original_price'],
+                'qty' => 0,
+            ];
+        }
+        $qtyByVariant[$key]['qty'] = min(20, (int)$qtyByVariant[$key]['qty'] + $qty);
     }
-    if ($qtyByProduct === []) {
+    if ($qtyByVariant === []) {
         throw new InvalidArgumentException('No hay productos validos en el pedido.');
+    }
+
+    $pairsByProduct = [];
+    foreach ($qtyByVariant as $entry) {
+        $pid = (string)$entry['pid'];
+        $pairsByProduct[$pid] = min(20, ($pairsByProduct[$pid] ?? 0) + (int)$entry['qty']);
     }
 
     $currency = strtoupper(trim((string)($mp['currency'] ?? 'UYU'))) ?: 'UYU';
     $mpItems = [];
     $pairs = [];
+    $orderItems = [];
     $total = 0.0;
-    foreach ($qtyByProduct as $pid => $qty) {
-        $product = $catalog[$pid];
-        $price = round((float)($product['price'] ?? 0), 2);
+    foreach ($pairsByProduct as $pid => $qty) {
+        $pairs[] = '(' . $pid . ' + ' . (int)$qty . ')';
+    }
+    foreach ($qtyByVariant as $entry) {
+        $price = round((float)$entry['price'], 2);
         if ($price <= 0) {
-            throw new InvalidArgumentException('El producto "' . (string)($product['name'] ?? $pid) . '" no tiene precio valido para cobrar online.');
+            throw new InvalidArgumentException('El producto "' . (string)($entry['name'] ?? $entry['pid']) . '" no tiene precio valido para cobrar online.');
         }
-        $name = trim((string)($product['name'] ?? ('Producto ' . $pid)));
+        $name = trim((string)$entry['name']);
         if ($name === '') {
-            $name = 'Producto ' . $pid;
+            $name = 'Producto ' . (string)$entry['pid'];
         }
+        $variantLabel = trim((string)$entry['variant_label']);
+        $title = $variantLabel !== '' ? ($name . ' - ' . $variantLabel) : $name;
         $mpItems[] = [
-            'id' => (string)$pid,
-            'title' => mb_substr($name, 0, 120, 'UTF-8'),
-            'quantity' => (int)$qty,
+            'id' => (string)$entry['pid'] . '-' . (int)$entry['variant'],
+            'title' => mb_substr($title, 0, 120, 'UTF-8'),
+            'quantity' => (int)$entry['qty'],
             'currency_id' => $currency,
             'unit_price' => $price,
         ];
-        $pairs[] = '(' . $pid . ' + ' . (int)$qty . ')';
-        $total += $price * (int)$qty;
+        $orderItems[] = [
+            'id' => (string)$entry['pid'],
+            'variant' => (int)$entry['variant'],
+            'variant_label' => $variantLabel,
+            'name' => $title,
+            'base_name' => $name,
+            'qty' => (int)$entry['qty'],
+            'price' => $price,
+            'original_price' => round((float)$entry['original_price'], 2),
+            'subtotal' => $price * (int)$entry['qty'],
+        ];
+        $total += $price * (int)$entry['qty'];
     }
     $total = round($total, 2);
     if ($total <= 0) {
@@ -232,6 +268,7 @@ try {
         'Hora' => date('H:i:s'),
         'Fecha' => date('Y-m-d'),
         'Status' => 'Pago pendiente',
+        'Detalle_Items' => json_encode($orderItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]',
     ];
 
     $row = TenantLocalDb::insertCartOrder($slug, $record, [
@@ -249,7 +286,7 @@ try {
         'MP_External_Reference' => $externalReference,
     ]);
 
-    $itemsJson = json_encode($mpItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+    $itemsJson = json_encode($orderItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
     $paymentRowId = $db->insert('store_order_payments', [
         'id_commerce' => $commerceId,
         'slug' => $slug,
@@ -324,7 +361,7 @@ try {
                 'Total' => number_format($total, 2, '.', ''),
                 'currency' => $currency,
                 'checkout_url' => $checkoutUrl,
-            ]), $mpItems, [
+            ]), $orderItems, [
                 'cliente_nombre' => $clienteNombre,
                 'cliente_email' => $clienteEmail,
                 'cliente_telefono' => $clienteTelefono,

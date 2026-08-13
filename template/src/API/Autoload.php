@@ -3,6 +3,17 @@
 // Location: src/db/Autoload.php
 
 class AutoloadDB {
+    private const PRODUCT_EXTRA_COLUMNS = [
+        'Img_Gallery' => '',
+        'Imagenes' => '',
+        'Descuento_Porcentaje' => '',
+        'Etiqueta_Venta' => '',
+    ];
+
+    private const CART_EXTRA_COLUMNS = [
+        'Detalle_Items' => '',
+    ];
+
     private static function dbPath(): string
     {
         if (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) && AGENDUY_LOCAL_DB_PATH !== '') {
@@ -319,10 +330,11 @@ class AutoloadDB {
         if (!is_array($data)) {
             throw new RuntimeException('El archivo de base no retornó un array.');
         }
-        return $data;
+        return self::applyAutoMigrations($data);
     }
 
     private static function writeDb($fh, array $db): void {
+        $db = self::applyAutoMigrations($db);
         // Generate compact PHP file with var_export
         $code = '<?php return ' . var_export($db, true) . ";\n";
         // Write via the same locked handle
@@ -338,6 +350,31 @@ class AutoloadDB {
     private static function assertTable(array $db, string $table): void {
         if (!array_key_exists($table, $db) || !is_array($db[$table])) {
             throw new InvalidArgumentException("Tabla no encontrada: {$table}");
+        }
+    }
+
+    private static function applyAutoMigrations(array $db): array {
+        self::ensureColumns($db, 'productos', self::PRODUCT_EXTRA_COLUMNS);
+        self::ensureColumns($db, 'carrito', self::CART_EXTRA_COLUMNS);
+        return $db;
+    }
+
+    private static function ensureColumns(array &$db, string $table, array $columns): void {
+        if (!isset($db[$table]) || !is_array($db[$table]) || !isset($db[$table][0]) || !is_array($db[$table][0])) {
+            return;
+        }
+        foreach ($columns as $column => $default) {
+            if (!array_key_exists($column, $db[$table][0])) {
+                $db[$table][0][$column] = $default;
+            }
+            foreach ($db[$table] as $i => $row) {
+                if ($i === 0 || !is_array($row)) {
+                    continue;
+                }
+                if (!array_key_exists($column, $row)) {
+                    $db[$table][$i][$column] = $default;
+                }
+            }
         }
     }
 

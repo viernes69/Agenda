@@ -18,6 +18,7 @@ use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
 use Agenduy\Core\NotificationOutbox;
+use Agenduy\Core\ProductCatalog;
 use Agenduy\Core\TenantLocalDb;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -92,12 +93,13 @@ try {
         throw new RuntimeException('Este comercio no tiene productos configurados.');
     }
 
-    $qtyByProduct = [];
+    $qtyByVariant = [];
     foreach ($itemsRaw as $item) {
         if (!is_array($item)) {
             continue;
         }
         $pid = trim((string)($item['id'] ?? $item['ID_Product'] ?? ''));
+        $variantIndex = max(0, (int)($item['variant'] ?? $item['variante'] ?? 0));
         $qty = (int)($item['qty'] ?? $item['cantidad'] ?? 0);
         if ($pid === '' || $qty <= 0) {
             continue;
@@ -106,30 +108,53 @@ try {
             throw new InvalidArgumentException('Producto no válido en el catálogo.');
         }
         $qty = min(20, $qty);
-        $qtyByProduct[$pid] = ($qtyByProduct[$pid] ?? 0) + $qty;
-        if ($qtyByProduct[$pid] > 20) {
-            $qtyByProduct[$pid] = 20;
+        $variant = ProductCatalog::resolveVariant($catalog[$pid], $variantIndex);
+        $key = $pid . '@' . (int)$variant['variant'];
+        if (!isset($qtyByVariant[$key])) {
+            $qtyByVariant[$key] = [
+                'pid' => $pid,
+                'variant' => (int)$variant['variant'],
+                'variant_label' => (string)$variant['variant_label'],
+                'name' => (string)$variant['name'],
+                'price' => (float)$variant['price'],
+                'original_price' => (float)$variant['original_price'],
+                'qty' => 0,
+            ];
         }
+        $qtyByVariant[$key]['qty'] = min(20, (int)$qtyByVariant[$key]['qty'] + $qty);
     }
-    if ($qtyByProduct === []) {
+    if ($qtyByVariant === []) {
         throw new InvalidArgumentException('No hay productos válidos en el pedido.');
+    }
+
+    $pairsByProduct = [];
+    foreach ($qtyByVariant as $entry) {
+        $pid = (string)$entry['pid'];
+        $pairsByProduct[$pid] = min(20, ($pairsByProduct[$pid] ?? 0) + (int)$entry['qty']);
     }
 
     $pairs = [];
     $orderItems = [];
     $orderTotal = 0.0;
-    foreach ($qtyByProduct as $pid => $qty) {
-        $product = $catalog[$pid];
-        $price = round((float)($product['price'] ?? 0), 2);
+    foreach ($pairsByProduct as $pid => $qty) {
         $pairs[] = '(' . $pid . ' + ' . $qty . ')';
+    }
+    foreach ($qtyByVariant as $entry) {
+        $price = round((float)$entry['price'], 2);
+        $name = trim((string)$entry['name']);
+        $variantLabel = trim((string)$entry['variant_label']);
         $orderItems[] = [
-            'id' => (string)$pid,
-            'name' => trim((string)($product['name'] ?? ('Producto ' . $pid))),
-            'qty' => (int)$qty,
+            'id' => (string)$entry['pid'],
+            'variant' => (int)$entry['variant'],
+            'variant_label' => $variantLabel,
+            'name' => $variantLabel !== '' ? ($name . ' - ' . $variantLabel) : $name,
+            'base_name' => $name,
+            'qty' => (int)$entry['qty'],
             'price' => $price,
-            'subtotal' => $price * (int)$qty,
+            'original_price' => round((float)$entry['original_price'], 2),
+            'subtotal' => $price * (int)$entry['qty'],
         ];
-        $orderTotal += $price * (int)$qty;
+        $orderTotal += $price * (int)$entry['qty'];
     }
     $orderTotal = round($orderTotal, 2);
 
@@ -192,6 +217,7 @@ try {
         'Hora' => date('H:i:s'),
         'Fecha' => date('Y-m-d'),
         'Status' => 'Pendiente',
+        'Detalle_Items' => json_encode($orderItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]',
     ];
 
     $row = TenantLocalDb::insertCartOrder($slug, $record, [

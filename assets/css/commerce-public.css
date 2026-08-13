@@ -548,6 +548,19 @@ section.alt { background: var(--bg-soft); }
   letter-spacing: .06em;
   color: var(--primary);
 }
+.prod-card__offer {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: .22rem .6rem;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, .12);
+  color: #6d28d9;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 .prod-card__name {
   margin: 0;
   font-size: 1.05rem;
@@ -564,6 +577,16 @@ section.alt { background: var(--bg-soft); }
   font-weight: 700;
   color: var(--primary);
   font-size: 1.05rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .45rem;
+  flex-wrap: wrap;
+}
+.prod-card__price-old {
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 600;
+  text-decoration: line-through;
 }
 .prod-card__footer {
   margin-top: .5rem;
@@ -1013,6 +1036,10 @@ body[data-theme="dark"] .svc-card__badge--top {
   color: #a5b4fc;
   background: var(--primary-soft);
   border-color: transparent;
+}
+body[data-theme="dark"] .prod-card__offer {
+  background: rgba(124, 58, 237, .22);
+  color: #ddd6fe;
 }
 body[data-theme="dark"] .hero__eyebrow { background: rgba(99,102,241,.16); color: #a5b4fc; }
 body[data-theme="dark"] .public-edit-btn {

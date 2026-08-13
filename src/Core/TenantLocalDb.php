@@ -31,6 +31,7 @@ final class TenantLocalDb
         'MP_External_Reference' => '',
         'MP_Status_Detail' => '',
         'Total' => '',
+        'Detalle_Items' => '',
     ];
 
     public static function pathForSlug(string $slug): string
@@ -1070,28 +1071,12 @@ final class TenantLocalDb
     }
 
     /**
-     * @return array<int,array{id:string,name:string,price:float}>
+     * @return array<string,array<string,mixed>>
      */
     public static function productIndex(string $slug): array
     {
         $db = self::read($slug);
-        $index = [];
-        foreach (($db['productos'] ?? []) as $idx => $row) {
-            if ($idx === 0 || !is_array($row)) {
-                continue;
-            }
-            $pid = $row['ID_Product'] ?? null;
-            if ($pid === null || $pid === '') {
-                continue;
-            }
-            $key = (string)$pid;
-            $index[$key] = [
-                'id' => $key,
-                'name' => trim((string)($row['Nombre'] ?? ('Producto ' . $key))),
-                'price' => is_numeric($row['Precio'] ?? null) ? (float)$row['Precio'] : 0.0,
-            ];
-        }
-        return $index;
+        return ProductCatalog::indexFromRows((array)($db['productos'] ?? []));
     }
 
     /**

@@ -630,7 +630,30 @@ $productTypesList = array_keys($productTypeLabels);
 natcasesort($productTypesList);
 $productTypesList = array_values($productTypesList);
 
-$parseCartItems = static function($raw) {
+$parseCartItems = static function($raw, $detailRaw = '') {
+  if (is_string($detailRaw) && trim($detailRaw) !== '') {
+    $decoded = json_decode($detailRaw, true);
+    if (is_array($decoded)) {
+      $items = [];
+      foreach ($decoded as $entry) {
+        if (!is_array($entry)) { continue; }
+        $pidRaw = $entry['id'] ?? $entry['product'] ?? $entry['ID_Product'] ?? null;
+        $qtyRaw = $entry['qty'] ?? $entry['quantity'] ?? $entry['cantidad'] ?? null;
+        if ($pidRaw === null || $pidRaw === '' || !is_numeric($pidRaw) || !is_numeric($qtyRaw)) { continue; }
+        $pid = (int)$pidRaw;
+        $qty = max(1, (int)$qtyRaw);
+        $items[] = [
+          'product' => $pid,
+          'quantity' => $qty,
+          'variant' => isset($entry['variant']) && is_numeric($entry['variant']) ? (int)$entry['variant'] : 0,
+          'variant_label' => trim((string)($entry['variant_label'] ?? '')),
+          'name' => trim((string)($entry['name'] ?? '')),
+          'price' => isset($entry['price']) && is_numeric($entry['price']) ? (float)$entry['price'] : null,
+        ];
+      }
+      if ($items) { return $items; }
+    }
+  }
   if (!is_string($raw) || trim($raw) === '') {
     return [];
   }
@@ -682,29 +705,36 @@ foreach ($carritos as $carrito) {
   $statusRaw = \Agenduy\Core\TenantLocalDb::normalizeStatusKey($statusRawValue);
   if ($statusRaw === '') { $statusRaw = 'pendiente'; }
   $itemsRaw = $carrito['ID_Producto + Cantidad'] ?? '';
-  $items = $parseCartItems($itemsRaw);
+  $items = $parseCartItems($itemsRaw, $carrito['Detalle_Items'] ?? '');
   if (!$items) { continue; }
   $orderSummaryItems = [];
   foreach ($items as $item) {
     $pid = $item['product'];
     $qty = $item['quantity'];
     $productKey = (string)$pid;
+    $displayName = trim((string)($item['name'] ?? ''));
+    if ($displayName === '') {
+      $displayName = $productNameMap[$productKey] ?? ('Producto ' . $pid);
+    }
+    $unitPrice = isset($item['price']) && is_numeric($item['price'])
+      ? (float)$item['price']
+      : ($productPriceMap[$productKey] ?? 0.0);
     $productSalesEntries[] = [
       'order_id' => (int)$orderId,
       'client_id' => $clientId,
       'client_name' => $clientId !== null ? ($clientNameMap[(string)$clientId] ?? ('Cliente ' . $clientId)) : null,
       'product_id' => $pid,
-      'product_name' => $productNameMap[$productKey] ?? ('Producto ' . $pid),
+      'product_name' => $displayName,
       'product_type' => $productTypeMap[$productKey] ?? 'Otro',
       'quantity' => $qty,
-      'unit_price' => $productPriceMap[$productKey] ?? 0.0,
+      'unit_price' => $unitPrice,
       'unit_points' => $productPointsMap[$productKey] ?? 0,
       'date' => $dateIso,
       'month' => $monthIso,
       'time' => $timeRaw,
       'status' => $statusRaw,
     ];
-    $orderSummaryItems[] = $qty . ' x ' . ($productNameMap[$productKey] ?? ('Producto ' . $pid));
+    $orderSummaryItems[] = $qty . ' x ' . $displayName;
   }
   $address = '';
   foreach (['Dirección', 'Direcci?n', 'Direccion'] as $dirKey) {
@@ -726,7 +756,10 @@ foreach ($carritos as $carrito) {
     $itemsData[] = [
       'product' => $pid,
       'quantity' => $qty,
-      'name' => $productNameMap[(string)$pid] ?? ('Producto ' . $pid),
+      'variant' => isset($item['variant']) && is_numeric($item['variant']) ? (int)$item['variant'] : 0,
+      'variant_label' => trim((string)($item['variant_label'] ?? '')),
+      'name' => trim((string)($item['name'] ?? '')) !== '' ? trim((string)$item['name']) : ($productNameMap[(string)$pid] ?? ('Producto ' . $pid)),
+      'price' => isset($item['price']) && is_numeric($item['price']) ? (float)$item['price'] : ($productPriceMap[(string)$pid] ?? 0.0),
     ];
   }
   $cartOrders[] = [
@@ -1872,7 +1905,13 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               $precio = $prod['Precio'] ?? '';
               $descripcion = trim((string)($prod['Descripcion'] ?? ''));
               $puntos = $prod['Puntos'] ?? '';
-              $imgRel = trim((string)($prod['Img_src'] ?? ''));
+              $productImages = \Agenduy\Core\ProductCatalog::mediaForRow($prod);
+              $productImagesJson = json_encode($productImages, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+              if ($productImagesJson === false) { $productImagesJson = '[]'; }
+              $discount = \Agenduy\Core\ProductCatalog::discountPercent($prod);
+              $discountLabel = $discount > 0 ? rtrim(rtrim(number_format($discount, 2, '.', ''), '0'), '.') : '';
+              $saleLabel = \Agenduy\Core\ProductCatalog::saleLabel($prod);
+              $imgRel = trim((string)($productImages[0]['src'] ?? ($prod['Img_src'] ?? '')));
               $imgUrl = $imgRel !== '' ? admin_tenant_asset_url($imgRel) : '';
               $precioFmt = is_numeric($precio) ? number_format((float)$precio, 0, ',', '.') : trim((string)$precio);
               $puntosFmt = ($puntos === null || $puntos === '' || !is_numeric($puntos))
@@ -1888,7 +1927,11 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
             data-admin-product-price="<?php echo e((string)$precio); ?>"
             data-admin-product-description="<?php echo e($descripcion); ?>"
             data-admin-product-points="<?php echo e((string)$puntos); ?>"
-            data-admin-product-image="<?php echo e($imgRel); ?>">
+            data-admin-product-image="<?php echo e($imgRel); ?>"
+            data-admin-product-gallery="<?php echo e((string)($prod['Img_Gallery'] ?? '')); ?>"
+            data-admin-product-images="<?php echo e($productImagesJson); ?>"
+            data-admin-product-discount="<?php echo e($discountLabel); ?>"
+            data-admin-product-sale-label="<?php echo e($saleLabel); ?>">
             <div class="admin-product-thumb">
               <?php if ($imgUrl !== ''): ?>
                 <img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($name); ?>" loading="lazy">
@@ -1900,14 +1943,16 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
               <header class="admin-product-header">
                 <h3><?php echo e($name); ?></h3>
               </header>
+              <span class="admin-product-sale-label"<?php echo $saleLabel !== '' ? '' : ' hidden'; ?>><?php echo e($saleLabel); ?></span>
               <span class="admin-product-type"><?php echo e($tipo !== '' ? $tipo : 'Producto'); ?></span>
               <?php if ($descripcion !== ''): ?>
-                <p class="admin-product-desc"><?php echo e($descripcion); ?></p>
+                <p class="admin-product-desc admin-product-description"><?php echo e($descripcion); ?></p>
               <?php else: ?>
-                <p class="admin-product-desc muted">Sin descripci?n.</p>
+                <p class="admin-product-desc admin-product-description muted">Sin descripci?n.</p>
               <?php endif; ?>
               <ul class="admin-product-meta">
                 <li><i class="bx bx-purchase-tag"></i>$ <?php echo e($precioFmt !== '' ? $precioFmt : '0'); ?></li>
+                <?php if ($discountLabel !== ''): ?><li><i class="bx bx-badge-percent"></i><?php echo e($discountLabel); ?>% off</li><?php endif; ?>
                 <li><i class="bx bx-gift"></i><?php echo e($puntosFmt); ?></li>
               </ul>
             </div>

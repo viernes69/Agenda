@@ -1180,6 +1180,39 @@ final class NotificationOutbox
 
     private static function itemsFromOrderPairs(string $slug, array $order): array
     {
+        $detailRaw = self::firstNonEmpty($order, ['Detalle_Items', 'detalle_items', 'items_json']);
+        if ($detailRaw !== '') {
+            $decoded = json_decode($detailRaw, true);
+            if (is_array($decoded)) {
+                $items = [];
+                foreach ($decoded as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $qty = (int)($item['qty'] ?? $item['quantity'] ?? $item['cantidad'] ?? 0);
+                    if ($qty <= 0) {
+                        continue;
+                    }
+                    $id = self::firstNonEmpty($item, ['id', 'ID_Product', 'product']);
+                    $name = self::firstNonEmpty($item, ['name', 'Nombre', 'title']);
+                    $price = (float)($item['price'] ?? $item['Precio'] ?? $item['unit_price'] ?? 0);
+                    $subtotal = (float)($item['subtotal'] ?? 0);
+                    if ($subtotal <= 0 && $price > 0) {
+                        $subtotal = $price * $qty;
+                    }
+                    $items[] = [
+                        'id' => $id,
+                        'name' => $name !== '' ? $name : 'Producto',
+                        'qty' => $qty,
+                        'price' => $price,
+                        'subtotal' => $subtotal,
+                    ];
+                }
+                if ($items !== []) {
+                    return $items;
+                }
+            }
+        }
         $raw = self::firstNonEmpty($order, ['ID_Producto + Cantidad', 'items', 'productos']);
         if ($raw === '') {
             $raw = self::firstNonEmptyNormalized($order, ['idproductocantidad', 'productos']);

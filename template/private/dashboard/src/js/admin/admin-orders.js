@@ -72,6 +72,8 @@
     return found && found.name ? found.name : ('Producto ' + id);
   };
 
+  const productById = (id) => productCatalog.find((p) => Number(p.id) === Number(id)) || null;
+
   const parseItemsData = (itemEl) => {
     try {
       const raw = itemEl.getAttribute('data-items') || '[]';
@@ -82,6 +84,9 @@
           product: Number(row.product),
           quantity: Number(row.quantity),
           name: row.name || productNameById(row.product),
+          variant: Number(row.variant) || 0,
+          variant_label: row.variant_label || '',
+          price: row.price === null || row.price === undefined || row.price === '' ? null : Number(row.price),
         }))
         .filter((row) => row.product > 0 && row.quantity > 0);
     } catch (_) {
@@ -93,6 +98,25 @@
     .filter((row) => row.product > 0 && row.quantity > 0)
     .map((row) => '(' + row.product + ' + ' + row.quantity + ')')
     .join(', ');
+
+  const formatItemsDetailPayload = (rows) => JSON.stringify(rows
+    .filter((row) => row.product > 0 && row.quantity > 0)
+    .map((row) => ({
+      id: String(row.product),
+      variant: Number(row.variant) || 0,
+      variant_label: row.variant_label || '',
+      name: row.name || productNameById(row.product),
+      qty: Number(row.quantity) || 1,
+      price: row.price === null || row.price === undefined || Number.isNaN(Number(row.price))
+        ? 0
+        : Number(row.price),
+    })));
+
+  const totalFromRows = (rows) => rows.reduce((sum, row) => {
+    const price = Number(row.price);
+    const qty = Number(row.quantity) || 0;
+    return Number.isFinite(price) ? sum + price * qty : sum;
+  }, 0);
 
   const renderItemsList = (itemEl, rows) => {
     const ul = itemEl.querySelector('.admin-orders__items');
@@ -329,6 +353,9 @@
           product: Number(current.product),
           quantity: qty,
           name: current.name || productNameById(current.product),
+          variant: Number(current.variant) || 0,
+          variant_label: current.variant_label || '',
+          price: current.price,
         };
       }).filter((row) => row.product > 0);
     };
@@ -358,7 +385,15 @@
         if (existing) {
           existing.quantity += 1;
         } else {
-          rows.push({ product: pid, quantity: 1, name: productNameById(pid) });
+          const product = productById(pid);
+          rows.push({
+            product: pid,
+            quantity: 1,
+            name: productNameById(pid),
+            variant: 0,
+            variant_label: '',
+            price: product && product.price !== undefined ? Number(product.price) : null,
+          });
         }
         if (select) select.value = '';
         renderEditor();
@@ -403,6 +438,8 @@
           body.append('id', String(orderId));
           body.append('data', JSON.stringify({
             'ID_Producto + Cantidad': formatItemsPayload(rows),
+            Detalle_Items: formatItemsDetailPayload(rows),
+            Total: totalFromRows(rows).toFixed(2),
           }));
           const response = await fetch(apiUrl, {
             method: 'POST',
@@ -419,6 +456,9 @@
             product: row.product,
             quantity: row.quantity,
             name: row.name || productNameById(row.product),
+            variant: Number(row.variant) || 0,
+            variant_label: row.variant_label || '',
+            price: row.price,
           }))));
           renderItemsList(itemEl, rows);
           closeEditPanel(itemEl);
