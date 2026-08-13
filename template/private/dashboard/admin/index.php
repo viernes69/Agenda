@@ -44,6 +44,17 @@ if ($centralPanelSlug !== '') {
   $tenantSlug = basename(dirname(__DIR__, 3));
 }
 
+if (
+  $tenantSlug !== ''
+  && !\Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)
+  && (!defined('AGENDUY_LOCAL_DB_PATH') || AGENDUY_LOCAL_DB_PATH === '')
+) {
+  $commerceIdForPanel = (int)(\Agenduy\Core\CommercePanel::commerceIdForTenantRoot(dirname(__DIR__, 3)) ?? 0);
+  if ($commerceIdForPanel > 0) {
+    \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $tenantSlug);
+  }
+}
+
 // URL canónica: evitar /template/private/dashboard/admin/ en el navegador (acceso directo al archivo)
 if (
     $templateHost

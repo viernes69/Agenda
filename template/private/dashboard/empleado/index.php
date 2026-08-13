@@ -17,6 +17,16 @@ function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 $tenantRootPath = dirname(__DIR__, 3);
 $tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug($tenantRootPath);
 if (
+  $tenantSlug !== ''
+  && !\Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)
+  && (!defined('AGENDUY_LOCAL_DB_PATH') || AGENDUY_LOCAL_DB_PATH === '')
+) {
+  $commerceIdForPanel = (int)(\Agenduy\Core\CommercePanel::commerceIdForTenantRoot($tenantRootPath) ?? 0);
+  if ($commerceIdForPanel > 0) {
+    \Agenduy\Core\CommercePanel::bootstrapCentralAccess($commerceIdForPanel, $tenantSlug);
+  }
+}
+if (
   class_exists(\Agenduy\Core\TenantLocalDb::class)
   && $tenantSlug !== ''
   && !\Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)

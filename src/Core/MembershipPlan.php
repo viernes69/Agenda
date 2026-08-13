@@ -478,9 +478,9 @@ final class MembershipPlan
     public static function displayDescription(array $plan): string
     {
         return match (self::displayKey($plan)) {
-            'free' => 'Ideal para empezar, validar tu agenda y recibir las primeras reservas de un comercio chico.',
-            'basic' => 'Para comercios en pleno crecimiento: mas capacidad, tienda inicial y una segunda etapa mas ordenada.',
-            'pro' => 'Para olvidarte de la membresia: agenda, clientes, equipo, tienda y soporte prioritario sin limites chicos.',
+            'free' => 'Ideal para empezar: recibí tus primeras reservas y ordená un comercio pequeño.',
+            'basic' => 'Para comercios en pleno crecimiento: más capacidad, tienda inicial y recordatorios.',
+            'pro' => 'Ideal para olvidarte de tu membresía: agenda, equipo, tienda y soporte sin límites.',
             default => trim((string)($plan['descripcion'] ?? '')) ?: 'Plan flexible para gestionar tu negocio en Agendarte UY.',
         };
     }
@@ -527,18 +527,18 @@ final class MembershipPlan
                 'included' => $maxProducts !== 0 && !$isFree,
             ],
             [
-                'label' => 'Configuracion basica',
+                'label' => 'Configuración básica',
                 'value' => 'Incluida',
                 'included' => true,
             ],
             [
-                'label' => 'Configuracion completa',
+                'label' => 'Configuración completa',
                 'value' => $isPro ? 'Incluida' : 'No incluida',
                 'included' => $isPro,
             ],
             [
-                'label' => $isFree ? 'Agenda online basica' : 'Agenda y recordatorios',
-                'value' => $isFree ? 'Basica' : 'Incluido',
+                'label' => $isFree ? 'Agenda online básica' : 'Agenda y recordatorios',
+                'value' => $isFree ? 'Básica' : 'Incluido',
                 'included' => true,
             ],
             [
