@@ -12,6 +12,29 @@ final class UltraMsg
 {
     public static function send(string $to, string $body): bool
     {
+        return self::sendPayload('messages/chat', $to, [
+            'body' => $body,
+        ]);
+    }
+
+    public static function sendImage(string $to, string $imageUrl, string $caption = ''): bool
+    {
+        $imageUrl = trim($imageUrl);
+        if ($imageUrl === '' || !preg_match('#^https?://#i', $imageUrl)) {
+            throw new RuntimeException('URL de imagen invalida para UltraMsg.');
+        }
+
+        return self::sendPayload('messages/image', $to, [
+            'image' => $imageUrl,
+            'caption' => $caption,
+        ]);
+    }
+
+    /**
+     * @param array<string,string> $message
+     */
+    private static function sendPayload(string $endpoint, string $to, array $message): bool
+    {
         $cfg = ProviderConfig::ultraMsgConfig();
         if (!$cfg['enabled']) {
             throw new RuntimeException('UltraMsg esta deshabilitado en la configuracion global.');
@@ -26,15 +49,15 @@ final class UltraMsg
         }
 
         $url = sprintf(
-            'https://api.ultramsg.com/%s/messages/chat',
-            rawurlencode($cfg['instance_id'])
+            'https://api.ultramsg.com/%s/%s',
+            rawurlencode($cfg['instance_id']),
+            ltrim($endpoint, '/')
         );
 
-        $payload = http_build_query([
+        $payload = http_build_query(array_merge([
             'token' => $cfg['token'],
             'to'    => $phone,
-            'body'  => $body,
-        ]);
+        ], $message));
 
         $ch = curl_init($url);
         if ($ch === false) {

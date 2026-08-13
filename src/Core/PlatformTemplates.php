@@ -320,7 +320,7 @@ final class PlatformTemplates
         }
         return [
             'logo_url' => trim((string)($data['logo_url'] ?? $defaults['logo_url'])),
-            'show_logo_in_emails' => !empty($data['show_logo_in_emails']),
+            'show_logo_in_emails' => true,
         ];
     }
 
@@ -331,7 +331,7 @@ final class PlatformTemplates
     {
         $clean = [
             'logo_url' => trim((string)($data['logo_url'] ?? '')),
-            'show_logo_in_emails' => !empty($data['show_logo_in_emails']),
+            'show_logo_in_emails' => true,
         ];
         if ($clean['logo_url'] === '') {
             $clean['logo_url'] = 'src/media/logo/logo-horizontal.png';
@@ -340,12 +340,9 @@ final class PlatformTemplates
         self::$sampleVarsCache = null;
     }
 
-    public static function logoHtml(): string
+    public static function logoUrl(): string
     {
         $branding = self::emailBranding();
-        if (empty($branding['show_logo_in_emails'])) {
-            return '';
-        }
         $rel = ltrim(str_replace('\\', '/', trim((string)$branding['logo_url'])), '/');
         if ($rel === '') {
             return '';
@@ -355,7 +352,15 @@ final class PlatformTemplates
         if (!is_file($abs)) {
             return '';
         }
-        $src = url($rel);
+        return url($rel);
+    }
+
+    public static function logoHtml(): string
+    {
+        $src = self::logoUrl();
+        if ($src === '') {
+            return '';
+        }
         return '<img src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '" alt="Agendarte" style="max-height:52px;width:auto;display:inline-block">';
     }
 
@@ -457,9 +462,9 @@ final class PlatformTemplates
             $inner = '<p style="margin:0 0 1rem;line-height:1.55">' . nl2br(htmlspecialchars($inner, ENT_QUOTES, 'UTF-8')) . '</p>';
         }
         if (preg_match('/<html[\s>]/i', $inner)) {
-            return $inner;
+            return self::ensureEmailLogo($inner);
         }
-        return self::wrapEmailDocument($inner);
+        return self::wrapEmailDocument(self::ensureEmailLogo($inner));
     }
 
     /**
@@ -520,6 +525,30 @@ final class PlatformTemplates
             . '<tr><td style="padding:28px 24px 24px;font-size:15px;line-height:1.55">' . $innerHtml . '</td></tr></table>'
             . '<p style="margin:16px 0 0;font-size:12px;color:#9ca3af">Agendarte UY - Vista previa</p>'
             . '</td></tr></table></body></html>';
+    }
+
+    private static function ensureEmailLogo(string $html): string
+    {
+        $logo = self::logoHtml();
+        if ($logo === '' || self::containsLogo($html)) {
+            return $html;
+        }
+
+        $block = '<div style="margin:0 0 20px;text-align:left">' . $logo . '</div>';
+        if (preg_match('/<body\b[^>]*>/i', $html)) {
+            return (string)preg_replace('/(<body\b[^>]*>)/i', '$1' . $block, $html, 1);
+        }
+
+        return $block . $html;
+    }
+
+    private static function containsLogo(string $html): bool
+    {
+        return stripos($html, 'alt="Agendarte"') !== false
+            || stripos($html, 'src/media/logo/') !== false
+            || stripos($html, 'logo-horizontal') !== false
+            || stripos($html, 'logo-icon') !== false
+            || stripos($html, 'logo-vertical') !== false;
     }
 
     /**

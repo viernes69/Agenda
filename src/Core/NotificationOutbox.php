@@ -625,6 +625,13 @@ final class NotificationOutbox
         }
         $body = PlatformTemplates::render('ultramsg', $templateKey, $vars, 'body', $fallbackBody);
         $body = self::appendStorePaymentLink($body, $vars, $templateKey);
+        if ($templateKey === 'registration_welcome') {
+            $logoUrl = PlatformTemplates::logoUrl();
+            if ($logoUrl !== '') {
+                $payload['image_url'] = $logoUrl;
+            }
+        }
+
         return self::enqueue(
             $idCommerce,
             'whatsapp',
@@ -1328,10 +1335,13 @@ final class NotificationOutbox
         $subject = (string)$row['subject'];
         $body = (string)$row['body'];
         $idCommerce = isset($row['id_commerce']) ? (int)$row['id_commerce'] : null;
+        $payload = json_decode((string)($row['payload_json'] ?? ''), true);
+        if (!is_array($payload)) {
+            $payload = [];
+        }
 
         if ($channel === 'email') {
             $attachments = [];
-            $payload = json_decode((string)($row['payload_json'] ?? ''), true);
             foreach ((array)($payload['attachments'] ?? []) as $att) {
                 $data = base64_decode((string)($att['data_b64'] ?? ''), true);
                 if (is_string($data) && $data !== '') {
@@ -1350,7 +1360,14 @@ final class NotificationOutbox
         }
         if ($channel === 'whatsapp') {
             try {
-                $ok = UltraMsg::send($recipient, $body);
+                $templateKey = (string)$row['template_key'];
+                $imageUrl = (string)($payload['image_url'] ?? '');
+                if ($templateKey === 'registration_welcome' && $imageUrl === '') {
+                    $imageUrl = PlatformTemplates::logoUrl();
+                }
+                $ok = ($templateKey === 'registration_welcome' && $imageUrl !== '')
+                    ? UltraMsg::sendImage($recipient, $imageUrl, $body)
+                    : UltraMsg::send($recipient, $body);
                 self::logWhatsApp($idCommerce, $recipient, $body, $ok ? 'sent' : 'failed', $ok ? null : 'UltraMsg deshabilitado o sin credenciales');
                 return $ok;
             } catch (\Throwable $e) {
