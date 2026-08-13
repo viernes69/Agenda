@@ -177,6 +177,7 @@ $currentPlanRow = null;
 $maxClientsLimit = null;
 $maxProductsLimit = null;
 $maxProfessionalsLimit = null;
+$commerceCheckoutAllowed = false;
 try {
   $currentPlanRow = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
   if (is_array($currentPlanRow)) {
@@ -184,12 +185,14 @@ try {
     $maxClientsLimit = \Agenduy\Core\MembershipPlan::maxClients($currentPlanRow);
     $maxProductsLimit = \Agenduy\Core\MembershipPlan::maxProducts($currentPlanRow);
     $maxProfessionalsLimit = \Agenduy\Core\MembershipPlan::maxProfessionals($currentPlanRow);
+    $commerceCheckoutAllowed = \Agenduy\Core\MercadoPago::isCommerceCheckoutAllowed($currentPlanRow);
   }
 } catch (Throwable $e) {
   $planSettingsTier = 'full';
   $maxClientsLimit = null;
   $maxProductsLimit = null;
   $maxProfessionalsLimit = null;
+  $commerceCheckoutAllowed = false;
 }
 // Source of truth: CommerceSettings funciones (central DB), fallback: legacy features (local database.php)
 $funcionesFromLegacy = $infoBarberia['features'] ?? [];
@@ -1832,7 +1835,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         <p class="muted admin-products-empty" data-empty-base="<?php echo e($productsEmptyBase); ?>" data-empty-filter="No hay productos para el tipo seleccionado."<?php echo ($productCount ?? 0) > 0 ? ' hidden' : ''; ?>><?php echo e($productsEmptyBase); ?></p>
       </section>
       <section class="admin-section" id="config">
-        <div class="admin-config-grid" data-admin-config-grid data-settings-tier="<?php echo e($planSettingsTier); ?>">
+        <div class="admin-config-grid" data-admin-config-grid data-settings-tier="<?php echo e($planSettingsTier); ?>" data-commerce-checkout-allowed="<?php echo $commerceCheckoutAllowed ? '1' : '0'; ?>">
           <?php
             $configOptions = [
               ['id' => 'info', 'title' => 'Info. del Negocio', 'icon' => 'bx-buildings'],

@@ -74,8 +74,10 @@ final class CommerceSettings
             ],
             'reservas' => [
                 'anticipacion_min_horas' => 2,
+                'anticipacion_minutos' => 120,
                 'max_dias_adelante' => 60,
                 'cancelacion_min_horas' => 24,
+                'politica_cancelacion_horas' => 24,
                 'requiere_login' => false,
                 'mercado_pago_enabled' => false,
                 'mercado_pago_required' => false,
@@ -83,7 +85,7 @@ final class CommerceSettings
             'moneda' => ['codigo' => 'UYU', 'simbolo' => '$', 'decimales' => 0],
             'seo' => ['title' => '', 'description' => '', 'keywords' => [], 'canonical' => '', 'robots' => 'index,follow', 'og_image' => 'src/media/logo/og-image.png'],
             'legal' => ['terminos' => '', 'privacidad' => '', 'cookies' => ''],
-            'redes' => ['instagram' => '', 'facebook' => '', 'tiktok' => '', 'whatsapp' => ''],
+            'redes' => ['visible' => true, 'instagram' => '', 'facebook' => '', 'tiktok' => '', 'whatsapp' => ''],
             'notificaciones' => [
                 'whatsapp_enabled' => true,
                 'email_enabled' => true,

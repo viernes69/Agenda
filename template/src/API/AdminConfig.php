@@ -6,6 +6,7 @@ use Agenduy\Core\Crypto;
 use Agenduy\Core\Database;
 use Agenduy\Core\Auth;
 use Agenduy\Core\MembershipPlan;
+use Agenduy\Core\MercadoPago;
 
 $tenantRoot = dirname(__DIR__, 2);
 $projectRoot = dirname($tenantRoot);
@@ -47,6 +48,11 @@ try {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
         }
         $payload = requestData();
+        if ($key === 'reservas') {
+            $payload = sanitizeReservationConfigPayload($payload, $plan);
+        } elseif ($key === 'info_barberia' && isset($payload['reservas']) && is_array($payload['reservas'])) {
+            $payload['reservas'] = sanitizeReservationConfigPayload($payload['reservas'], $plan);
+        }
         if ($key === 'email_plantillas') {
             throw new UnexpectedValueException('Las plantillas de email las administra el super admin.');
         }
@@ -160,6 +166,23 @@ function requestData(): array
         $payload = json_decode($payload, true);
     }
     return is_array($payload) ? $payload : [];
+}
+
+function sanitizeReservationConfigPayload(array $payload, ?array $plan): array
+{
+    $payload['requiere_login'] = false;
+
+    if (!MercadoPago::isCommerceCheckoutAllowed($plan)) {
+        $payload['mercado_pago_enabled'] = false;
+        $payload['mercado_pago_required'] = false;
+        return $payload;
+    }
+
+    if (empty($payload['mercado_pago_enabled'])) {
+        $payload['mercado_pago_required'] = false;
+    }
+
+    return $payload;
 }
 
 function commerceBySlug(string $slug): array

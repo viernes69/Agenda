@@ -200,6 +200,49 @@ if (!function_exists('agenduy_render_commerce')) {
             ?: trim((string)($legacyInfo['contacto']['whatsapp'] ?? ''))
             ?: trim((string)($commerce['whatsapp'] ?? ''));
         $whatsappDigits = preg_replace('/\D+/', '', $whatsapp) ?: '';
+        $redesVisible = !array_key_exists('visible', $redes) || !empty($redes['visible']);
+        $socialDefinitions = [
+            'instagram' => ['label' => 'Instagram', 'icon' => 'bxl-instagram', 'base' => 'https://www.instagram.com/'],
+            'facebook' => ['label' => 'Facebook', 'icon' => 'bxl-facebook', 'base' => 'https://www.facebook.com/'],
+            'tiktok' => ['label' => 'TikTok', 'icon' => 'bxl-tiktok', 'base' => 'https://www.tiktok.com/@'],
+            'twitter' => ['label' => 'Twitter / X', 'icon' => 'bxl-twitter', 'base' => 'https://twitter.com/'],
+            'youtube' => ['label' => 'YouTube', 'icon' => 'bxl-youtube', 'base' => 'https://www.youtube.com/'],
+        ];
+        $normalizeSocialUrl = static function (string $value, string $base, string $network): string {
+            $value = trim($value);
+            if ($value === '') {
+                return '';
+            }
+            if (preg_match('#^https?://#i', $value) === 1) {
+                return $value;
+            }
+            $value = preg_replace('#^(www\.)?(instagram|facebook|tiktok|twitter|x|youtube)\.com/#i', '', $value) ?? $value;
+            $value = ltrim(trim($value), '@/');
+            if ($value === '') {
+                return '';
+            }
+            if ($network === 'tiktok') {
+                return rtrim($base, '@') . '@' . $value;
+            }
+            return rtrim($base, '/') . '/' . $value;
+        };
+        $socialLinks = [];
+        if ($redesVisible) {
+            foreach ($socialDefinitions as $network => $socialDef) {
+                $urlSocial = $normalizeSocialUrl((string)($redes[$network] ?? ''), (string)$socialDef['base'], $network);
+                if ($urlSocial === '') {
+                    continue;
+                }
+                $path = trim((string)(parse_url($urlSocial, PHP_URL_PATH) ?? ''), '/');
+                $display = $path !== '' ? '@' . ltrim($path, '@') : (string)$socialDef['label'];
+                $socialLinks[$network] = [
+                    'label' => (string)$socialDef['label'],
+                    'icon' => (string)$socialDef['icon'],
+                    'url' => $urlSocial,
+                    'display' => $display,
+                ];
+            }
+        }
         $email = (string)($commerce['email'] ?? '');
         $logo = (string)($commerce['logo'] ?? '');
         $currencySymbol = (string)($moneda['simbolo'] ?? '$');
@@ -732,6 +775,15 @@ if (!function_exists('agenduy_render_commerce')) {
                         </div>
                     </div>
                     <?php endif; ?>
+                    <?php foreach ($socialLinks as $social): ?>
+                    <div class="contact-card">
+                        <i class="bx <?= htmlspecialchars((string)$social['icon'], ENT_QUOTES, 'UTF-8') ?>"></i>
+                        <div>
+                            <div class="contact-card__label"><?= htmlspecialchars((string)$social['label'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="contact-card__value"><a target="_blank" rel="noopener" href="<?= htmlspecialchars((string)$social['url'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$social['display'], ENT_QUOTES, 'UTF-8') ?></a></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </section>
@@ -772,10 +824,8 @@ if (!function_exists('agenduy_render_commerce')) {
         <footer class="footer">
             <div class="wrap">
                 <div class="footer__links">
-                    <?php foreach (['instagram' => 'bxl-instagram', 'facebook' => 'bxl-facebook', 'tiktok' => 'bxl-tiktok'] as $network => $icon): ?>
-                    <?php if (!empty($redes[$network])): ?>
-                        <a target="_blank" rel="noopener" href="<?= htmlspecialchars((string)$redes[$network], ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= ucfirst($network) ?>"><i class="bx <?= $icon ?>" style="font-size:1.5rem"></i></a>
-                    <?php endif; ?>
+                    <?php foreach ($socialLinks as $social): ?>
+                        <a target="_blank" rel="noopener" href="<?= htmlspecialchars((string)$social['url'], ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars((string)$social['label'], ENT_QUOTES, 'UTF-8') ?>"><i class="bx <?= htmlspecialchars((string)$social['icon'], ENT_QUOTES, 'UTF-8') ?>" style="font-size:1.5rem"></i></a>
                     <?php endforeach; ?>
                     <?php if ($whatsappDigits !== ''): ?>
                         <a target="_blank" rel="noopener" href="https://wa.me/<?= htmlspecialchars($whatsappDigits, ENT_QUOTES, 'UTF-8') ?>" aria-label="WhatsApp"><i class="bx bxl-whatsapp" style="font-size:1.5rem"></i></a>

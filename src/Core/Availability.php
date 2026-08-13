@@ -18,7 +18,7 @@ final class Availability
      *   date: string,
      *   slots: list<string>,
      *   service_duration: int,
-     *   limits: array{min_date: string, max_date: string, max_dias_adelante: int, anticipacion_min_horas: int},
+     *   limits: array{min_date: string, max_date: string, max_dias_adelante: int, anticipacion_minutos: int, anticipacion_min_horas: int},
      *   calendar: array{
      *     open_weekdays: list<int>,
      *     closed_dates: list<string>,
@@ -50,7 +50,12 @@ final class Availability
         );
 
         $maxDays = max(0, (int)($reservas['max_dias_adelante'] ?? 60));
-        $anticipacionHoras = max(0, (int)($reservas['anticipacion_min_horas'] ?? 0));
+        if (array_key_exists('anticipacion_minutos', $reservas)) {
+            $anticipacionMinutos = max(0, (int)$reservas['anticipacion_minutos']);
+        } else {
+            $anticipacionMinutos = max(0, (int)($reservas['anticipacion_min_horas'] ?? 0)) * 60;
+        }
+        $anticipacionHoras = intdiv($anticipacionMinutos, 60);
         $maxDate = $today->modify(sprintf('+%d days', $maxDays));
         $calendar = self::calendarForRange($horarios, $today, $maxDate);
 
@@ -85,6 +90,7 @@ final class Availability
             'min_date' => $today->format('Y-m-d'),
             'max_date' => $maxDate->format('Y-m-d'),
             'max_dias_adelante' => $maxDays,
+            'anticipacion_minutos' => $anticipacionMinutos,
             'anticipacion_min_horas' => $anticipacionHoras,
         ];
 
@@ -102,7 +108,7 @@ final class Availability
         }
 
         $minStart = 0;
-        $earliest = $now->modify(sprintf('+%d hours', $anticipacionHoras));
+        $earliest = $now->modify(sprintf('+%d minutes', $anticipacionMinutos));
         if ($canonical === $earliest->format('Y-m-d')) {
             $minStart = ((int)$earliest->format('H')) * 60 + (int)$earliest->format('i');
             $step = self::SLOT_STEP_MINUTES;

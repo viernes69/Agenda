@@ -18,6 +18,15 @@
   const submitBtn = form.querySelector('[data-admin-config-reservas-submit]');
   const fieldNodes = Array.from(form.querySelectorAll('[data-admin-config-reservas-field]'));
   const toggleNodes = Array.from(form.querySelectorAll('[data-admin-config-reservas-toggle]'));
+  const configGrid = document.querySelector('[data-admin-config-grid]');
+  const paymentLockEl = form.querySelector('[data-admin-config-reservas-payment-lock]');
+  const paymentSwitches = Array.from(form.querySelectorAll('[data-admin-config-reservas-payment-switch]'));
+  const paymentHints = Array.from(form.querySelectorAll('[data-admin-config-reservas-payment-hint]'))
+    .map((el) => [el, el.textContent || '']);
+  const paymentToggleKeys = new Set(['mercado_pago_enabled', 'mercado_pago_required']);
+  const checkoutAllowedAttr = String(configGrid?.getAttribute('data-commerce-checkout-allowed') || '1').toLowerCase();
+  const reservationPaymentsAllowed = checkoutAllowedAttr === '1' || checkoutAllowedAttr === 'true';
+  const upgradeMessage = 'Mejora tu plan para activar Mercado Pago en reservas.';
 
   const clone = (obj) => {
     try {
@@ -72,19 +81,65 @@
         1
       );
     }
-    if (source.hasOwnProperty('requiere_login')) {
-      base.requiere_login = toBool(source.requiere_login);
-    }
     if (source.hasOwnProperty('mercado_pago_enabled')) {
       base.mercado_pago_enabled = toBool(source.mercado_pago_enabled);
     }
     if (source.hasOwnProperty('mercado_pago_required')) {
       base.mercado_pago_required = toBool(source.mercado_pago_required);
     }
+    base.requiere_login = false;
+    if (!reservationPaymentsAllowed) {
+      base.mercado_pago_enabled = false;
+      base.mercado_pago_required = false;
+    }
     return base;
   };
 
   let currentConfig = normalizeConfig(window.ADMIN_INFO_BARBERIA && window.ADMIN_INFO_BARBERIA.reservas);
+
+  const notify = (message, type) => {
+    if (typeof window.adminNotify === 'function') {
+      window.adminNotify(message, type || 'info');
+    } else {
+      window.alert(message);
+    }
+  };
+
+  const openUpgradeModal = () => {
+    const trigger = document.querySelector('[data-plan-membership-open]');
+    if (trigger && typeof trigger.click === 'function') {
+      if (!modal.hidden) close();
+      window.setTimeout(() => trigger.click(), 80);
+    }
+  };
+
+  const paymentInput = (key) => toggleNodes.find((field) => field.getAttribute('data-admin-config-reservas-toggle') === key);
+
+  const syncPaymentUi = () => {
+    const enabledInput = paymentInput('mercado_pago_enabled');
+    const requiredInput = paymentInput('mercado_pago_required');
+
+    if (!reservationPaymentsAllowed) {
+      if (enabledInput) enabledInput.checked = false;
+      if (requiredInput) requiredInput.checked = false;
+    } else if (enabledInput && requiredInput && !enabledInput.checked) {
+      requiredInput.checked = false;
+    }
+
+    if (paymentLockEl) {
+      paymentLockEl.hidden = reservationPaymentsAllowed;
+    }
+    paymentSwitches.forEach((label) => {
+      const key = label.getAttribute('data-admin-config-reservas-payment-switch');
+      const muted = reservationPaymentsAllowed && key === 'mercado_pago_required' && enabledInput && !enabledInput.checked;
+      label.classList.toggle('is-locked', !reservationPaymentsAllowed);
+      label.classList.toggle('is-muted', !!muted);
+      label.setAttribute('aria-disabled', !reservationPaymentsAllowed || muted ? 'true' : 'false');
+    });
+    paymentHints.forEach(([hint, original]) => {
+      hint.textContent = reservationPaymentsAllowed ? original : upgradeMessage;
+    });
+  };
 
   const fillForm = (data) => {
     fieldNodes.forEach((field) => {
@@ -103,6 +158,7 @@
       if (!key) return;
       field.checked = !!data[key];
     });
+    syncPaymentUi();
   };
 
   const collectData = () => {
@@ -110,10 +166,6 @@
     fieldNodes.forEach((field) => {
       const key = field.getAttribute('data-admin-config-reservas-field');
       if (!key) return;
-      if (key === 'requiere_login') {
-        result.requiere_login = toBool(field.value);
-        return;
-      }
       if (key === 'max_reservas_por_dia_por_cliente') {
         result[key] = ensureNumber(field.value, currentConfig[key], 1);
         return;
@@ -125,8 +177,13 @@
     toggleNodes.forEach((field) => {
       const key = field.getAttribute('data-admin-config-reservas-toggle');
       if (!key) return;
+      if (!reservationPaymentsAllowed && paymentToggleKeys.has(key)) {
+        result[key] = false;
+        return;
+      }
       result[key] = !!field.checked;
     });
+    result.requiere_login = false;
     if (!result.mercado_pago_enabled) {
       result.mercado_pago_required = false;
     }
@@ -169,6 +226,20 @@
   };
 
   closeEls.forEach((btn) => btn.addEventListener('click', close));
+  form.addEventListener('click', (evt) => {
+    const paymentSwitch = evt.target && evt.target.closest
+      ? evt.target.closest('[data-admin-config-reservas-payment-switch]')
+      : null;
+    if (paymentSwitch && !reservationPaymentsAllowed) {
+      evt.preventDefault();
+      syncPaymentUi();
+      notify(upgradeMessage, 'info');
+      openUpgradeModal();
+    }
+  });
+  toggleNodes.forEach((field) => {
+    field.addEventListener('change', syncPaymentUi);
+  });
   document.addEventListener('keydown', (evt) => {
     if (evt.key === 'Escape' && !modal.hidden) {
       close();

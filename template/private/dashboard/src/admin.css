@@ -4399,6 +4399,25 @@ body {
   line-height: 1.35;
 }
 
+.admin-form__switch.is-locked {
+  border-color: rgba(168, 85, 247, 0.46);
+  background: rgba(88, 28, 135, 0.2);
+}
+
+.admin-form__switch.is-locked .admin-form__switch-control {
+  background: rgba(51, 65, 85, 0.72);
+  border-color: rgba(168, 85, 247, 0.42);
+}
+
+.admin-form__switch.is-locked small {
+  color: rgba(216, 180, 254, 0.92);
+  font-weight: 700;
+}
+
+.admin-form__switch.is-muted {
+  opacity: .68;
+}
+
 @media (max-width: 640px) {
   .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog,
   .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog--sm,

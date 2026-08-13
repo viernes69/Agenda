@@ -62,33 +62,25 @@ ob_start();
                    data-admin-config-reservas-field="max_reservas_por_dia_por_cliente">
           </label>
         </div>
-        <label class="admin-form__field" for="admin-config-reservas-login">
-          <span class="admin-form__label">Requiere login</span>
-          <select id="admin-config-reservas-login"
-                  data-admin-config-reservas-field="requiere_login"
-                  required>
-            <option value="0">No (reserva como invitado)</option>
-            <option value="1">S&iacute; (obligatorio)</option>
-          </select>
-        </label>
       </section>
       <section class="admin-form__group">
         <h3 class="admin-form__title">Pagos online</h3>
+        <p class="admin-form__hint" data-admin-config-reservas-payment-lock hidden>Mejor&aacute; tu plan para activar Mercado Pago en reservas.</p>
         <div class="admin-form__switch-grid admin-form__switch-grid--compact">
-          <label class="admin-form__switch">
+          <label class="admin-form__switch" data-admin-config-reservas-payment-switch="mercado_pago_enabled">
             <input type="checkbox" data-admin-config-reservas-toggle="mercado_pago_enabled">
             <span class="admin-form__switch-control" aria-hidden="true"></span>
             <span>
               <strong>Mercado Pago en reservas</strong>
-              <small>Permite que el cliente pague el servicio desde la web si tu cuenta y plan lo habilitan.</small>
+              <small data-admin-config-reservas-payment-hint="mercado_pago_enabled">Permite que el cliente pague el servicio desde la web si tu cuenta y plan lo habilitan.</small>
             </span>
           </label>
-          <label class="admin-form__switch">
+          <label class="admin-form__switch" data-admin-config-reservas-payment-switch="mercado_pago_required">
             <input type="checkbox" data-admin-config-reservas-toggle="mercado_pago_required">
             <span class="admin-form__switch-control" aria-hidden="true"></span>
             <span>
               <strong>Pago obligatorio</strong>
-              <small>Para servicios con precio, la reserva se confirma cuando Mercado Pago aprueba el cobro.</small>
+              <small data-admin-config-reservas-payment-hint="mercado_pago_required">Para servicios con precio, la reserva se confirma cuando Mercado Pago aprueba el cobro.</small>
             </span>
           </label>
         </div>
