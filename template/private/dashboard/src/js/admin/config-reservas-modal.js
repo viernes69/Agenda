@@ -24,9 +24,13 @@
   const paymentHints = Array.from(form.querySelectorAll('[data-admin-config-reservas-payment-hint]'))
     .map((el) => [el, el.textContent || '']);
   const paymentToggleKeys = new Set(['mercado_pago_enabled', 'mercado_pago_required']);
-  const checkoutAllowedAttr = String(configGrid?.getAttribute('data-commerce-checkout-allowed') || '1').toLowerCase();
+  const checkoutAllowedAttr = String(
+    configGrid?.getAttribute('data-reservation-checkout-allowed')
+    || configGrid?.getAttribute('data-commerce-checkout-allowed')
+    || '1'
+  ).toLowerCase();
   const reservationPaymentsAllowed = checkoutAllowedAttr === '1' || checkoutAllowedAttr === 'true';
-  const upgradeMessage = 'Mejora tu plan para activar Mercado Pago en reservas.';
+  const upgradeMessage = 'Adquierelo con el plan Pro.';
 
   const clone = (obj) => {
     try {
@@ -105,14 +109,6 @@
     }
   };
 
-  const openUpgradeModal = () => {
-    const trigger = document.querySelector('[data-plan-membership-open]');
-    if (trigger && typeof trigger.click === 'function') {
-      if (!modal.hidden) close();
-      window.setTimeout(() => trigger.click(), 80);
-    }
-  };
-
   const paymentInput = (key) => toggleNodes.find((field) => field.getAttribute('data-admin-config-reservas-toggle') === key);
 
   const syncPaymentUi = () => {
@@ -128,6 +124,7 @@
 
     if (paymentLockEl) {
       paymentLockEl.hidden = reservationPaymentsAllowed;
+      paymentLockEl.textContent = upgradeMessage;
     }
     paymentSwitches.forEach((label) => {
       const key = label.getAttribute('data-admin-config-reservas-payment-switch');
@@ -234,7 +231,6 @@
       evt.preventDefault();
       syncPaymentUi();
       notify(upgradeMessage, 'info');
-      openUpgradeModal();
     }
   });
   toggleNodes.forEach((field) => {

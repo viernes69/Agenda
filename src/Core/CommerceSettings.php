@@ -10,7 +10,7 @@ final class CommerceSettings
 {
     public const SECTIONS = [
         'horarios', 'reservas', 'moneda', 'fiscal', 'redes',
-        'seo', 'legal', 'notificaciones', 'funciones', 'carrito', 'tema', 'email_plantillas',
+        'seo', 'legal', 'notificaciones', 'funciones', 'carrito', 'tema', 'mercado_pago', 'email_plantillas',
     ];
 
     public static function get(int $idCommerce, string $section, array $defaults = []): array
@@ -116,6 +116,19 @@ final class CommerceSettings
                 'pickup_enabled' => true,
                 'delivery_enabled' => true,
                 'instructions' => 'Coordinamos entrega o retiro por este medio. Gracias!',
+            ],
+            'mercado_pago' => [
+                'enabled' => false,
+                'modo' => 'test',
+                'country' => 'UY',
+                'currency' => 'UYU',
+                'allowed_payment_methods' => [],
+                'statement_descriptor' => '',
+                'public_base_url' => '',
+                'success_url' => '',
+                'failure_url' => '',
+                'pending_url' => '',
+                'notification_url' => '',
             ],
             'tema' => ['publico' => 'claro', 'privado' => 'claro'],
             default => [],

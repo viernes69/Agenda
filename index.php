@@ -93,6 +93,8 @@ $logoIconPath = __DIR__ . '/src/media/logo/logo-icon.png';
 $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)time();
 $loaderLogoPath = __DIR__ . '/src/media/logo/logo-icon-loader.png';
 $loaderLogoVer = is_file($loaderLogoPath) ? (string)filemtime($loaderLogoPath) : $logoVer;
+$faviconPath = __DIR__ . '/src/img/favicon/favicon.png';
+$faviconVer = is_file($faviconPath) ? (string)filemtime($faviconPath) : $logoVer;
 $siteUrl = rtrim(url(''), '/');
 $seoTitle = 'Agendarte UY | Reservas online y agenda digital en Uruguay';
 $seoDescription = LandingContent::SITE_DESCRIPTION;
@@ -163,8 +165,8 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
   </style>
   <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
-  <link rel="apple-touch-icon" href="<?= h(url('src/media/logo/logo-icon.png')) ?>">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= h(url('src/img/favicon/favicon.png?v=' . $faviconVer)) ?>">
+  <link rel="apple-touch-icon" href="<?= h(url('src/media/logo/logo-icon.png?v=' . $logoVer)) ?>">
   <meta name="csrf-token" content="<?= h(\Agenduy\Core\CSRF::generate('public_booking')) ?>">
 </head>
 <body>

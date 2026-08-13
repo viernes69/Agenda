@@ -26,12 +26,26 @@
     const labels = {
       pendiente: 'Pendiente',
       aprobado: 'Reservado',
-      'en progreso': 'En progreso',
+      'en progreso': 'Atendiendo',
       rechazado: 'Rechazado',
       cancelado: 'Cancelado',
       finalizado: 'Finalizado',
     };
     return labels[key] || key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+  const updateRowActions = (row, statusValue) => {
+    if (!row) return;
+    const key = normalizeStatusKey(statusValue);
+    const canAttend = ['pendiente', 'aprobado'].includes(key);
+    const canFinish = ['pendiente', 'aprobado', 'en progreso'].includes(key);
+    const canModify = !['rechazado', 'cancelado', 'finalizado'].includes(key);
+    row.querySelectorAll('[data-admin-reserva-quick-status]').forEach((button) => {
+      const target = normalizeStatusKey(button.getAttribute('data-admin-reserva-quick-status') || '');
+      if (target === 'en progreso') button.disabled = !canAttend;
+      if (target === 'finalizado') button.disabled = !canFinish;
+    });
+    const modify = row.querySelector('[data-admin-view-reserva]');
+    if (modify) modify.disabled = !canModify;
   };
 
   const fill = (data) => {
@@ -44,6 +58,7 @@
     const stRaw = (data.status || '').toString();
     const st = stRaw.trim();
     const stKey = normalizeStatusKey(st);
+    modal.setAttribute('data-admin-res-status-key', stKey);
     const stEl = el('[data-admin-res-status]');
     if (stEl) { stEl.textContent = statusLabel(stKey); stEl.className = 'status-pill st-' + statusClassKey(stKey); }
     const isTerminal = ['cancelado', 'finalizado', 'rechazado'].includes(stKey);
@@ -124,8 +139,21 @@
   };
 
   document.addEventListener('click', async (evt) => {
+    const quickBtn = evt.target && evt.target.closest && evt.target.closest('[data-admin-reserva-quick-status]');
+    if (quickBtn) {
+      evt.preventDefault();
+      if (quickBtn.disabled) return;
+      const id = quickBtn.getAttribute('data-admin-reserva-id');
+      const status = quickBtn.getAttribute('data-admin-reserva-quick-status');
+      if (!id || !status) return;
+      quickBtn.disabled = true;
+      const ok = await actionUpdate(status, id);
+      if (!ok) quickBtn.disabled = false;
+      return;
+    }
     const btn = evt.target && evt.target.closest && evt.target.closest('[data-admin-view-reserva]');
     if (!btn) return;
+    if (btn.disabled) return;
     const id = btn.getAttribute('data-admin-view-reserva');
     if (!id) return;
     if (modalLoading) modalLoading.show(modal);
@@ -225,8 +253,9 @@
     }
   });
 
-  const actionUpdate = async (status) => {
-    const id = modal.getAttribute('data-admin-reserva-id'); if (!id) return false;
+  const actionUpdate = async (status, explicitId = null) => {
+    const id = explicitId || modal.getAttribute('data-admin-reserva-id'); if (!id) return false;
+    const modalMatches = modal.getAttribute('data-admin-reserva-id') === String(id);
     try {
       const res = await fetch(apiBase, {
         method: 'POST',
@@ -237,13 +266,27 @@
       });
       const payload = await res.json();
       if (res.ok && payload && payload.ok) {
+        const nextStatusKey = normalizeStatusKey(status);
+        if (modalMatches) {
+          modal.setAttribute('data-admin-res-status-key', nextStatusKey);
+          const stEl = el('[data-admin-res-status]');
+          if (stEl) {
+            stEl.textContent = statusLabel(status);
+            stEl.className = 'status-pill st-' + statusClassKey(status);
+          }
+        }
         const row = document.querySelector(`[data-admin-res-row-id="${id}"]`);
         if (row) {
-          row.setAttribute('data-admin-reserva-status', normalizeStatusKey(status));
+          row.setAttribute('data-admin-reserva-status', nextStatusKey);
           const pill = row.querySelector('.status-pill');
           if (pill) { pill.textContent = statusLabel(status); pill.className = 'status-pill st-' + statusClassKey(status); }
+          updateRowActions(row, nextStatusKey);
         }
-        close();
+        if (!explicitId) {
+          close();
+        } else {
+          adminNotify('Reserva marcada como ' + statusLabel(status), 'success');
+        }
         try { window.AdminReservasRefresh && window.AdminReservasRefresh(); } catch (_) {}
         return true;
       }
@@ -332,9 +375,11 @@
   });
 
   btnFin && btnFin.addEventListener('click', async () => {
-    try { btnFin.disabled = true; if (btnAten) btnAten.disabled = true; if (btnRech) btnRech.disabled = true; } catch (_) {}
+    const id = modal.getAttribute('data-admin-reserva-id');
+    if (!id) return;
+    try { btnFin.disabled = true; } catch (_) {}
     await actionUpdate('Finalizado');
-    try { btnFin.disabled = false; if (btnAten) btnAten.disabled = false; if (btnRech) btnRech.disabled = false; } catch (_) {}
+    try { btnFin.disabled = false; } catch (_) {}
   });
 
   btnRech && btnRech.addEventListener('click', async () => {

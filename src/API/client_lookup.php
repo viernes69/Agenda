@@ -3,7 +3,7 @@
  * Agendarte - Autocompletar datos de cliente al reservar
  *
  * POST /src/API/client_lookup.php
- *   body: { email?, telefono?, slug | id_commerce, _csrf }
+ *   body: { cedula?, email?, telefono?, slug | id_commerce, _csrf }
  */
 declare(strict_types=1);
 
@@ -32,7 +32,7 @@ if (!is_array($payload)) {
 }
 
 $csrf = $payload['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'public_booking')) {
+if (!CSRF::validate(is_string($csrf) ? $csrf : null, 'public_booking', false)) {
     http_response_code(419);
     echo json_encode(['ok' => false, 'error' => 'CSRF inválido.']);
     exit;
@@ -56,7 +56,8 @@ if ($idCommerce <= 0) {
 $result = ClientLookup::lookup(
     $idCommerce,
     isset($payload['email']) ? (string)$payload['email'] : null,
-    isset($payload['telefono']) ? (string)$payload['telefono'] : null
+    isset($payload['telefono']) ? (string)$payload['telefono'] : null,
+    isset($payload['cedula']) ? (string)$payload['cedula'] : null
 );
 
 echo json_encode($result, JSON_UNESCAPED_UNICODE);

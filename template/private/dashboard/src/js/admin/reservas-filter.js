@@ -23,9 +23,12 @@
   let isFetching = false;
   let pendingRequest = null;
   let datePicker = null;
+  const POLL_INTERVAL_MS = 15000;
+  const FETCH_TIMEOUT_MS = 9000;
   const emptyBase = emptyEl ? (emptyEl.getAttribute('data-empty-base') || emptyEl.textContent || 'No hay reservas para el estado seleccionado.') : 'No hay reservas para el estado seleccionado.';
 
   const isYmd = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+  const canSoftRefresh = () => document.visibilityState === 'visible' && navigator.onLine !== false;
 
   const parseDatesAttr = (el) => {
     if (!el) return [];
@@ -181,11 +184,16 @@
   };
 
   const fetchData = async (status, opts = {}) => {
+    if (opts.poll && !canSoftRefresh()) {
+      return;
+    }
     if (isFetching) {
+      if (opts.poll) return;
       pendingRequest = { status, opts };
       return;
     }
     isFetching = true;
+    let timeoutId = null;
     try {
       const url = new URL(API_URL, window.location.href);
       if (status) url.searchParams.set('status', status);
@@ -194,7 +202,22 @@
       } else {
         url.searchParams.delete('date');
       }
-      const response = await fetch(url.toString(), { credentials: 'same-origin', cache: 'no-store' });
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      if (controller) {
+        timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      }
+      const response = await fetch(url.toString(), {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Respuesta inesperada del servidor');
+      }
       const data = await response.json();
       if (!data || data.ok !== true) {
         throw new Error(data && data.error ? data.error : 'No se pudo actualizar las reservas');
@@ -222,6 +245,9 @@
         console.error('[Reservas] No se pudo actualizar la lista.', error);
       }
     } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
       isFetching = false;
       if (pendingRequest) {
         const next = pendingRequest;
@@ -257,13 +283,16 @@
   syncClearBtn();
   fetchData(currentStatus, { quiet: true });
   // Soft refresh so new public bookings appear without a hard reload.
-  window.setInterval(() => fetchData(currentStatus, { quiet: true }), 2000);
+  window.setInterval(() => fetchData(currentStatus, { quiet: true, poll: true }), POLL_INTERVAL_MS);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       fetchData(currentStatus, { quiet: true });
     }
   });
   window.addEventListener('focus', () => {
+    fetchData(currentStatus, { quiet: true });
+  });
+  window.addEventListener('online', () => {
     fetchData(currentStatus, { quiet: true });
   });
 

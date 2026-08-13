@@ -709,6 +709,50 @@ class AutoloadDB {
     }
 
     /**
+     * Enforce membership max_professionals on create. null = allowed.
+     *
+     * @return array<string, mixed>|null denial payload when blocked
+     */
+    public static function checkProfessionalPlanLimit(): ?array
+    {
+        $projectRoot = dirname(__DIR__, 3);
+        $bootstrap = $projectRoot . '/src/Core/bootstrap.php';
+        if (!is_file($bootstrap)) {
+            return null;
+        }
+        require_once $bootstrap;
+        if (!class_exists(\Agenduy\Core\MembershipPlan::class)) {
+            return null;
+        }
+        $tenantSlug = self::effectiveTenantSlug();
+        if ($tenantSlug === '' || \Agenduy\Core\CommercePanel::isTemplateHost($tenantSlug)) {
+            return null;
+        }
+        try {
+            $plan = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
+            if (!is_array($plan)) {
+                return null;
+            }
+            $maxProfessionals = \Agenduy\Core\MembershipPlan::maxProfessionals($plan);
+            if ($maxProfessionals === null) {
+                return null;
+            }
+            $currentCount = count(self::all('barberos'));
+            if ($currentCount < $maxProfessionals) {
+                return null;
+            }
+            $label = $maxProfessionals === 1 ? '1 profesional' : $maxProfessionals . ' profesionales';
+            return \Agenduy\Core\MembershipPlan::denialPayload('PLAN_LIMIT_MAX_PROFESSIONALS', [
+                'error' => 'Tu plan permite unicamente ' . $label . '. Mejora tu membresia para agregar mas profesionales.',
+                'max_professionals' => $maxProfessionals,
+                'current' => $currentCount,
+            ]);
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * Block Atender/Finalizar when monthly paid appointment quota is exhausted.
      * Cancelar / Reprogramar / Ver stay allowed.
      *
@@ -816,6 +860,14 @@ if (php_sapi_name() !== 'cli' && realpath(__FILE__) === realpath($_SERVER['SCRIP
                 }
                 if ($table === 'clientes') {
                     $limitDenied = AutoloadDB::checkClientPlanLimit();
+                    if ($limitDenied !== null) {
+                        http_response_code(403);
+                        echo json_encode($limitDenied);
+                        break;
+                    }
+                }
+                if ($table === 'barberos') {
+                    $limitDenied = AutoloadDB::checkProfessionalPlanLimit();
                     if ($limitDenied !== null) {
                         http_response_code(403);
                         echo json_encode($limitDenied);

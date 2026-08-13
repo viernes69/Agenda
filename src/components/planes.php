@@ -47,6 +47,8 @@ foreach ($planes as $ap) {
           $descripcion = trim((string)($p['descripcion'] ?? ''));
           $isFeatured = $planCount >= 3 && $i === 1;
           $ctaLabel = $isFree ? 'Empezar gratis' : 'Elegir este plan';
+          $displayDesc = MembershipPlan::displayDescription($p);
+          $comparisonRows = MembershipPlan::comparisonRows($p);
           $features = MembershipPlan::features($p);
           $maxProducts = MembershipPlan::maxProducts($p);
           $maxServices = MembershipPlan::maxServices($p);
@@ -113,13 +115,20 @@ foreach ($planes as $ap) {
             <?php if (!$isFree && $trialDias > 0): ?>
               <p class="plan-card__trial"><?= $trialDias ?> días de prueba gratis</p>
             <?php endif; ?>
-            <?php if ($descripcion !== ''): ?>
-              <p class="plan-card__desc"><?= h($descripcion) ?></p>
+            <?php if ($displayDesc !== '' || $descripcion !== ''): ?>
+              <p class="plan-card__desc"><?= h($displayDesc !== '' ? $displayDesc : $descripcion) ?></p>
             <?php endif; ?>
-            <?php if ($combinedFeatures !== []): ?>
-              <ul class="plan-card__features">
-                <?php foreach ($combinedFeatures as $feat): ?>
-                  <li><?= h($feat) ?></li>
+            <?php if ($comparisonRows !== []): ?>
+              <ul class="plan-card__features" aria-label="Comparativa de <?= h((string)$p['nombre']) ?>">
+                <?php foreach ($comparisonRows as $row): ?>
+                  <?php $included = !empty($row['included']); ?>
+                  <li class="<?= $included ? 'is-included' : 'is-excluded' ?>">
+                    <span class="plan-card__feature-icon" aria-hidden="true"><?= $included ? '&#10003;' : '&#10005;' ?></span>
+                    <span class="plan-card__feature-copy">
+                      <span class="plan-card__feature-label"><?= h((string)($row['label'] ?? '')) ?></span>
+                      <span class="plan-card__feature-value"><?= h((string)($row['value'] ?? '')) ?></span>
+                    </span>
+                  </li>
                 <?php endforeach; ?>
               </ul>
             <?php endif; ?>

@@ -355,6 +355,7 @@ if ($action === 'create') {
                 if ($currentCount >= $maxProfessionals) {
                     http_response_code(403);
                     echo json_encode(MembershipPlan::denialPayload('PLAN_LIMIT_MAX_PROFESSIONALS', [
+                        'error' => 'Tu plan permite unicamente ' . ($maxProfessionals === 1 ? '1 profesional' : $maxProfessionals . ' profesionales') . '. Mejora tu membresia para agregar mas profesionales.',
                         'max_professionals' => $maxProfessionals,
                         'current' => $currentCount,
                     ]));

@@ -1364,3 +1364,50 @@ body {
   100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(239,68,68,0));}
 }
 
+/* Performance-friendly effects for public pages and shared modals. */
+.modal__backdrop,
+.app-dock {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.barber-card__avatar-inner,
+.admin-bottomnav__item.has-alert i {
+  animation: none !important;
+}
+
+.admin-bottomnav__item.has-alert i {
+  filter: none !important;
+}
+
+.modal.is-visible .modal__dialog,
+.modal.is-visible.is-closing .modal__dialog {
+  animation: none !important;
+  transform: none;
+}
+
+.user-menu-panel.is-open {
+  animation: none !important;
+}
+
+@media (max-width: 768px) {
+  .modal__dialog,
+  .modal__dialog--barber,
+  .modal__dialog--lg,
+  .info-card,
+  .app-dock,
+  .admin-share-link__btn {
+    box-shadow: 0 10px 24px rgba(5, 8, 20, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

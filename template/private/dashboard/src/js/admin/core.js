@@ -30,6 +30,29 @@ if (document.readyState === 'loading') {
   window.AdminApplyResponsiveTableHeadings();
 }
 
+const enhanceSummaryCardCtas = () => {
+  document.querySelectorAll('.summary-card').forEach((card) => {
+    const title = (card.querySelector('.summary-card__header h3')?.textContent || '').trim();
+    const cta = card.querySelector('.summary-card__cta');
+    if (!cta || !title) return;
+    const label = 'Ver detalles de ' + title;
+    cta.textContent = label;
+    cta.setAttribute('aria-label', label);
+    if (cta.tagName === 'A') {
+      const href = (cta.getAttribute('href') || '').trim();
+      if (!href || href === '#') {
+        cta.setAttribute('href', '#resumen');
+      }
+    }
+  });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', enhanceSummaryCardCtas, { once: true });
+} else {
+  enhanceSummaryCardCtas();
+}
+
 window.AdminCloseModalElement = (modal) => {
   if (!modal || !modal.classList) return;
   modal.classList.remove('is-visible');

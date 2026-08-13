@@ -255,7 +255,23 @@
     const trimmed = String(value).trim();
     if (!trimmed) return '';
     if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    return `../../../${trimmed.replace(/^\/+/, '')}`;
+    const rel = trimmed.replace(/^\/+/, '');
+    const appBase = (() => {
+      const raw = String(window.__TENANT_CONFIG__?.basePath || window.location.origin || '').replace(/\/+$/, '');
+      try {
+        return new URL(raw || '/', window.location.origin).href.replace(/\/+$/, '');
+      } catch (_) {
+        return raw;
+      }
+    })();
+    if (rel.startsWith('commerce-assets/')) {
+      const endpoint = `${appBase}/src/API/commerce_asset.php`;
+      return `${endpoint}?p=${encodeURIComponent(rel)}`;
+    }
+    if (rel.startsWith('src/media/commerce/')) {
+      return appBase ? `${appBase}/${rel}` : `/${rel}`;
+    }
+    return `../../../${rel}`;
   };
 
   const updateLogoPreview = (value) => {

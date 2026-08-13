@@ -4,16 +4,38 @@ declare(strict_types=1);
 namespace Agenduy\Core;
 
 /**
- * Assets de comercio centralizados en src/media/commerce/{id}/ (servibles por HTTP).
+ * Assets de comercio fuera del arbol versionado.
+ *
+ * Las rutas nuevas se guardan como commerce-assets/{id}/... y se sirven por
+ * src/API/commerce_asset.php. Las rutas legacy src/media/commerce/{id}/...
+ * siguen resolviendo para comercios existentes.
  */
 final class CommerceStorage
 {
-    public const WEB_PREFIX = 'src/media/commerce';
+    public const WEB_PREFIX = 'commerce-assets';
+    public const LEGACY_WEB_PREFIX = 'src/media/commerce';
 
     public static function baseDir(int $idCommerce): string
     {
+        return self::mediaRoot() . DIRECTORY_SEPARATOR . (string)$idCommerce;
+    }
+
+    public static function legacyBaseDir(int $idCommerce): string
+    {
         $root = dirname(__DIR__, 2);
-        return $root . DIRECTORY_SEPARATOR . self::WEB_PREFIX . DIRECTORY_SEPARATOR . (string)$idCommerce;
+        return $root . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, self::LEGACY_WEB_PREFIX)
+            . DIRECTORY_SEPARATOR . (string)$idCommerce;
+    }
+
+    private static function mediaRoot(): string
+    {
+        $env = getenv('AGENDUY_COMMERCE_ASSETS_DIR');
+        if (is_string($env) && trim($env) !== '') {
+            return rtrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($env)), DIRECTORY_SEPARATOR);
+        }
+        return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR
+            . 'storage' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'commerce';
     }
 
     public static function kindDir(int $idCommerce, string $kind): string
@@ -34,6 +56,13 @@ final class CommerceStorage
     public static function isCentralPath(string $path): bool
     {
         $path = ltrim(str_replace('\\', '/', $path), '/');
+        return str_starts_with($path, self::WEB_PREFIX . '/')
+            || str_starts_with($path, self::LEGACY_WEB_PREFIX . '/');
+    }
+
+    public static function isProtectedPath(string $path): bool
+    {
+        $path = ltrim(str_replace('\\', '/', $path), '/');
         return str_starts_with($path, self::WEB_PREFIX . '/');
     }
 
@@ -49,7 +78,12 @@ final class CommerceStorage
 
         $root = dirname(__DIR__, 2);
 
-        if (self::isCentralPath($storedPath)) {
+        if (self::isProtectedPath($storedPath)) {
+            $full = self::centralStoredAbsolutePath($storedPath);
+            return $full !== null && is_file($full) ? $full : null;
+        }
+
+        if (str_starts_with($storedPath, self::LEGACY_WEB_PREFIX . '/')) {
             $full = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
             return is_file($full) ? $full : null;
         }
@@ -78,7 +112,20 @@ final class CommerceStorage
             return $storedPath;
         }
 
-        if (self::isCentralPath($storedPath)) {
+        if (self::isProtectedPath($storedPath)) {
+            $full = self::centralStoredAbsolutePath($storedPath);
+            if ($full === null || !is_file($full)) {
+                return '';
+            }
+            $query = 'p=' . rawurlencode($storedPath);
+            $mtime = @filemtime($full);
+            if (is_int($mtime) && $mtime > 0) {
+                $query .= '&v=' . $mtime;
+            }
+            return url('src/API/commerce_asset.php?' . $query);
+        }
+
+        if (str_starts_with($storedPath, self::LEGACY_WEB_PREFIX . '/')) {
             $root = dirname(__DIR__, 2);
             $full = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
             return is_file($full) ? url($storedPath) : '';
@@ -93,6 +140,20 @@ final class CommerceStorage
         }
 
         return '';
+    }
+
+    private static function centralStoredAbsolutePath(string $storedPath): ?string
+    {
+        $storedPath = ltrim(str_replace('\\', '/', trim($storedPath)), '/');
+        $prefix = self::WEB_PREFIX . '/';
+        if (!str_starts_with($storedPath, $prefix)) {
+            return null;
+        }
+        $relative = substr($storedPath, strlen($prefix));
+        if ($relative === '' || str_contains($relative, '..')) {
+            return null;
+        }
+        return self::mediaRoot() . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
     }
 
     /**
@@ -127,11 +188,7 @@ final class CommerceStorage
                 continue;
             }
             $destRel = self::relativePath($idCommerce, 'logo', 'logo.jpg');
-            $dest = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $destRel);
-            $destDir = dirname($dest);
-            if (!is_dir($destDir)) {
-                mkdir($destDir, 0775, true);
-            }
+            $dest = self::kindDir($idCommerce, 'logo') . DIRECTORY_SEPARATOR . 'logo.jpg';
             if (@copy($src, $dest)) {
                 $db->update('commerces', [
                     'logo' => $destRel,
@@ -163,11 +220,7 @@ final class CommerceStorage
                     continue;
                 }
                 $destRel = self::relativePath($idCommerce, $centralKind, $file);
-                $dest = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $destRel);
-                $destDir = dirname($dest);
-                if (!is_dir($destDir)) {
-                    mkdir($destDir, 0775, true);
-                }
+                $dest = self::kindDir($idCommerce, $centralKind) . DIRECTORY_SEPARATOR . $file;
                 if (@copy($src, $dest)) {
                     $stats['copied']++;
                 }
@@ -189,8 +242,8 @@ final class CommerceStorage
                     }
                     $basename = basename(str_replace('\\', '/', $img));
                     $centralRel = self::relativePath($idCommerce, 'services', $basename);
-                    $centralAbs = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $centralRel);
-                    if (!is_file($centralAbs)) {
+                    $centralAbs = self::absolutePath($idCommerce, $slug, $centralRel);
+                    if ($centralAbs === null || !is_file($centralAbs)) {
                         continue;
                     }
                     $svc = $db->fetchOne(

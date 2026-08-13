@@ -59,8 +59,32 @@ try {
     $respond(500, ['ok' => false, 'error' => 'No se pudo leer la base de datos']);
 }
 
-$todayObj = new DateTime('today');
 $nowTs    = time();
+
+$isBadgeReservaActive = static function (array $row) use ($nowTs): bool {
+    $statusKey = TenantLocalDb::normalizeStatusKey((string)($row['Status'] ?? $row['status'] ?? ''));
+    if (!in_array($statusKey, ['pendiente', 'aprobado', 'en progreso'], true)) {
+        return false;
+    }
+    $dateRaw = trim((string)($row['Fecha_Reserva'] ?? ''));
+    if ($dateRaw === '') {
+        return false;
+    }
+    $timeRaw = trim((string)($row['Hora_Reserva'] ?? '00:00:00'));
+    if ($timeRaw === '') {
+        $timeRaw = '00:00:00';
+    }
+    if (preg_match('/^\d{2}:\d{2}$/', $timeRaw)) {
+        $timeRaw .= ':00';
+    }
+    $ts = strtotime($dateRaw . ' ' . $timeRaw);
+    if ($ts === false) {
+        $dateObj = DateTime::createFromFormat('Y-m-d', $dateRaw)
+            ?: DateTime::createFromFormat('d/m/Y', $dateRaw);
+        return !$dateObj || $dateObj >= new DateTime('today');
+    }
+    return ($ts + 3600) >= $nowTs;
+};
 
 $normalizeName = static function ($value): string {
     $value = strtolower(trim((string)$value));
@@ -145,17 +169,9 @@ foreach ($reservas as $row) {
     $status = TenantLocalDb::normalizeStatusKey((string)($row['Status'] ?? ''));
     $statusRegistry[$status] = true;
 
-    if ($status !== 'pendiente' && $status !== 'sin confirmar') {
-        continue;
+    if ($isBadgeReservaActive($row)) {
+        $pendingBadge++;
     }
-    $dateRaw = trim((string)($row['Fecha_Reserva'] ?? ''));
-    if ($dateRaw === '') continue;
-    $dateObj = DateTime::createFromFormat('Y-m-d', $dateRaw)
-            ?: DateTime::createFromFormat('d/m/Y', $dateRaw);
-    if ($dateObj && $dateObj < $todayObj) {
-        continue;
-    }
-    $pendingBadge++;
 }
 
 $statusSeed = ['pendiente', 'aprobado', 'en progreso', 'rechazado', 'cancelado', 'finalizado'];
@@ -290,6 +306,9 @@ foreach ($prepared as $row) {
     $statusClass = TenantLocalDb::statusClassKey((string)$statusNorm);
     $timestampAttr = (isset($row['_timestamp']) && $row['_timestamp'] !== PHP_INT_MAX) ? (string)(int)$row['_timestamp'] : '';
     $idReserva = (int)($row['ID_Reserva'] ?? 0);
+    $canAttend = in_array($statusNorm, ['pendiente', 'aprobado'], true);
+    $canFinish = in_array($statusNorm, ['pendiente', 'aprobado', 'en progreso'], true);
+    $canModify = !in_array($statusNorm, ['rechazado', 'cancelado', 'finalizado'], true);
 
     $rowHtml .= '<tr data-admin-reserva-item data-admin-res-row-id="' . $idReserva . '" data-admin-reserva-status="' . $escape($statusNorm) . '" data-admin-reserva-fecha="' . $escape($row['Fecha_Reserva'] ?? '') . '" data-admin-reserva-hora="' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '" data-admin-reserva-ts="' . $escape($timestampAttr) . '" data-admin-reserva-price="' . $escape($servicePriceLabel) . '">';
     $rowHtml .= '<td data-heading="Cliente">' . $escape($clientName) . '</td>';
@@ -299,11 +318,17 @@ foreach ($prepared as $row) {
     $rowHtml .= '<td data-heading="Fecha">' . $escape($row['Fecha_Reserva'] ?? '') . '</td>';
     $rowHtml .= '<td data-heading="Hora">' . $escape(substr((string)($row['Hora_Reserva'] ?? ''), 0, 5)) . '</td>';
     $rowHtml .= '<td data-heading="Status"><span class="status-pill st-' . $escape($statusClass) . '">' . $escape($statusLabel) . '</span></td>';
-    if (in_array($statusNorm, ['pendiente','aprobado','en progreso','rechazado','cancelado','finalizado'], true)) {
-        $rowHtml .= '<td data-heading="Accion"><button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Ver</button></td>';
-    } else {
-        $rowHtml .= '<td data-heading="Accion"><span class="muted">-</span></td>';
+    $rowHtml .= '<td data-heading="Accion"><div class="admin-reserva-row-actions">';
+    if ($statusNorm === 'en progreso') {
+        $rowHtml .= '<button type="button" class="btn btn-primary btn-sm" data-admin-reserva-quick-status="Finalizado" data-admin-reserva-id="' . $idReserva . '"' . ($canFinish ? '' : ' disabled') . '>Finalizar</button>';
+    } elseif ($canAttend) {
+        $rowHtml .= '<button type="button" class="btn btn-secondary btn-sm" data-admin-reserva-quick-status="En progreso" data-admin-reserva-id="' . $idReserva . '"' . ($canAttend ? '' : ' disabled') . '>Atender</button>';
     }
+
+    if ($canModify) {
+        $rowHtml .= '<button type="button" class="btn btn-warning btn-sm" data-admin-view-reserva="' . $idReserva . '">Modificar</button>';
+    }
+    $rowHtml .= '</div></td>';
     $rowHtml .= '</tr>';
 
     if ($statusNorm === 'finalizado') {

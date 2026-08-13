@@ -354,7 +354,8 @@ $error   = $_GET['err'] ?? '';
         <div class="plans-grid">
             <?php foreach ($availablePlans as $p):
                 $isCurrent = $currentPlan && (int)$currentPlan['id_membership'] === (int)$p['id_membership'];
-                $features = MembershipPlan::features($p);
+                $displayDesc = MembershipPlan::displayDescription($p);
+                $comparisonRows = MembershipPlan::comparisonRows($p);
                 $maxProducts = MembershipPlan::maxProducts($p);
                 $maxServices = MembershipPlan::maxServices($p);
                 $maxAppts = MembershipPlan::maxAppointmentsMonth($p);
@@ -404,22 +405,26 @@ $error   = $_GET['err'] ?? '';
                         $limitBits[] = 'Ilimitado';
                     }
                 ?>
-                <?php if ($limitBits !== []): ?>
+                <?php if (false): ?>
                     <p class="plan-card__limit"><?= htmlspecialchars(implode(' · ', $limitBits), ENT_QUOTES, 'UTF-8') ?></p>
                 <?php endif; ?>
-                <?php if (!empty($p['descripcion'])): ?>
-                    <p class="plan-card__desc"><?= htmlspecialchars($p['descripcion'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php if ($displayDesc !== '' || !empty($p['descripcion'])): ?>
+                    <p class="plan-card__desc"><?= htmlspecialchars($displayDesc !== '' ? $displayDesc : (string)$p['descripcion'], ENT_QUOTES, 'UTF-8') ?></p>
                 <?php endif; ?>
-                <ul class="plan-card__features">
-                    <?php if ($features !== []): ?>
-                        <?php foreach ($features as $feat): ?>
-                            <li><?= htmlspecialchars($feat, ENT_QUOTES, 'UTF-8') ?></li>
+                <?php if ($comparisonRows !== []): ?>
+                    <ul class="plan-card__features" aria-label="Comparativa de <?= htmlspecialchars((string)$p['nombre'], ENT_QUOTES, 'UTF-8') ?>">
+                        <?php foreach ($comparisonRows as $row): ?>
+                            <?php $included = !empty($row['included']); ?>
+                            <li class="<?= $included ? 'is-included' : 'is-excluded' ?>">
+                                <span class="plan-card__feature-icon" aria-hidden="true"><?= $included ? '&#10003;' : '&#10005;' ?></span>
+                                <span class="plan-card__feature-copy">
+                                    <span class="plan-card__feature-label"><?= htmlspecialchars((string)($row['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="plan-card__feature-value"><?= htmlspecialchars((string)($row['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                </span>
+                            </li>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <li>Reservas online 24/7</li>
-                        <li>Soporte por email</li>
-                    <?php endif; ?>
-                </ul>
+                    </ul>
+                <?php endif; ?>
                 <div class="plan-card__cta">
                     <?php if ($isCurrent): ?>
                         <button class="btn btn-ghost" disabled>Ya estás en este plan</button>

@@ -247,7 +247,8 @@ final class CommercePanel
 
     public static function localDatabasePath(int $idCommerce): string
     {
-        $dir = CommerceStorage::baseDir($idCommerce);
+        $dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR
+            . 'storage' . DIRECTORY_SEPARATOR . 'tenants' . DIRECTORY_SEPARATOR . (string)$idCommerce;
         if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
             throw new \RuntimeException('No se pudo preparar el almacenamiento del comercio.');
         }
@@ -293,6 +294,7 @@ final class CommercePanel
             return;
         }
         self::defineLocalDatabasePath($idCommerce);
+        self::migrateLegacyLocalDatabase($idCommerce);
         if (self::localDatabaseExists($idCommerce)) {
             return;
         }
@@ -358,6 +360,21 @@ final class CommercePanel
             );
         } catch (\Throwable $e) {
             error_log('[CommercePanel.ensureLocalDatabase] ' . $e->getMessage());
+        }
+    }
+
+    private static function migrateLegacyLocalDatabase(int $idCommerce): void
+    {
+        if ($idCommerce <= 0 || self::localDatabaseExists($idCommerce)) {
+            return;
+        }
+        $legacy = CommerceStorage::legacyBaseDir($idCommerce) . DIRECTORY_SEPARATOR . 'database.php';
+        if (!is_file($legacy)) {
+            return;
+        }
+        $target = self::localDatabasePath($idCommerce);
+        if (@copy($legacy, $target)) {
+            @chmod($target, 0640);
         }
     }
 
@@ -427,7 +444,7 @@ final class CommercePanel
     public static function bootstrapStaffContext(string $tenantRootFromPath): string
     {
         $slug = self::resolveEffectiveSlug($tenantRootFromPath);
-        if ($slug === '' || self::isTemplateHost($slug)) {
+        if ($slug === '') {
             return '';
         }
 
@@ -467,7 +484,7 @@ final class CommercePanel
         }
 
         $slug = self::resolveEffectiveSlug($tenantRootFromPath);
-        if ($slug === '' || self::isTemplateHost($slug)) {
+        if ($slug === '') {
             return null;
         }
 

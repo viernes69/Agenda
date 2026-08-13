@@ -107,6 +107,10 @@
   let serviceAutoId = 1;
   let currentRubroName = '';
   let googleIdToken = '';
+  let isRestoringDraft = false;
+  let registerDraftTimer = null;
+
+  const REGISTER_DRAFT_KEY = 'agenduy-register-draft-v1';
 
   const regGoogleWrap = modal.querySelector('#reg-google-wrap');
 
@@ -240,6 +244,120 @@
     statusEl.classList.add(className);
   }
 
+  function collectRegisterFields() {
+    const fields = {};
+    Array.from(form.elements).forEach((field) => {
+      if (!field || !field.name || field.disabled) return;
+      if (field.type === 'file' || field.type === 'password') return;
+      if (field.type === 'checkbox') {
+        fields[field.name] = Boolean(field.checked);
+        return;
+      }
+      if (field.type === 'radio') {
+        if (field.checked) fields[field.name] = field.value;
+        return;
+      }
+      fields[field.name] = field.value;
+    });
+    return fields;
+  }
+
+  function applyRegisterFields(fields) {
+    if (!fields || typeof fields !== 'object') return;
+    Array.from(form.elements).forEach((field) => {
+      if (!field || !field.name || !Object.prototype.hasOwnProperty.call(fields, field.name)) return;
+      if (field.type === 'file' || field.type === 'password') return;
+      const value = fields[field.name];
+      if (field.type === 'checkbox') {
+        field.checked = Boolean(value);
+        return;
+      }
+      if (field.type === 'radio') {
+        field.checked = String(field.value) === String(value);
+        return;
+      }
+      field.value = String(value ?? '');
+    });
+  }
+
+  function collectServiceDraft() {
+    if (!serviceFormEl) return {};
+    return {
+      nombre: serviceFields.nombre ? serviceFields.nombre.value : '',
+      duracion: serviceFields.duracion ? serviceFields.duracion.value : '',
+      precio: serviceFields.precio ? serviceFields.precio.value : '',
+    };
+  }
+
+  function applyServiceDraft(draft) {
+    if (!draft || typeof draft !== 'object') return;
+    if (serviceFields.nombre) serviceFields.nombre.value = String(draft.nombre || '');
+    if (serviceFields.duracion) serviceFields.duracion.value = String(draft.duracion || '');
+    if (serviceFields.precio) serviceFields.precio.value = String(draft.precio || '');
+  }
+
+  function collectRegisterDraft() {
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      currentStep,
+      currentRubroName,
+      fields: collectRegisterFields(),
+      services: servicesData.map((service) => ({ ...service })),
+      serviceDraft: collectServiceDraft(),
+      horarios: collectHoursData(),
+    };
+  }
+
+  function hasRegisterDraftContent(draft) {
+    if (!draft || typeof draft !== 'object') return false;
+    const fields = draft.fields && typeof draft.fields === 'object' ? draft.fields : {};
+    const hasField = Object.entries(fields).some(([name, value]) => {
+      if (name === 'terms') return Boolean(value);
+      return String(value || '').trim() !== '';
+    });
+    const hasServices = Array.isArray(draft.services) && draft.services.length > 0;
+    const serviceDraft = draft.serviceDraft && typeof draft.serviceDraft === 'object' ? draft.serviceDraft : {};
+    const hasServiceDraft = Object.values(serviceDraft).some((value) => String(value || '').trim() !== '');
+    const hours = draft.horarios && typeof draft.horarios === 'object' ? draft.horarios : {};
+    const hasOpenDay = Object.values(hours).some((day) => day && typeof day === 'object' && day.abierto);
+    return hasField || hasServices || hasServiceDraft || hasOpenDay || Number(draft.currentStep || 0) > 0;
+  }
+
+  function saveRegisterDraftNow() {
+    if (isRestoringDraft || isSubmitting) return;
+    try {
+      const draft = collectRegisterDraft();
+      if (!hasRegisterDraftContent(draft)) {
+        sessionStorage.removeItem(REGISTER_DRAFT_KEY);
+        return;
+      }
+      sessionStorage.setItem(REGISTER_DRAFT_KEY, JSON.stringify(draft));
+    } catch (_) {}
+  }
+
+  function scheduleRegisterDraftSave() {
+    if (isRestoringDraft || isSubmitting) return;
+    window.clearTimeout(registerDraftTimer);
+    registerDraftTimer = window.setTimeout(saveRegisterDraftNow, 250);
+  }
+
+  function loadRegisterDraft() {
+    try {
+      const raw = sessionStorage.getItem(REGISTER_DRAFT_KEY);
+      const draft = raw ? JSON.parse(raw) : null;
+      return draft && typeof draft === 'object' ? draft : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clearRegisterDraft() {
+    try {
+      sessionStorage.removeItem(REGISTER_DRAFT_KEY);
+    } catch (_) {}
+  }
+
   function toggleProgress(show, message) {
     if (!progressOverlay || !modalDialog) return;
     if (message && progressMessage) {
@@ -280,6 +398,7 @@
     if (currentStep === HOURS_STEP) {
       prepareHoursStep();
     }
+    scheduleRegisterDraftSave();
   }
 
   function validateStep(index) {
@@ -525,6 +644,7 @@
     renderServicesList();
     resetServiceForm();
     showServiceError('');
+    scheduleRegisterDraftSave();
   }
 
   function removeServiceById(id) {
@@ -535,6 +655,7 @@
     servicesData = nextServices;
     renderServicesList();
     validateServicesStep();
+    scheduleRegisterDraftSave();
   }
 
   function onServiceListClick(event) {
@@ -717,6 +838,62 @@
     timezoneReady = true;
   }
 
+  function applyHoursDraft(schedule) {
+    if (!schedule || typeof schedule !== 'object') return;
+    if (typeof schedule.timezone === 'string') {
+      setTimezoneValue(schedule.timezone);
+    }
+    dayFieldsets.forEach((dayEl) => {
+      const key = dayEl.getAttribute('data-reg-hours-day') || '';
+      const day = key ? schedule[key] : null;
+      if (!day || typeof day !== 'object') return;
+      const toggle = dayEl.querySelector('[data-reg-hours-open]');
+      if (toggle) toggle.checked = Boolean(day.abierto);
+      setDayInputsState(dayEl, Boolean(day.abierto));
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-start]'), day.inicio || '09:00', '09:00');
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-end]'), day.fin || '18:00', '18:00');
+      const breakToggle = dayEl.querySelector('[data-reg-hours-break-toggle]');
+      if (breakToggle) breakToggle.checked = Boolean(day.descanso_inicio || day.descanso_fin);
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-break-start]'), day.descanso_inicio || '', '');
+      applyTimeSelect(dayEl.querySelector('[data-reg-hours-break-end]'), day.descanso_fin || '', '');
+      setDayInputsState(dayEl, Boolean(day.abierto));
+    });
+    timezoneReady = true;
+  }
+
+  function applyRegisterDraft(draft) {
+    if (!draft || typeof draft !== 'object') return null;
+    isRestoringDraft = true;
+    try {
+      applyRegisterFields(draft.fields || {});
+      currentRubroName = String(draft.currentRubroName || currentRubroName || '');
+      syncPhoneField();
+      syncBusinessTypeUi();
+      const restoredServices = Array.isArray(draft.services) ? draft.services : [];
+      let maxServiceId = 0;
+      servicesData = restoredServices.map((service) => {
+        const id = Number(service.id || service.tempId || 0) || (maxServiceId + 1);
+        maxServiceId = Math.max(maxServiceId, id);
+        return {
+          id,
+          nombre: String(service.nombre || ''),
+          duracion: Number(service.duracion) || 0,
+          estado: service.estado || 'Activo',
+          precio: Number(service.precio) || 0,
+          puntos: service.puntos ?? null,
+          imagenNombre: String(service.imagenNombre || ''),
+        };
+      });
+      serviceAutoId = maxServiceId + 1;
+      renderServicesList();
+      applyServiceDraft(draft.serviceDraft || {});
+      applyHoursDraft(draft.horarios || {});
+      return Number.isFinite(Number(draft.currentStep)) ? Number(draft.currentStep) : null;
+    } finally {
+      isRestoringDraft = false;
+    }
+  }
+
   function collectHoursData() {
     const schedule = { timezone: timezoneField ? timezoneField.value.trim() : '' };
     dayFieldsets.forEach((dayEl) => {
@@ -844,6 +1021,7 @@
         throw new Error(friendly(payload.error));
       }
 
+      clearRegisterDraft();
       redirectUrl = typeof payload.redirect === 'string' && payload.redirect ? payload.redirect : null;
       if (redirectUrl) {
         window.location.href = redirectUrl;
@@ -868,20 +1046,23 @@
     const rubroId = payload.rubroId || payload.rubro_id || '';
     const rubroName = payload.rubroNombre || payload.rubro_nombre || '';
     const incomingPlanId = payload.planId || payload.plan_id || '';
-    const resolvedPlanId = incomingPlanId || getPlanIdForRubro(rubroId);
 
     resetForm();
-    syncRubroSelection(rubroId ? String(rubroId) : '');
+    const draft = loadRegisterDraft();
+    const restoredStep = draft ? applyRegisterDraft(draft) : null;
+    const targetRubroId = rubroId ? String(rubroId) : (hiddenRubroId ? hiddenRubroId.value : '');
+    const targetPlanId = incomingPlanId || (hiddenPlanId ? hiddenPlanId.value : '') || getPlanIdForRubro(targetRubroId);
+    syncRubroSelection(targetRubroId);
     if (businessTypeSelect) {
       businessTypeSelect.value = inferBusinessType({ ...payload, rubroNombre: rubroName || currentRubroName });
       syncBusinessTypeUi();
     }
-    if (hiddenPlanNombre) hiddenPlanNombre.value = payload.planNombre || '';
+    if (hiddenPlanNombre && payload.planNombre) hiddenPlanNombre.value = payload.planNombre;
     currentRubroName = rubroName || currentRubroName || '';
-    syncPlanInfo(resolvedPlanId, currentRubroName);
+    syncPlanInfo(targetPlanId, currentRubroName);
     showError('');
     clearStatus();
-    setStep(0);
+    setStep(restoredStep !== null ? restoredStep : 0);
 
     if (payload.googleIdToken) {
       googleIdToken = String(payload.googleIdToken);
@@ -901,6 +1082,7 @@
     isOpen = true;
     restoreFocusEl = document.activeElement;
     modal.classList.remove('hidden');
+    document.documentElement.classList.add('modal-open');
     body.classList.add('modal-open');
     document.addEventListener('keydown', onKeydown);
     document.dispatchEvent(new CustomEvent('agendarte:register-opened'));
@@ -914,7 +1096,9 @@
 
   function closeModal() {
     if (!isOpen) return;
+    saveRegisterDraftNow();
     modal.classList.add('hidden');
+    document.documentElement.classList.remove('modal-open');
     body.classList.remove('modal-open');
     document.removeEventListener('keydown', onKeydown);
     isOpen = false;
@@ -1027,6 +1211,8 @@
   });
 
   document.addEventListener('click', onTriggerClick);
+  form.addEventListener('input', scheduleRegisterDraftSave);
+  form.addEventListener('change', scheduleRegisterDraftSave);
   if (serviceAddBtn) serviceAddBtn.addEventListener('click', addServiceFromForm);
   if (serviceResetBtn) serviceResetBtn.addEventListener('click', () => {
     resetServiceForm();

@@ -50,6 +50,20 @@ final class CommercePublic
 
     public static function resolveLocalDatabasePath(int $idCommerce, string $slug): ?string
     {
+        try {
+            $central = CommercePanel::localDatabasePath($idCommerce);
+            if (is_file($central)) {
+                return $central;
+            }
+        } catch (\Throwable $e) {
+            // Probar legacy.
+        }
+
+        $legacyCentral = CommerceStorage::legacyBaseDir($idCommerce) . DIRECTORY_SEPARATOR . 'database.php';
+        if (is_file($legacyCentral)) {
+            return $legacyCentral;
+        }
+
         $slug = trim($slug, '/');
         if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
             $legacy = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . $slug
@@ -58,14 +72,6 @@ final class CommercePublic
             if (is_file($legacy)) {
                 return $legacy;
             }
-        }
-        try {
-            $central = CommercePanel::localDatabasePath($idCommerce);
-            if (is_file($central)) {
-                return $central;
-            }
-        } catch (\Throwable $e) {
-            return null;
         }
         return null;
     }

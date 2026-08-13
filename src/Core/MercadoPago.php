@@ -51,6 +51,14 @@ final class MercadoPago
 
         if ($commerceId > 0) {
             $db = Database::getInstance();
+            try {
+                $centralSettings = CommerceSettings::get($commerceId, 'mercado_pago', []);
+                if ($centralSettings !== []) {
+                    $cfg = array_replace_recursive($cfg, $centralSettings);
+                }
+            } catch (\Throwable) {
+                // Mantener compatibilidad si la tabla de settings no esta disponible.
+            }
             $crypto = new Crypto((string)$db->config()['security']['encryption_key']);
             $rows = $db->fetchAll(
                 'SELECT key_name, key_value FROM api_keys
@@ -94,11 +102,25 @@ final class MercadoPago
         if ($name === '' || $name === 'free' || str_contains($name, 'gratis')) {
             return false;
         }
-        if (MembershipPlan::isBasicSettingsOnly($plan)) {
+        if (!MembershipPlan::isFullSettings($plan)) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Los pagos online de reservas son una prestacion Pro.
+     */
+    public static function isReservationCheckoutAllowed(?array $plan): bool
+    {
+        if (!self::isCommerceCheckoutAllowed($plan)) {
+            return false;
+        }
+        $name = self::normalizeName((string)($plan['nombre'] ?? ''));
+        return preg_match('/(^|[^a-z0-9])pro([^a-z0-9]|$)/', $name) === 1
+            || str_contains($name, 'profesional')
+            || str_contains($name, 'professional');
     }
 
     public static function isStoreCheckoutAllowed(?array $plan): bool

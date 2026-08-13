@@ -86,6 +86,11 @@
     if (/^(https?:|blob:|data:)/i.test(ref)) return ref;
     if (ref.startsWith('/')) return ref;
     const rel = ref.replace(/^\/+/, '');
+    if (rel.startsWith('commerce-assets/')) {
+      const appBase = appPublicBase();
+      const prefix = appBase || '';
+      return `${prefix}/src/API/commerce_asset.php?p=${encodeURIComponent(rel)}`;
+    }
     if (rel.startsWith('src/media/commerce/')) {
       const appBase = appPublicBase();
       return appBase ? `${appBase}/${rel}` : `/${rel}`;

@@ -32,6 +32,8 @@ $stylesPath = dirname(__DIR__) . '/src/css/styles.css';
 $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
 $logoIconPath = dirname(__DIR__) . '/src/media/logo/logo-icon.png';
 $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)time();
+$faviconPath = dirname(__DIR__) . '/src/img/favicon/favicon.png';
+$faviconVer = is_file($faviconPath) ? (string)filemtime($faviconPath) : $logoVer;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -45,7 +47,7 @@ $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)t
   <meta property="og:description" content="<?= h($pageDescription) ?>">
   <meta property="og:type" content="website">
   <meta property="og:image" content="<?= h($siteUrl . '/src/media/logo/og-image.png') ?>">
-  <link rel="icon" type="image/png" href="<?= h(url('src/img/favicon/favicon.png')) ?>">
+  <link rel="icon" type="image/png" href="<?= h(url('src/img/favicon/favicon.png?v=' . $faviconVer)) ?>">
   <link rel="stylesheet" href="<?= h(url('src/css/styles.css?v=' . $stylesVer)) ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
   <script src="<?= h(url('src/js/register/modal.js')) ?>" defer></script>

@@ -9,6 +9,8 @@
 !/storage/logs/.gitkeep
 /storage/uploads/*
 !/storage/uploads/.gitkeep
+/storage/tenants/*
+!/storage/tenants/.gitkeep
 /storage/backups/*
 !/storage/backups/.gitkeep
 **/.mail_secret

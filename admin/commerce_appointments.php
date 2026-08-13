@@ -33,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
         NotificationOutbox::enqueueAppointmentStatusNotifications($id, 'cancelled');
         $flash = ['type' => 'ok', 'msg' => 'Turno cancelado.'];
+    } elseif ($action === 'attend') {
+        $db->update('appointments', ['status' => 'in_progress', 'updated_at' => date('Y-m-d H:i:s')],
+            'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
+        $flash = ['type' => 'ok', 'msg' => 'Turno marcado como atendiendo.'];
     } elseif ($action === 'done') {
         $db->update('appointments', ['status' => 'done', 'updated_at' => date('Y-m-d H:i:s')],
             'id_appointment = :a AND id_commerce = :c', [':a' => $id, ':c' => $idCommerce]);
@@ -91,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $status = (string)($_GET['status'] ?? '');
 $where = 'id_commerce = :c';
 $params = [':c' => $idCommerce];
-if (in_array($status, ['pending','confirmed','done','cancelled','no_show'], true)) {
+if (in_array($status, ['pending','confirmed','in_progress','done','cancelled','no_show'], true)) {
     $where .= ' AND status = :s';
     $params[':s'] = $status;
 }
@@ -176,7 +180,7 @@ $appts = $db->fetchAll(
                 <label>Status</label>
                 <select name="status">
                     <option value="">Todos</option>
-                    <?php foreach (['pending','confirmed','done','cancelled','no_show'] as $opt): ?>
+                    <?php foreach (['pending','confirmed','in_progress','done','cancelled','no_show'] as $opt): ?>
                         <option value="<?= $opt ?>" <?= $status === $opt ? 'selected' : '' ?>><?= $opt ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -217,12 +221,20 @@ $appts = $db->fetchAll(
                                 <button class="btn btn-sm btn-ok" type="submit">Confirmar</button>
                             </form>
                         <?php endif; ?>
-                        <?php if ($a['status'] !== 'done' && $a['status'] !== 'cancelled'): ?>
+                        <?php if (!in_array($a['status'], ['done', 'cancelled'], true)): ?>
+                            <?php if ($a['status'] !== 'in_progress'): ?>
+                            <form method="post" style="display:inline">
+                                <?= CSRF::field('commerce_appts') ?>
+                                <input type="hidden" name="action" value="attend">
+                                <input type="hidden" name="id_appointment" value="<?= (int)$a['id_appointment'] ?>">
+                                <button class="btn btn-sm" type="submit">Atender</button>
+                            </form>
+                            <?php endif; ?>
                             <form method="post" style="display:inline">
                                 <?= CSRF::field('commerce_appts') ?>
                                 <input type="hidden" name="action" value="done">
                                 <input type="hidden" name="id_appointment" value="<?= (int)$a['id_appointment'] ?>">
-                                <button class="btn btn-sm" type="submit">Atendido</button>
+                                <button class="btn btn-sm" type="submit">Finalizar</button>
                             </form>
                             <form method="post" style="display:inline">
                                 <?= CSRF::field('commerce_appts') ?>

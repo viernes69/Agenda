@@ -75,7 +75,11 @@ try {
         throw new RuntimeException('No encontramos una reserva con esos datos.');
     }
 
-    $storedCedula = MagicLink::normalizeCedula($appointment['client_cedula_db'] ?? null);
+    $storedCedulaRaw = trim((string)($appointment['cliente_cedula'] ?? ''));
+    if ($storedCedulaRaw === '') {
+        $storedCedulaRaw = (string)($appointment['client_cedula_db'] ?? '');
+    }
+    $storedCedula = MagicLink::normalizeCedula($storedCedulaRaw);
     if ($storedCedula === '' || $storedCedula !== $cedula) {
         throw new RuntimeException('No encontramos una reserva con esos datos.');
     }

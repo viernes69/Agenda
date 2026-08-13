@@ -183,6 +183,8 @@ a{ color:inherit; }
   outline-offset: 2px;
 }
 
+html.modal-open,
+html:has(body.modal-open),
 body.modal-open{
   overflow: hidden;
 }
@@ -620,7 +622,7 @@ body.modal-open{
   font-size: clamp(2rem, 4.6vw, 3.4rem);
   font-weight:700;
   line-height:1.14;
-  letter-spacing:-.01em;
+  letter-spacing:0;
   color: var(--text);
   text-wrap:balance;
 }
@@ -1399,11 +1401,209 @@ body.modal-open{
     padding: clamp(16px, 4vw, 22px);
     max-height:min(88vh, 860px);
   }
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom: clamp(16px, 2vw, 24px);
+  flex-shrink:0;
+}
+.cat-header__text{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  text-align:center;
+  padding-inline:48px;
+}
+.cat-header h3{
+  margin:0;
+  font-size: clamp(1.05rem, 1.15vw + .6rem, 1.3rem);
+  color: var(--text);
+}
+.cat-subtitle{
+  margin:0;
+  font-size:.9rem;
+  color: var(--text-muted);
+}
+.cat-close{
+  position:absolute;
+  top:50%;
+  right:0;
+  transform:translateY(-50%);
+}
+.cat-close:hover{ transform: translateY(-50%) scale(1.05); }
+.cat-empty{ padding:28px 22px; color: var(--text-muted); text-align:center; }
+
+.cat-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  grid-auto-rows:max-content;
+  gap: clamp(18px, 2.2vw, 28px);
+  padding:6px 8px 24px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  min-height:0;
+  align-items:start;
+  align-content:start;
+  scroll-behavior:smooth;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.cat-grid::-webkit-scrollbar{ width:8px; }
+.cat-grid::-webkit-scrollbar-thumb{ background: var(--border-strong); border-radius:999px; }
+
+@media (min-width:640px){
+  .cat-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width:960px){
+  .cat-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+}
+
+/* Tarjetas foto + overlay. overflow:hidden + grid suele aplastar el min-size
+   a 0: forzamos max-content para que el CTA no se recorte. */
+.cat-card{
+  position:relative;
+  border-radius: var(--radius-md);
+  overflow:hidden;
+  isolation:isolate;
+  border:1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display:flex;
+  flex-direction:column;
+  height:max-content;
+  min-height:min-content;
+  width:100%;
+}
+.cat-imgfill{
+  position:relative;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  min-height:280px;
+  height:auto;
+  border-radius:inherit;
+  overflow:hidden;
+}
+.cat-imgfill img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  z-index:0;
+}
+.cat-imgfill::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background: linear-gradient(to top, rgba(10, 8, 25, .9) 6%, rgba(10, 8, 25, .52) 46%, rgba(10, 8, 25, .22) 100%);
+  z-index:1;
+  pointer-events:none;
+}
+.cat-overlay{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  align-items:stretch;
+  gap:10px;
+  padding: 18px 18px 20px;
+  color:#fff;
+  z-index:2;
+  width:100%;
+  box-sizing:border-box;
+  flex:0 0 auto;
+}
+.cat-overlay__text{
+  text-align:left;
+  width:100%;
+  max-width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.cat-ttl{
+  margin:0;
+  font-size:1.05rem;
+  font-weight:700;
+  line-height:1.25;
+  text-shadow:0 1px 6px rgba(0,0,0,.5);
+}
+.cat-desc.small{
+  margin:0;
+  font-size:.88rem;
+  line-height:1.4;
+  color: rgba(255,255,255,.88);
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+}
+.cat-planline{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  width:100%;
+  margin-top:6px;
+  flex:0 0 auto;
+  padding-bottom:2px;
+}
+.pill{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.14);
+  font-size:.78rem;
+  color:#fff;
+  white-space:nowrap;
+}
+.cat-overlay__cta{
+  display:flex;
+  justify-content:flex-start;
+  align-self:flex-start;
+}
+.btn-contratar{
+  appearance:none;
+  border:0;
+  cursor:pointer;
+  border-radius:999px;
+  padding:10px 20px;
+  font-weight:600;
+  font-size:.86rem;
+  line-height:1.3;
+  background: var(--brand-gradient);
+  color:#fff;
+  box-shadow:0 6px 16px rgba(93, 51, 190, .4);
+  max-width:100%;
+  white-space:normal;
+  text-align:center;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.btn-contratar:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+.btn-contratar:active{ transform: translateY(0); }
+
+@media (max-width:639px){
+  .cat-modal{
+    padding: clamp(16px, 4vw, 22px);
+    max-height:min(88vh, 860px);
+  }
   .cat-header__text{ padding-inline:40px; }
   .btn-contratar{ width:100%; }
 }
 
 /* ---------- Modal planes (planes.php) ---------- */
+#modal-planes .u-modal__dialog{
+  max-height: none;
+}
 #modal-planes .u-modal__content{
   background:transparent;
   border:0;
@@ -1447,7 +1647,6 @@ body.modal-open{
   line-height:1.4;
 }
 .plan-body{
-  overflow-y:auto;
   overflow-x:hidden;
   padding:2px 2px 4px;
   min-width:0;
@@ -1530,7 +1729,7 @@ body.modal-open{
   font-size: clamp(1.75rem, 2vw + 1rem, 2.15rem);
   font-weight:800;
   color: var(--primary);
-  letter-spacing:-.02em;
+  letter-spacing:0;
 }
 .plan-card__period{
   font-size:.88rem;
@@ -1541,7 +1740,7 @@ body.modal-open{
   margin:0;
   font-size:.82rem;
   font-weight:600;
-  color: var(--success);
+  color: var(--primary);
 }
 .plan-card__desc{
   margin:0;
@@ -1577,7 +1776,7 @@ body.modal-open{
   margin:0;
   font-size:.8rem;
   font-weight:600;
-  color: var(--success);
+  color: var(--primary);
 }
 .plan-card__limit{
   margin:0;
@@ -1594,7 +1793,7 @@ body.modal-open{
   color: var(--text-muted);
 }
 .plan-card__features li::before{
-  content:"✓ ";
+  content:"\2713 ";
   color: var(--success);
   font-weight:700;
 }
@@ -1873,9 +2072,14 @@ body.modal-open{
 /* ==========================================================================
    Modal de registro
    ========================================================================== */
+#modal-registro.u-modal{
+  padding: clamp(8px, 1.5vh, 18px) clamp(10px, 2vw, 22px);
+  overflow-x:hidden;
+  overflow-y:auto;
+}
 #modal-registro .u-modal__dialog{
-  width:min(720px, 100%);
-  max-height:calc(100vh - clamp(32px, 6vh, 80px));
+  width:min(960px, 100%);
+  max-height:none;
   display:flex;
   flex-direction:column;
   min-width:0;
@@ -1884,13 +2088,13 @@ body.modal-open{
   background: var(--modal-surface);
   color: var(--text);
   border-radius: var(--radius-lg);
-  padding: clamp(20px, 3vw, 28px);
-  overflow-y:auto;
+  padding: clamp(14px, 2vw, 24px) clamp(18px, 2.6vw, 34px);
+  overflow:visible;
   display:flex;
   flex-direction:column;
-  gap: clamp(18px, 2vw, 26px);
-  max-height:100%;
-  flex:1 1 auto;
+  gap: clamp(10px, 1.8vh, 18px);
+  max-height:none;
+  flex:0 1 auto;
 }
 #modal-registro .reg-modal{ position:relative; max-width:100%; min-width:0; }
 
@@ -1962,17 +2166,18 @@ body.modal-open{
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
-  gap:16px;
+  gap:14px;
 }
 .reg-modal__header h3{
-  margin-top:8px;
-  font-size: clamp(1.08rem, 1.2vw + .8rem, 1.45rem);
+  margin-top:6px;
+  max-width: 34em;
+  font-size: clamp(1.25rem, 1.1vw + 1rem, 1.9rem);
   color: var(--text);
-  line-height:1.35;
+  line-height:1.18;
 }
 .reg-modal__header .reg-subtitle{
-  margin-top:6px;
-  font-size:.92rem;
+  margin-top:8px;
+  font-size: clamp(.9rem, .3vw + .84rem, 1.05rem);
   color: var(--text-muted);
 }
 .reg-plan{
@@ -1999,7 +2204,7 @@ body.modal-open{
   align-items:center;
   justify-content:center;
   gap:6px;
-  padding:6px 14px;
+  padding:5px 14px;
   border-radius:999px;
   background: var(--success-soft);
   color: var(--success);
@@ -2029,7 +2234,7 @@ body.modal-open{
   justify-content:space-between;
   margin:0;
   padding:0;
-  gap: clamp(8px, 1vw, 16px);
+  gap: clamp(6px, .9vw, 12px);
   position:relative;
 }
 .reg-stepper li{
@@ -2037,7 +2242,7 @@ body.modal-open{
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:6px;
+  gap:5px;
   font-size:.72rem;
   color: var(--text-soft);
   text-transform:uppercase;
@@ -2047,16 +2252,16 @@ body.modal-open{
 .reg-stepper li::after{
   content:'';
   position:absolute;
-  top:15px;
-  left:calc(50% + 20px);
-  width:calc(100% - 40px);
+  top:14px;
+  left:calc(50% + 18px);
+  width:calc(100% - 36px);
   height:2px;
   background: var(--border);
 }
 .reg-stepper li:last-child::after{ display:none; }
 .reg-stepper li span{
-  width:32px;
-  height:32px;
+  width:30px;
+  height:30px;
   border-radius:50%;
   display:grid;
   place-items:center;
@@ -2083,11 +2288,12 @@ body.modal-open{
 .reg-form{
   display:flex;
   flex-direction:column;
-  gap:24px;
+  gap: clamp(12px, 1.6vh, 18px);
 }
 .reg-form h4{
   color: var(--text);
-  font-size:1.02rem;
+  font-size: clamp(.98rem, .35vw + .9rem, 1.15rem);
+  margin:0;
 }
 .reg-step{ display:block; }
 .reg-step[hidden]{ display:none !important; }
@@ -2098,9 +2304,9 @@ body.modal-open{
 }
 .reg-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-  gap:16px;
-  margin-top:16px;
+  grid-template-columns:repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap:12px clamp(14px, 1.6vw, 20px);
+  margin-top:12px;
   min-width:0;
 }
 .reg-field{
@@ -2128,7 +2334,7 @@ body.modal-open{
   border:1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--text);
-  padding:12px 14px;
+  padding:10px 12px;
   font-size:.92rem;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
@@ -2206,17 +2412,17 @@ body.modal-open{
 }
 
 .reg-collection-card{
-  margin-top:1rem;
-  padding: clamp(16px, 2vw, 24px);
+  margin-top:.8rem;
+  padding: clamp(12px, 1.6vw, 18px);
   border-radius: var(--radius-lg);
   background: var(--surface-2);
   border:1px solid var(--border);
   display:grid;
-  gap: clamp(16px, 1.5vw, 24px);
+  gap: clamp(12px, 1.2vw, 18px);
 }
 .reg-service-form{
   display:grid;
-  gap: clamp(14px, 1.4vw, 20px);
+  gap: clamp(10px, 1.1vw, 16px);
 }
 .reg-collection-actions{
   display:flex;
@@ -2305,7 +2511,7 @@ body.modal-open{
   display:flex;
   align-items:flex-start;
   gap:10px;
-  margin-top:18px;
+  margin-top:12px;
   font-size:.85rem;
   color: var(--text-muted);
 }
@@ -2396,17 +2602,25 @@ body.modal-open{
   text-align:left;
   margin-bottom:-6px;
 }
+.reg-footer{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:auto;
+}
 .reg-actions{
   display:flex;
   justify-content:flex-end;
   gap:12px;
   flex-wrap:wrap;
-  margin-top:12px;
+  margin-top:0;
+  margin-left:auto;
 }
 .reg-btn{
   border:0;
   border-radius: var(--radius-sm);
-  padding:12px 22px;
+  padding:11px 22px;
   font-weight:600;
   font-size:.9rem;
   cursor:pointer;
@@ -2448,13 +2662,13 @@ body.modal-open{
 /* Registro - horarios */
 .reg-hours{
   display:grid;
-  gap:1.4rem;
-  margin-bottom:1.4rem;
+  gap:.9rem;
+  margin-bottom:.7rem;
 }
 .reg-hours__group{
   display:grid;
-  gap:1rem;
-  padding:1.2rem;
+  gap:.75rem;
+  padding: clamp(.75rem, 1.4vw, 1rem);
   border-radius: var(--radius-md);
   border:1px solid var(--border);
   background: var(--surface-2);
@@ -2477,20 +2691,19 @@ body.modal-open{
 }
 .reg-hours-days{
   display:grid;
-  gap:1rem;
-  max-height: clamp(320px, 48vh, 520px);
-  overflow-y:auto;
-  padding-right:.5rem;
-  scrollbar-width:thin;
-  scrollbar-color: var(--border-strong) transparent;
+  grid-template-columns:repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap:.7rem;
+  max-height:none;
+  overflow:visible;
+  padding-right:0;
 }
 .reg-hours-day{
   border:1px solid var(--border);
   border-radius: var(--radius-md);
-  padding:1rem;
+  padding:.75rem;
   background: var(--surface);
   display:grid;
-  gap:.8rem;
+  gap:.55rem;
 }
 .reg-hours-day legend{
   font-weight:700;
@@ -2507,8 +2720,8 @@ body.modal-open{
 .reg-hours-toggle input{ accent-color: var(--primary); }
 .reg-hours-slots{
   display:grid;
-  gap:.75rem;
-  grid-template-columns:repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap:.55rem;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
 }
 .reg-hours-slots label{
   display:grid;
@@ -2521,10 +2734,10 @@ body.modal-open{
 .reg-hours-holidays__input input[type="date"]{
   border:1px solid var(--input-border);
   border-radius:.7rem;
-  padding:.45rem .6rem;
+  padding:.4rem .55rem;
   background: var(--input-bg);
   color: var(--text);
-  min-width:6.5rem;
+  min-width:0;
   font-variant-numeric: tabular-nums;
 }
 .reg-hours-slots input[type="time"]:disabled,
@@ -2580,9 +2793,17 @@ body.modal-open{
 }
 
 @media (max-width:768px){
+  #modal-registro.u-modal{
+    place-items:start center;
+    padding:8px;
+  }
   #modal-registro .reg-modal{
     border-radius: var(--radius-md);
-    max-height:calc(100vh - 24px);
+    max-height:none;
+  }
+  #modal-registro .u-modal__content{
+    padding:14px;
+    gap:12px;
   }
   .reg-grid{
     grid-template-columns:repeat(auto-fit, minmax(min(180px, 100%), 1fr));
@@ -2593,24 +2814,79 @@ body.modal-open{
   .reg-field input,
   .reg-field select{ padding:10px 12px; font-size:.88rem; }
   .reg-phone-field select{ flex:0 0 34%; max-width:140px; }
-  .reg-actions{ justify-content:center; gap:10px; }
+  .reg-footer{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .reg-actions{
+    justify-content:center;
+    gap:10px;
+    width:100%;
+    margin-left:0;
+  }
   .reg-btn{ flex:1 1 auto; min-width:140px; }
+  .reg-hours-days{
+    grid-template-columns:repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  }
 }
 @media (max-width:520px){
+  #modal-registro.u-modal{
+    padding:6px;
+  }
+  #modal-registro .u-modal__content{
+    padding:10px 12px;
+    gap:8px;
+  }
   .reg-modal__header{ flex-direction:column-reverse; align-items:flex-end; }
   .reg-modal__header > div{ width:100%; }
+  .reg-modal__header h3{
+    margin-top:4px;
+    font-size:1.12rem;
+    line-height:1.18;
+  }
+  .reg-modal__header .reg-subtitle,
+  .reg-plan,
+  .reg-plan-note{
+    margin-top:3px;
+    font-size:.78rem;
+  }
+  .reg-plan-note{
+    display:none;
+  }
+  .reg-badge{
+    padding:4px 12px;
+    font-size:.66rem;
+  }
   .reg-stepper{
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:12px 18px;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:4px;
   }
   .reg-stepper li{
-    flex:0 1 45%;
     text-align:center;
+    min-width:0;
+    font-size:.64rem;
   }
   .reg-stepper li::after{ display:none; }
-  .reg-grid{ grid-template-columns:1fr; }
+  .reg-stepper li small{ display:none; }
+  .reg-stepper li span{
+    width:26px;
+    height:26px;
+  }
+  .reg-form{ gap:8px; }
+  .reg-grid{
+    grid-template-columns:repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    gap:8px;
+    margin-top:8px;
+  }
   .reg-field{ width:100%; }
+  .reg-field{ gap:3px; }
+  .reg-field span{ font-size:.74rem; }
+  .reg-field input,
+  .reg-field select{
+    padding:8px 10px;
+    font-size:.84rem;
+  }
   .reg-phone-field{
     flex-direction:column;
     align-items:stretch;
@@ -2624,11 +2900,46 @@ body.modal-open{
   .reg-actions [data-step-prev],
   .reg-actions [data-step-next]{
     flex:1 1 calc(50% - 10px);
-    min-width:140px;
+    min-width:120px;
+  }
+  .reg-btn{ padding:9px 14px; }
+  .reg-hours-slots{
+    grid-template-columns:1fr;
   }
 }
 @media (max-width:640px){
   .reg-hours__grid--tz{ grid-template-columns:minmax(0, 1fr); }
+}
+@media (max-height:740px) and (min-width:769px){
+  #modal-registro.u-modal{
+    padding-block:8px;
+  }
+  #modal-registro .u-modal__content{
+    padding-block:12px;
+    gap:9px;
+  }
+  .reg-modal__header h3{
+    font-size:1.32rem;
+  }
+  .reg-modal__header .reg-subtitle,
+  .reg-plan,
+  .reg-plan-note{
+    margin-top:4px;
+  }
+  .reg-stepper li small{
+    display:none;
+  }
+  .reg-form,
+  .reg-grid{
+    gap:10px;
+  }
+  .reg-field input,
+  .reg-field select{
+    padding:8px 10px;
+  }
+  .reg-btn{
+    padding:9px 18px;
+  }
 }
 
 /* ==========================================================================
@@ -2961,7 +3272,7 @@ body[data-theme="dark"] .brand-logo--on-dark{
 .seo-page__hero h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   margin-bottom: 1rem;
   background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
   -webkit-background-clip: text;

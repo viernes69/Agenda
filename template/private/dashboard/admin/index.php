@@ -145,16 +145,13 @@ $dbPath = (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) 
 $dbFull = is_file($dbPath) ? @include $dbPath : null;
 if (is_array($dbFull) && isset($dbFull['info_barberia']) && is_array($dbFull['info_barberia'])) {
   $infoBarberia = $dbFull['info_barberia'];
-if (!isset($infoBarberia['temas']) || !is_array($infoBarberia['temas'])) {
-  $infoBarberia['temas'] = ['publico' => 'oscuro', 'privado' => 'oscuro'];
-} else {
-  if (!isset($infoBarberia['temas']['publico']) || !in_array($infoBarberia['temas']['publico'], ['oscuro', 'claro'], true)) {
-    $infoBarberia['temas']['publico'] = 'oscuro';
-  }
-  if (!isset($infoBarberia['temas']['privado']) || !in_array($infoBarberia['temas']['privado'], ['oscuro', 'claro'], true)) {
-    $infoBarberia['temas']['privado'] = 'oscuro';
-  }
 }
+try {
+  $infoBarberia = \Agenduy\Core\CommerceConfig::infoForSlug($tenantSlug, $infoBarberia);
+} catch (Throwable $e) {
+  if (!isset($infoBarberia['temas']) || !is_array($infoBarberia['temas'])) {
+    $infoBarberia['temas'] = ['publico' => 'oscuro', 'privado' => 'oscuro'];
+  }
 }
 $businessName = '';
 $businessNameRaw = $infoBarberia['nombre'] ?? '';
@@ -178,6 +175,7 @@ $maxClientsLimit = null;
 $maxProductsLimit = null;
 $maxProfessionalsLimit = null;
 $commerceCheckoutAllowed = false;
+$reservationCheckoutAllowed = false;
 try {
   $currentPlanRow = \Agenduy\Core\MembershipPlan::forCommerceSlug($tenantSlug);
   if (is_array($currentPlanRow)) {
@@ -186,6 +184,7 @@ try {
     $maxProductsLimit = \Agenduy\Core\MembershipPlan::maxProducts($currentPlanRow);
     $maxProfessionalsLimit = \Agenduy\Core\MembershipPlan::maxProfessionals($currentPlanRow);
     $commerceCheckoutAllowed = \Agenduy\Core\MercadoPago::isCommerceCheckoutAllowed($currentPlanRow);
+    $reservationCheckoutAllowed = \Agenduy\Core\MercadoPago::isReservationCheckoutAllowed($currentPlanRow);
   }
 } catch (Throwable $e) {
   $planSettingsTier = 'full';
@@ -193,6 +192,7 @@ try {
   $maxProductsLimit = null;
   $maxProfessionalsLimit = null;
   $commerceCheckoutAllowed = false;
+  $reservationCheckoutAllowed = false;
 }
 // Source of truth: CommerceSettings funciones (central DB), fallback: legacy features (local database.php)
 $funcionesFromLegacy = $infoBarberia['features'] ?? [];
@@ -980,10 +980,23 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('agendarte-theme') || localStorage.getItem('agendarte-admin-theme') || 'dark';
+        if (theme !== 'dark' && theme !== 'light') theme = 'dark';
+        document.documentElement.setAttribute('data-admin-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (error) {
+        document.documentElement.setAttribute('data-admin-theme', 'dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=4">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1442,7 +1455,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                 if (preg_match('#^https?://#i', $photo)) {
                   $photoUrl = $photo;
                 } else {
-                  $photoUrl = '../../../' . ltrim($photo, '/');
+                  $photoUrl = admin_tenant_asset_url($photo);
                 }
               }
               $initials = '';
@@ -1835,7 +1848,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         <p class="muted admin-products-empty" data-empty-base="<?php echo e($productsEmptyBase); ?>" data-empty-filter="No hay productos para el tipo seleccionado."<?php echo ($productCount ?? 0) > 0 ? ' hidden' : ''; ?>><?php echo e($productsEmptyBase); ?></p>
       </section>
       <section class="admin-section" id="config">
-        <div class="admin-config-grid" data-admin-config-grid data-settings-tier="<?php echo e($planSettingsTier); ?>" data-commerce-checkout-allowed="<?php echo $commerceCheckoutAllowed ? '1' : '0'; ?>">
+        <div class="admin-config-grid" data-admin-config-grid data-settings-tier="<?php echo e($planSettingsTier); ?>" data-commerce-checkout-allowed="<?php echo $commerceCheckoutAllowed ? '1' : '0'; ?>" data-reservation-checkout-allowed="<?php echo $reservationCheckoutAllowed ? '1' : '0'; ?>">
           <?php
             $configOptions = [
               ['id' => 'info', 'title' => 'Info. del Negocio', 'icon' => 'bx-buildings'],
@@ -1910,7 +1923,6 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         <span>Salir</span>
       </button>
     </nav>
-  </div>
   <div id="admin-modal-root">
     <?php
     $adminComponentsDir = __DIR__ . '/../src/components';
@@ -1951,6 +1963,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
         }
     }
     ?>
+  </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -129,12 +129,8 @@ $useCarousel = $planTotal > 3;
             $desc = trim((string)($p['descripcion'] ?? ''));
             $moneda = strtoupper(trim((string)($p['moneda'] ?? 'UYU')));
             $trialDias = (int)($p['trial_dias'] ?? 0);
-            $features = MembershipPlan::features($p);
-            $maxProducts = MembershipPlan::maxProducts($p);
-            $maxServices = MembershipPlan::maxServices($p);
-            $maxAppts = MembershipPlan::maxAppointmentsMonth($p);
-            $maxProfessionals = MembershipPlan::maxProfessionals($p);
-            $maxClients = MembershipPlan::maxClients($p);
+            $displayDesc = MembershipPlan::displayDescription($p);
+            $comparisonRows = MembershipPlan::comparisonRows($p);
             $yearly = MembershipPlan::yearlyPrice($p);
             $discount = MembershipPlan::annualDiscountPct($p);
             $hasAnnual = MembershipPlan::isAnnualEnabled($p);
@@ -170,39 +166,23 @@ $useCarousel = $planTotal > 3;
                   <?php echo e((string)(int)$discount); ?>% off anual
                 </p>
               <?php endif; ?>
-              <?php
-                $limitBits = [];
-                if ($maxAppts !== null) {
-                    $limitBits[] = 'Hasta ' . $maxAppts . ' reservas/mes';
-                }
-                if ($maxProfessionals !== null) {
-                    $limitBits[] = $maxProfessionals === 1
-                        ? '1 profesional'
-                        : ('Hasta ' . $maxProfessionals . ' profesionales');
-                }
-                if ($maxClients !== null) {
-                    $limitBits[] = 'Hasta ' . $maxClients . ' clientes';
-                }
-                if ($maxServices !== null) {
-                    $limitBits[] = $maxServices . ' servicios';
-                }
-                if ($maxProducts !== null) {
-                    $limitBits[] = $maxProducts === 0 ? '0 productos' : ('Hasta ' . $maxProducts . ' productos');
-                }
-                if ($limitBits === [] && MembershipPlan::settingsTier($p) === MembershipPlan::SETTINGS_TIER_FULL) {
-                    $limitBits[] = 'Ilimitado';
-                }
-              ?>
-              <?php if ($limitBits !== []): ?>
+              <?php if ($displayDesc !== '' || $desc !== ''): ?>
+                <p class="plan-membership-card__desc"><?php echo e($displayDesc !== '' ? $displayDesc : $desc); ?></p>
+              <?php endif; ?>
+              <?php if (false): ?>
                 <p class="plan-membership-card__limit"><?php echo e(implode(' · ', $limitBits)); ?></p>
               <?php endif; ?>
-              <?php if ($desc !== ''): ?>
-                <p class="plan-membership-card__desc"><?php echo e($desc); ?></p>
-              <?php endif; ?>
-              <?php if ($features !== []): ?>
-                <ul class="plan-membership-card__features">
-                  <?php foreach ($features as $feat): ?>
-                    <li><?php echo e($feat); ?></li>
+              <?php if ($comparisonRows !== []): ?>
+                <ul class="plan-membership-card__features" aria-label="Comparativa de <?php echo e($nombre); ?>">
+                  <?php foreach ($comparisonRows as $row): ?>
+                    <?php $included = !empty($row['included']); ?>
+                    <li class="<?php echo $included ? 'is-included' : 'is-excluded'; ?>">
+                      <span class="plan-membership-card__feature-icon" aria-hidden="true"><?php echo $included ? '&#10003;' : '&#10005;'; ?></span>
+                      <span class="plan-membership-card__feature-copy">
+                        <span class="plan-membership-card__feature-label"><?php echo e((string)($row['label'] ?? '')); ?></span>
+                        <span class="plan-membership-card__feature-value"><?php echo e((string)($row['value'] ?? '')); ?></span>
+                      </span>
+                    </li>
                   <?php endforeach; ?>
                 </ul>
               <?php endif; ?>

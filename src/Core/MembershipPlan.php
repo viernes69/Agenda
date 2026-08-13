@@ -17,6 +17,7 @@ final class MembershipPlan
     public const LIMIT_SETTINGS_TIER = 'settings_tier';
 
     public const SETTINGS_TIER_BASIC = 'basic';
+    public const SETTINGS_TIER_MEDIUM = 'medium';
     public const SETTINGS_TIER_FULL = 'full';
 
     public const CODE_PLAN_DENIED = 'PLAN_LIMIT';
@@ -55,6 +56,25 @@ final class MembershipPlan
     }
 
     /**
+     * Config keys allowed when settings_tier=medium.
+     *
+     * @return list<string>
+     */
+    public static function mediumAllowedConfigKeys(): array
+    {
+        return [
+            'info_barberia',
+            'redes',
+            'horarios',
+            'reservas',
+            'carrito',
+            'moneda',
+            'notificaciones',
+            'funciones',
+        ];
+    }
+
+    /**
      * Nested keys inside info_barberia that basic plans cannot save.
      *
      * @return list<string>
@@ -74,6 +94,37 @@ final class MembershipPlan
             'temas',
             'tema',
         ];
+    }
+
+    /**
+     * Nested keys inside info_barberia that medium plans cannot save.
+     *
+     * @return list<string>
+     */
+    public static function mediumBlockedInfoSections(): array
+    {
+        return [
+            'fiscal',
+            'seo',
+            'mercadopago',
+            'mercado_pago',
+            'legales',
+            'legal',
+            'temas',
+            'tema',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function blockedInfoSections(array $plan): array
+    {
+        return match (self::settingsTier($plan)) {
+            self::SETTINGS_TIER_BASIC => self::basicBlockedInfoSections(),
+            self::SETTINGS_TIER_MEDIUM => self::mediumBlockedInfoSections(),
+            default => [],
+        };
     }
 
     /**
@@ -187,9 +238,11 @@ final class MembershipPlan
     public static function settingsTier(array $plan): string
     {
         $tier = strtolower(trim((string)(self::limits($plan)[self::LIMIT_SETTINGS_TIER] ?? self::SETTINGS_TIER_FULL)));
-        return $tier === self::SETTINGS_TIER_BASIC
-            ? self::SETTINGS_TIER_BASIC
-            : self::SETTINGS_TIER_FULL;
+        return match ($tier) {
+            self::SETTINGS_TIER_BASIC => self::SETTINGS_TIER_BASIC,
+            self::SETTINGS_TIER_MEDIUM, 'media' => self::SETTINGS_TIER_MEDIUM,
+            default => self::SETTINGS_TIER_FULL,
+        };
     }
 
     public static function isBasicSettingsOnly(array $plan): bool
@@ -197,12 +250,26 @@ final class MembershipPlan
         return self::settingsTier($plan) === self::SETTINGS_TIER_BASIC;
     }
 
+    public static function isMediumSettings(array $plan): bool
+    {
+        return self::settingsTier($plan) === self::SETTINGS_TIER_MEDIUM;
+    }
+
+    public static function isFullSettings(array $plan): bool
+    {
+        return self::settingsTier($plan) === self::SETTINGS_TIER_FULL;
+    }
+
     public static function allowsConfigKey(array $plan, string $key): bool
     {
-        if (!self::isBasicSettingsOnly($plan)) {
+        $tier = self::settingsTier($plan);
+        if ($tier === self::SETTINGS_TIER_FULL) {
             return true;
         }
-        return in_array($key, self::basicAllowedConfigKeys(), true);
+        $allowed = $tier === self::SETTINGS_TIER_MEDIUM
+            ? self::mediumAllowedConfigKeys()
+            : self::basicAllowedConfigKeys();
+        return in_array($key, $allowed, true);
     }
 
     /**
@@ -286,7 +353,9 @@ final class MembershipPlan
     public static function isConsumingAppointmentStatus(string $status): bool
     {
         $st = strtolower(trim($status));
-        return in_array($st, ['aprobado', 'en progreso', 'finalizado', 'atendido'], true);
+        $st = str_replace(['_', '-'], ' ', $st);
+        $st = preg_replace('/\s+/', ' ', $st) ?? $st;
+        return in_array($st, ['aprobado', 'en progreso', 'atendiendo', 'finalizado', 'atendido'], true);
     }
 
     /**
@@ -406,6 +475,132 @@ final class MembershipPlan
         return $save > 0 ? round($save, 2) : 0.0;
     }
 
+    public static function displayDescription(array $plan): string
+    {
+        return match (self::displayKey($plan)) {
+            'free' => 'Ideal para empezar, validar tu agenda y recibir las primeras reservas de un comercio chico.',
+            'basic' => 'Para comercios en pleno crecimiento: mas capacidad, tienda inicial y una segunda etapa mas ordenada.',
+            'pro' => 'Para olvidarte de la membresia: agenda, clientes, equipo, tienda y soporte prioritario sin limites chicos.',
+            default => trim((string)($plan['descripcion'] ?? '')) ?: 'Plan flexible para gestionar tu negocio en Agendarte UY.',
+        };
+    }
+
+    /**
+     * @return list<array{label:string,value:string,included:bool}>
+     */
+    public static function comparisonRows(array $plan): array
+    {
+        $key = self::displayKey($plan);
+        $isFree = $key === 'free';
+        $isPro = $key === 'pro';
+
+        $maxAppts = self::maxAppointmentsMonth($plan);
+        $maxClients = self::maxClients($plan);
+        $maxProfessionals = self::maxProfessionals($plan);
+        $maxServices = self::maxServices($plan);
+        $maxProducts = self::maxProducts($plan);
+
+        return [
+            [
+                'label' => 'Reservas al mes',
+                'value' => self::limitLabel($maxAppts, 'reserva', 'reservas'),
+                'included' => $maxAppts !== 0,
+            ],
+            [
+                'label' => 'Clientes registrados',
+                'value' => self::limitLabel($maxClients, 'cliente', 'clientes'),
+                'included' => $maxClients !== 0,
+            ],
+            [
+                'label' => 'Profesionales',
+                'value' => self::limitLabel($maxProfessionals, 'profesional', 'profesionales'),
+                'included' => $maxProfessionals !== 0,
+            ],
+            [
+                'label' => 'Servicios',
+                'value' => self::limitLabel($maxServices, 'servicio', 'servicios'),
+                'included' => $maxServices !== 0,
+            ],
+            [
+                'label' => 'Productos en tienda',
+                'value' => $maxProducts === 0 ? 'No incluido' : self::limitLabel($maxProducts, 'producto', 'productos'),
+                'included' => $maxProducts !== 0 && !$isFree,
+            ],
+            [
+                'label' => 'Configuracion basica',
+                'value' => 'Incluida',
+                'included' => true,
+            ],
+            [
+                'label' => 'Configuracion completa',
+                'value' => $isPro ? 'Incluida' : 'No incluida',
+                'included' => $isPro,
+            ],
+            [
+                'label' => $isFree ? 'Agenda online basica' : 'Agenda y recordatorios',
+                'value' => $isFree ? 'Basica' : 'Incluido',
+                'included' => true,
+            ],
+            [
+                'label' => 'Mercado Pago en tienda',
+                'value' => $isFree ? 'No incluido' : 'Incluido',
+                'included' => !$isFree,
+            ],
+            [
+                'label' => 'Reportes avanzados',
+                'value' => $isPro ? 'Incluidos' : 'No incluidos',
+                'included' => $isPro,
+            ],
+            [
+                'label' => 'Soporte por email',
+                'value' => $isFree ? 'No incluido' : 'Incluido',
+                'included' => !$isFree,
+            ],
+            [
+                'label' => 'Soporte por WhatsApp',
+                'value' => $isPro ? 'Prioritario' : 'No incluido',
+                'included' => $isPro,
+            ],
+        ];
+    }
+
+    public static function displayKey(array $plan): string
+    {
+        $name = self::normalizeName((string)($plan['nombre'] ?? ''));
+        if ($name === 'free' || str_contains($name, 'gratis')) {
+            return 'free';
+        }
+        if (str_contains($name, 'basico') || str_contains($name, 'basic')) {
+            return 'basic';
+        }
+        if (str_contains($name, 'profesional') || str_contains($name, 'professional') || preg_match('/(^|[^a-z0-9])pro([^a-z0-9]|$)/', $name)) {
+            return 'pro';
+        }
+        return 'custom';
+    }
+
+    private static function limitLabel(?int $limit, string $singular, string $plural): string
+    {
+        if ($limit === null) {
+            return 'Ilimitado';
+        }
+        if ($limit <= 0) {
+            return 'No incluido';
+        }
+        return $limit === 1 ? '1 ' . $singular : 'Hasta ' . $limit . ' ' . $plural;
+    }
+
+    private static function normalizeName(string $name): string
+    {
+        $name = strtolower(trim($name));
+        $name = str_replace(
+            ["\xc3\xa1", "\xc3\xa9", "\xc3\xad", "\xc3\xb3", "\xc3\xba", "\xc3\x81", "\xc3\x89", "\xc3\x8d", "\xc3\x93", "\xc3\x9a"],
+            ['a', 'e', 'i', 'o', 'u', 'a', 'e', 'i', 'o', 'u'],
+            $name
+        );
+        return preg_replace('/\s+/', ' ', $name) ?? $name;
+    }
+
     public static function forCommerceSlug(string $slug): ?array
     {
         $slug = trim($slug);
@@ -486,7 +681,7 @@ final class MembershipPlan
                     self::LIMIT_MAX_APPOINTMENTS_MONTH => 100,
                     self::LIMIT_MAX_PROFESSIONALS => 3,
                     self::LIMIT_MAX_CLIENTS => 100,
-                    self::LIMIT_SETTINGS_TIER => self::SETTINGS_TIER_FULL,
+                    self::LIMIT_SETTINGS_TIER => self::SETTINGS_TIER_MEDIUM,
                 ],
                 'anual_habilitado' => 1,
                 'descuento_anual_pct' => 20.0,

@@ -6,7 +6,8 @@ namespace Agenduy\Core;
 /**
  * Lectura/escritura con flock de la base local del comercio.
  *
- * Prioriza src/media/commerce/{id}/database.php y mantiene compatibilidad con
+ * Prioriza storage/tenants/{id}/database.php y mantiene compatibilidad con
+ * src/media/commerce/{id}/database.php y
  * {slug}/src/db/database.php para comercios legacy.
  */
 final class TenantLocalDb
@@ -66,13 +67,13 @@ final class TenantLocalDb
             return null;
         }
 
-        $root = dirname(__DIR__, 2);
-        $path = $root . DIRECTORY_SEPARATOR
-            . str_replace('/', DIRECTORY_SEPARATOR, CommerceStorage::WEB_PREFIX)
-            . DIRECTORY_SEPARATOR . (string)$idCommerce
-            . DIRECTORY_SEPARATOR . 'database.php';
+        $path = CommercePanel::localDatabasePath($idCommerce);
+        if (is_file($path)) {
+            return $path;
+        }
 
-        return is_file($path) ? $path : null;
+        $legacy = CommerceStorage::legacyBaseDir($idCommerce) . DIRECTORY_SEPARATOR . 'database.php';
+        return is_file($legacy) ? $legacy : null;
     }
 
     public static function lockPathForSlug(string $slug): string
@@ -127,6 +128,7 @@ final class TenantLocalDb
                         cl.apellido AS client_apellido_db,
                         cl.email AS client_email_db,
                         cl.telefono AS client_telefono_db,
+                        cl.cedula AS client_cedula_db,
                         cl.avatar AS client_avatar_db
                  FROM appointments a
                  LEFT JOIN services s ON s.id_service = a.id_service
@@ -144,6 +146,9 @@ final class TenantLocalDb
                 }
                 if (empty($appt['cliente_telefono']) && !empty($appt['client_telefono_db'])) {
                     $appt['cliente_telefono'] = $appt['client_telefono_db'];
+                }
+                if (empty($appt['cliente_cedula']) && !empty($appt['client_cedula_db'])) {
+                    $appt['cliente_cedula'] = $appt['client_cedula_db'];
                 }
                 if (!empty($appt['client_avatar_db'])) {
                     $appt['cliente_avatar'] = $appt['client_avatar_db'];
@@ -319,23 +324,26 @@ final class TenantLocalDb
         string $nombre,
         string $telefono = '',
         string $email = '',
-        string $perfil = ''
+        string $perfil = '',
+        string $cedula = ''
     ): ?int {
         $nombre = trim($nombre);
         $telefono = trim($telefono);
         $email = trim($email);
         $perfil = trim($perfil);
-        if ($nombre === '' && $telefono === '' && $email === '') {
+        $cedula = trim($cedula);
+        if ($nombre === '' && $telefono === '' && $email === '' && $cedula === '') {
             return null;
         }
 
-        return self::mutate($slug, static function (array $db) use ($nombre, $telefono, $email, $perfil) {
+        return self::mutate($slug, static function (array $db) use ($nombre, $telefono, $email, $perfil, $cedula) {
             if (!isset($db['clientes']) || !is_array($db['clientes']) || !isset($db['clientes'][0])) {
                 return [$db, null];
             }
 
             $emailNorm = $email !== '' ? mb_strtolower($email, 'UTF-8') : '';
             $phoneDigits = $telefono !== '' ? preg_replace('/\D+/', '', $telefono) : '';
+            $cedulaDigits = $cedula !== '' ? preg_replace('/\D+/', '', $cedula) : '';
 
             foreach ($db['clientes'] as $idx => $row) {
                 if ($idx === 0 || !is_array($row)) {
@@ -343,9 +351,15 @@ final class TenantLocalDb
                 }
                 $rowEmail = mb_strtolower(trim((string)($row['Email'] ?? '')), 'UTF-8');
                 $rowPhone = preg_replace('/\D+/', '', (string)($row['Telefono'] ?? ''));
+                $rowCedula = preg_replace('/\D+/', '', (string)($row['Cedula'] ?? ''));
                 $matchEmail = $emailNorm !== '' && $rowEmail !== '' && $rowEmail === $emailNorm;
                 $matchPhone = $phoneDigits !== '' && $rowPhone !== '' && $rowPhone === $phoneDigits;
-                if ($matchEmail || $matchPhone) {
+                $matchCedula = $cedulaDigits !== '' && $rowCedula !== '' && $rowCedula === $cedulaDigits;
+                if ($matchEmail || $matchPhone || $matchCedula) {
+                    if ($cedula !== '' && array_key_exists('Cedula', $db['clientes'][$idx])
+                        && trim((string)($db['clientes'][$idx]['Cedula'] ?? '')) === '') {
+                        $db['clientes'][$idx]['Cedula'] = $cedula;
+                    }
                     // Backfill del avatar de Google si el registro local todavía no tiene Perfil.
                     if ($perfil !== '' && array_key_exists('Perfil', $db['clientes'][$idx])
                         && trim((string)($db['clientes'][$idx]['Perfil'] ?? '')) === '') {
@@ -370,7 +384,7 @@ final class TenantLocalDb
                 $row['Email'] = $email;
             }
             if (array_key_exists('Cedula', $row) && ($row['Cedula'] === null || $row['Cedula'] === '')) {
-                $row['Cedula'] = '';
+                $row['Cedula'] = $cedula;
             }
             if (array_key_exists('Perfil', $row) && ($row['Perfil'] === null || $row['Perfil'] === '')) {
                 $row['Perfil'] = $perfil;
@@ -410,8 +424,9 @@ final class TenantLocalDb
         $clienteNombre = trim((string)($appointment['cliente_nombre'] ?? ''));
         $clienteEmail = trim((string)($appointment['cliente_email'] ?? ''));
         $clienteTelefono = trim((string)($appointment['cliente_telefono'] ?? ''));
+        $clienteCedula = trim((string)($appointment['cliente_cedula'] ?? ''));
         $clienteAvatar = trim((string)($appointment['cliente_avatar'] ?? ''));
-        $clienteId = self::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar);
+        $clienteId = self::findOrCreateCliente($slug, $clienteNombre, $clienteTelefono, $clienteEmail, $clienteAvatar, $clienteCedula);
 
         $idLocalService = null;
         if (isset($appointment['id_local']) && is_numeric($appointment['id_local'])) {
@@ -618,7 +633,8 @@ final class TenantLocalDb
     public static function mapLocalStatusToCentral(string $status): string
     {
         return match (self::normalizeStatusKey($status)) {
-            'aprobado', 'en progreso' => 'confirmed',
+            'aprobado' => 'confirmed',
+            'en progreso' => 'in_progress',
             'cancelado', 'rechazado' => 'cancelled',
             'finalizado' => 'done',
             default => 'pending',
@@ -656,7 +672,7 @@ final class TenantLocalDb
         return match ($key) {
             'pendiente' => 'Pendiente',
             'aprobado' => 'Reservado',
-            'en progreso' => 'En progreso',
+            'en progreso' => 'Atendiendo',
             'rechazado' => 'Rechazado',
             'cancelado' => 'Cancelado',
             'finalizado' => 'Finalizado',

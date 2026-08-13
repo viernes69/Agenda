@@ -137,19 +137,19 @@ foreach ($servicios as $servicio) {
 }
 $carritos = AutoloadDB::all('carrito');
 $infoBarberia = [];
-$dbFull = @include dirname(__DIR__, 3) . '/src/db/database.php';
+$dbPath = (defined('AGENDUY_LOCAL_DB_PATH') && is_string(AGENDUY_LOCAL_DB_PATH) && AGENDUY_LOCAL_DB_PATH !== '')
+  ? AGENDUY_LOCAL_DB_PATH
+  : dirname(__DIR__, 3) . '/src/db/database.php';
+$dbFull = is_file($dbPath) ? @include $dbPath : null;
 if (is_array($dbFull) && isset($dbFull['info_barberia']) && is_array($dbFull['info_barberia'])) {
   $infoBarberia = $dbFull['info_barberia'];
-if (!isset($infoBarberia['temas']) || !is_array($infoBarberia['temas'])) {
-  $infoBarberia['temas'] = ['publico' => 'oscuro', 'privado' => 'oscuro'];
-} else {
-  if (!isset($infoBarberia['temas']['publico']) || !in_array($infoBarberia['temas']['publico'], ['oscuro', 'claro'], true)) {
-    $infoBarberia['temas']['publico'] = 'oscuro';
-  }
-  if (!isset($infoBarberia['temas']['privado']) || !in_array($infoBarberia['temas']['privado'], ['oscuro', 'claro'], true)) {
-    $infoBarberia['temas']['privado'] = 'oscuro';
-  }
 }
+try {
+  $infoBarberia = \Agenduy\Core\CommerceConfig::infoForSlug($tenantSlug, $infoBarberia);
+} catch (Throwable $e) {
+  if (!isset($infoBarberia['temas']) || !is_array($infoBarberia['temas'])) {
+    $infoBarberia['temas'] = ['publico' => 'oscuro', 'privado' => 'oscuro'];
+  }
 }
 $businessName = '';
 $businessNameRaw = $infoBarberia['nombre'] ?? '';
@@ -835,10 +835,23 @@ $summaryCards = [
   <meta name="url-base" content="<?php echo e($publicShareUrl !== '' ? $publicShareUrl : $tenantPublicUrl); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('agendarte-theme') || localStorage.getItem('agendarte-admin-theme') || 'dark';
+        if (theme !== 'dark' && theme !== 'light') theme = 'dark';
+        document.documentElement.setAttribute('data-admin-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (error) {
+        document.documentElement.setAttribute('data-admin-theme', 'dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="manifest" href="../manifest.admin.php">
   <link rel="stylesheet" href="../../../src/css/main.css">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="../src/admin.css">
+  <link rel="stylesheet" href="../src/admin.css?v=4">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="../src/reservas-ledger.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1711,7 +1724,6 @@ $summaryCards = [
         <span>Salir</span>
       </button>
     </nav>
-  </div>
   <div id="admin-modal-root">
     <?php if (file_exists('../src/components/admin_reserva_modal.php')) { echo include '../src/components/admin_reserva_modal.php'; } ?>
     <?php if (file_exists('../src/components/admin_qr_modal.php')) { echo include '../src/components/admin_qr_modal.php'; } ?>

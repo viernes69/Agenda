@@ -20,6 +20,8 @@
 body {
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
+  height: 100dvh;
 }
 
 .admin-layout {
@@ -43,13 +45,13 @@ body {
   --modal-pad-lg: clamp(1.2rem, 1vw + 1rem, 1.8rem);
   display: grid;
   grid-template-columns: 1fr;
-  min-height: 100vh;
+  height: 100dvh;
   background:
     radial-gradient(circle at -15% -20%, rgba(124, 58, 237, 0.16), transparent 45%),
     linear-gradient(160deg, rgba(8, 11, 18, 0.98) 0%, rgba(9, 12, 20, 0.99) 46%, rgba(7, 9, 15, 1) 100%);
   color: var(--text);
   color-scheme: dark;
-  overflow-x: hidden;
+  overflow: hidden;
   font-feature-settings: "liga" 1, "kern" 1;
 }
 
@@ -160,12 +162,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: clamp(1.5rem, 1rem + 2vw, 2.6rem);
-  min-height: calc(100vh - var(--safe-top) - var(--safe-bottom));
+  height: 100dvh;
   padding-inline: var(--page-padding);
   padding-top: calc(var(--safe-top) + var(--page-padding));
   padding-bottom: calc(var(--safe-bottom) + var(--page-padding) + 4.5rem);
   position: relative;
   z-index: 1;
+  overflow: hidden;
 }
 
 .admin-main__header {
@@ -3780,7 +3783,7 @@ body {
 .admin-layout .modal__dialog--lg.plan-membership-modal {
   max-width: min(1120px, calc(100vw - clamp(.75rem, 3vw, 2rem)));
   width: 100%;
-  max-height: min(860px, calc(100dvh - var(--bottomnav-offset) - var(--modal-pad-sm)));
+  max-height: none !important;
   min-height: 0;
 }
 
@@ -3791,15 +3794,15 @@ body {
 .admin-layout .plan-membership-modal__body {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: none;
-  overflow-y: auto;
+  max-height: none !important;
+  overflow-y: visible !important;
   overscroll-behavior: contain;
   padding-right: clamp(.25rem, 1vw, .75rem);
 }
 
 @media (min-width: 641px) {
   .admin-layout .modal__dialog--lg.plan-membership-modal {
-    max-height: min(860px, calc(100dvh - var(--bottomnav-offset) - var(--modal-pad-lg)));
+    max-height: none !important;
   }
 }
 
@@ -3807,7 +3810,7 @@ body {
   .admin-layout .modal__dialog--lg.plan-membership-modal {
     max-width: calc(100vw - .75rem);
     border-radius: .85rem;
-    max-height: calc(100dvh - var(--bottomnav-offset) - .75rem);
+    max-height: none !important;
   }
 
   .admin-layout .plan-membership-modal__body {
@@ -4691,21 +4694,25 @@ html,
 body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100dvh;
 }
 
 .admin-layout {
-  min-height: 100dvh;
-  overflow-x: clip;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .admin-main {
   width: min(1440px, 100%);
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .admin-section {
   min-height: 0;
-  overflow: visible;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 0;
 }
 

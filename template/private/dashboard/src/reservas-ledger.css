@@ -279,3 +279,95 @@
     padding: var(--modal-pad-sm, 1.1rem);
   }
 }
+
+/* Fullscreen summary ledgers */
+.admin-layout .modal[data-admin-modal="reservas-summary"],
+.admin-layout .modal[data-admin-modal="productos-summary"] {
+  align-items: stretch;
+  justify-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  z-index: 170;
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .modal__backdrop,
+.admin-layout .modal[data-admin-modal="productos-summary"] .modal__backdrop {
+  background: rgba(2, 6, 23, 0.74);
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .modal__dialog.reservas-ledger,
+.admin-layout .modal[data-admin-modal="productos-summary"] .modal__dialog.reservas-ledger {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg, #0f1115);
+  color: var(--text, #e6e8eb);
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__header,
+.admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__header {
+  flex: 0 0 auto;
+  padding: clamp(0.95rem, 0.75rem + 1vw, 1.45rem) clamp(1rem, 1.6vw, 2rem);
+  border-bottom: 1px solid var(--border, rgba(148, 163, 184, 0.18));
+  background: var(--surface-strong, rgba(12, 16, 24, 0.98));
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__body,
+.admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: clamp(1rem, 1.4vw, 2rem);
+  padding-bottom: calc(var(--safe-bottom, 0px) + clamp(1rem, 1.4vw, 2rem));
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bg, #0f1115);
+  scrollbar-gutter: stable;
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__table-card .table-wrap,
+.admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__table-card .table-wrap {
+  max-height: min(48dvh, 560px);
+}
+
+.admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__table-card--full .table-wrap,
+.admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__table-card--full .table-wrap {
+  max-height: min(64dvh, 720px);
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal="reservas-summary"] .modal__backdrop,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal="productos-summary"] .modal__backdrop {
+  background: rgba(15, 23, 42, 0.26);
+}
+
+@media (max-width: 680px) {
+  .admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__header,
+  .admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__header {
+    padding-inline: 0.9rem;
+  }
+
+  .admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__body,
+  .admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__body {
+    padding: 0.9rem;
+    padding-bottom: calc(var(--safe-bottom, 0px) + 1rem);
+  }
+
+  .admin-layout .modal[data-admin-modal="reservas-summary"] .reservas-ledger__filters-group,
+  .admin-layout .modal[data-admin-modal="productos-summary"] .reservas-ledger__filters-group {
+    grid-template-columns: 1fr;
+  }
+}

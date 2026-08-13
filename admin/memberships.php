@@ -45,9 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $limits[MembershipPlan::LIMIT_MAX_CLIENTS] = max(0, (int)$maxClientsRaw);
         }
         $settingsTier = strtolower(trim((string)($_POST['settings_tier'] ?? MembershipPlan::SETTINGS_TIER_FULL)));
-        $limits[MembershipPlan::LIMIT_SETTINGS_TIER] = $settingsTier === MembershipPlan::SETTINGS_TIER_BASIC
-            ? MembershipPlan::SETTINGS_TIER_BASIC
-            : MembershipPlan::SETTINGS_TIER_FULL;
+        $limits[MembershipPlan::LIMIT_SETTINGS_TIER] = in_array($settingsTier, [
+            MembershipPlan::SETTINGS_TIER_BASIC,
+            MembershipPlan::SETTINGS_TIER_MEDIUM,
+            MembershipPlan::SETTINGS_TIER_FULL,
+        ], true) ? $settingsTier : MembershipPlan::SETTINGS_TIER_FULL;
         $precioAnualRaw = trim((string)($_POST['precio_anual'] ?? ''));
         $data = [
             'nombre'               => trim((string)($_POST['nombre'] ?? '')),
@@ -203,10 +205,11 @@ if (is_array($edit)) {
             <div class="field">
                 <label>Nivel de configuración</label>
                 <select name="settings_tier">
-                    <option value="full" <?= $editSettingsTier === 'full' ? 'selected' : '' ?>>Completa</option>
                     <option value="basic" <?= $editSettingsTier === 'basic' ? 'selected' : '' ?>>Básica (nombre, logo, redes)</option>
+                    <option value="medium" <?= $editSettingsTier === 'medium' ? 'selected' : '' ?>>Media</option>
+                    <option value="full" <?= $editSettingsTier === 'full' ? 'selected' : '' ?>>Completa</option>
                 </select>
-                <span class="hint">Básica bloquea fiscal, Mercado Pago, SEO, legales, etc.</span>
+                <span class="hint">Básica cubre lo esencial; media suma agenda, carrito, moneda y funciones; completa habilita fiscal, Mercado Pago, SEO y legales.</span>
             </div>
         </div>
 
@@ -332,7 +335,7 @@ if (is_array($edit)) {
                     · Res/mes: <strong><?= htmlspecialchars($fmtLimit($maxA), ENT_QUOTES, 'UTF-8') ?></strong>
                     · Prof: <strong><?= htmlspecialchars($fmtLimit($maxProf), ENT_QUOTES, 'UTF-8') ?></strong>
                     · Cli: <strong><?= htmlspecialchars($fmtLimit($maxCli), ENT_QUOTES, 'UTF-8') ?></strong>
-                    · Config: <strong><?= $tier === 'basic' ? 'básica' : 'completa' ?></strong>
+                    · Config: <strong><?= $tier === 'basic' ? 'basica' : ($tier === 'medium' ? 'media' : 'completa') ?></strong>
                 </td>
                 <td style="max-width:220px;font-size:.82rem">
                     <?php if ($features === []): ?>

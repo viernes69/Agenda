@@ -3,9 +3,11 @@
   if (!grid) return;
 
   let activeCard = null;
-  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'carrito', 'notificaciones']);
+  const basicAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'notificaciones']);
+  const mediumAllowed = new Set(['info', 'redes', 'horarios', 'reservas', 'carrito', 'moneda', 'notificaciones', 'funciones']);
   const settingsTier = String(grid.getAttribute('data-settings-tier') || 'full').toLowerCase();
   const isBasicOnly = settingsTier === 'basic';
+  const isMediumOnly = settingsTier === 'medium';
 
   const openWithGuard = (_sectionLabel, callback) => {
     if (typeof callback === 'function') callback();
@@ -35,7 +37,7 @@
     activeCard = card;
 
     const configId = card.getAttribute('data-admin-config-id');
-    if (isBasicOnly && configId && !basicAllowed.has(configId)) {
+    if (configId && ((isBasicOnly && !basicAllowed.has(configId)) || (isMediumOnly && !mediumAllowed.has(configId)))) {
       denyBasic();
       return;
     }
@@ -74,8 +76,6 @@
       window.AdminConfigNotificacionesModal.open();
     } else if (configId === 'funciones' && window.AdminConfigFeaturesModal && typeof window.AdminConfigFeaturesModal.open === 'function') {
       openWithGuard('Funciones', window.AdminConfigFeaturesModal.open);
-    } else if (configId === 'temas' && window.AdminConfigThemeModal && typeof window.AdminConfigThemeModal.open === 'function') {
-      window.AdminConfigThemeModal.open();
     }
   });
 })();

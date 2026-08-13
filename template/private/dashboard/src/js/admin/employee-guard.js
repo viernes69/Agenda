@@ -98,8 +98,7 @@
     AdminConfigRedesModal: 'Redes',
     AdminConfigLegalesModal: 'Config. legal',
     AdminConfigNotificacionesModal: 'Notificaciones',
-    AdminConfigFeaturesModal: 'Funciones',
-    AdminConfigThemeModal: 'Tema visual'
+    AdminConfigFeaturesModal: 'Funciones'
   };
 
   const protectModalApi = (globalKey, label) => {

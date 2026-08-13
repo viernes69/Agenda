@@ -157,6 +157,11 @@ try {
         'reservas',
         CommerceSettings::defaultsForSection('reservas')
     );
+    $reservationCheckoutAllowed = MercadoPago::isReservationCheckoutAllowed($plan);
+    if (!$reservationCheckoutAllowed) {
+        $reservasCfg['mercado_pago_enabled'] = false;
+        $reservasCfg['mercado_pago_required'] = false;
+    }
     $paymentRequiredBySettings = !empty($reservasCfg['mercado_pago_required']) && $precio > 0;
     $wantsMercadoPago = appointmentMercadoPagoRequested($payload) || $paymentRequiredBySettings;
     $mpConfig = [];
@@ -167,8 +172,8 @@ try {
         if (empty($reservasCfg['mercado_pago_enabled'])) {
             throw new RuntimeException('El comercio no tiene Mercado Pago habilitado para reservas.');
         }
-        if (!MercadoPago::isCommerceCheckoutAllowed($plan)) {
-            throw new RuntimeException('Mercado Pago para reservas esta disponible con un plan pago de configuracion completa.');
+        if (!$reservationCheckoutAllowed) {
+            throw new RuntimeException('Adquierelo con el plan Pro.');
         }
         if ($precio <= 0) {
             throw new InvalidArgumentException('Este servicio no tiene precio para cobrar online.');

@@ -1,6 +1,7 @@
 <?php
 
 use Agenduy\Core\CommerceSettings;
+use Agenduy\Core\CommerceConfig;
 use Agenduy\Core\CommerceStorage;
 use Agenduy\Core\Crypto;
 use Agenduy\Core\Database;
@@ -58,8 +59,8 @@ try {
         }
         if ($key === 'info_barberia') {
             unset($payload['email_plantillas']);
-            if (is_array($plan) && MembershipPlan::isBasicSettingsOnly($plan)) {
-                foreach (MembershipPlan::basicBlockedInfoSections() as $blocked) {
+            if (is_array($plan)) {
+                foreach (MembershipPlan::blockedInfoSections($plan) as $blocked) {
                     if (isset($payload[$blocked])) {
                         throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
                     }
@@ -83,7 +84,7 @@ try {
             $tenantSlug = adminConfigTenantSlug();
         }
         $plan = MembershipPlan::forCommerceSlug($tenantSlug);
-        if (is_array($plan) && MembershipPlan::isBasicSettingsOnly($plan)) {
+        if (is_array($plan) && !MembershipPlan::isFullSettings($plan)) {
             throw new UnexpectedValueException(MembershipPlan::DENIAL_MESSAGE . ' Mejorá tu membresía para continuar.');
         }
         $themes = applyThemeFiles($tenantRoot, $projectRoot);
@@ -172,7 +173,7 @@ function sanitizeReservationConfigPayload(array $payload, ?array $plan): array
 {
     $payload['requiere_login'] = false;
 
-    if (!MercadoPago::isCommerceCheckoutAllowed($plan)) {
+    if (!MercadoPago::isReservationCheckoutAllowed($plan)) {
         $payload['mercado_pago_enabled'] = false;
         $payload['mercado_pago_required'] = false;
         return $payload;
@@ -203,27 +204,7 @@ function readConfig(string $key, string $slug): array
     if ($key !== 'info_barberia') {
         return $legacy;
     }
-
-    $commerce = commerceBySlug($slug);
-    $info = array_replace_recursive($legacy, commerceInfo($commerce));
-    foreach (sectionMap() as $section => $legacyKey) {
-        $defaults = CommerceSettings::defaultsForSection($section);
-        if (isset($info[$legacyKey]) && is_array($info[$legacyKey])) {
-            $defaults = array_replace_recursive($defaults, $info[$legacyKey]);
-        }
-        $info[$legacyKey] = CommerceSettings::get((int)$commerce['id_commerce'], $section, $defaults);
-    }
-    $mpLegacy = [];
-    if (is_array($info['mercadopago'] ?? null)) {
-        $mpLegacy = array_replace_recursive($mpLegacy, $info['mercadopago']);
-    }
-    if (is_array($info['mercado_pago'] ?? null)) {
-        $mpLegacy = array_replace_recursive($mpLegacy, $info['mercado_pago']);
-    }
-    $mpLegacy = array_replace_recursive($mpLegacy, mercadopagoPreviews((int)$commerce['id_commerce']));
-    $info['mercado_pago'] = $mpLegacy;
-    $info['mercadopago'] = $mpLegacy;
-    return $info;
+    return CommerceConfig::infoForSlug($slug, $legacy);
 }
 
 function mercadopagoPreviews(int $commerceId): array
@@ -287,6 +268,7 @@ function updateCommerceConfig(string $slug, array $payload): array
                 $safe[$secretKey] = keyPreview($safe[$secretKey]);
             }
         }
+        CommerceSettings::merge($commerceId, 'mercado_pago', $safe, CommerceSettings::defaultsForSection('mercado_pago'));
         $payload['mercado_pago'] = $safe;
         $payload['mercadopago'] = $safe;
     }
@@ -418,19 +400,7 @@ function keyPreview(string $value): string
 
 function sectionMap(): array
 {
-    return [
-        'horarios' => 'horarios',
-        'reservas' => 'reservas',
-        'moneda' => 'moneda',
-        'fiscal' => 'fiscal',
-        'redes' => 'redes',
-        'seo' => 'seo',
-        'legal' => 'legales',
-        'notificaciones' => 'notificaciones',
-        'funciones' => 'features',
-        'carrito' => 'carrito',
-        'tema' => 'temas',
-    ];
+    return CommerceConfig::sectionMap();
 }
 
 function commerceInfo(array $commerce): array
@@ -562,16 +532,24 @@ function handleLogoUpload(int $idCommerce): ?string
     $type = $imageInfo[2] ?? 0;
 
     $destDir = CommerceStorage::kindDir($idCommerce, 'logo');
-    $destPath = $destDir . '/logo.jpg';
-    $storedRel = CommerceStorage::relativePath($idCommerce, 'logo', 'logo.jpg');
+    $destPath = $destDir . '/logo.png';
+    $storedRel = CommerceStorage::relativePath($idCommerce, 'logo', 'logo.png');
 
     if (!function_exists('imagecreatetruecolor')) {
-        if ($type === IMAGETYPE_JPEG) {
+        if ($type === IMAGETYPE_PNG) {
             if (!move_uploaded_file($tmpPath, $destPath)) {
                 throw new RuntimeException('No se pudo guardar el logo.');
             }
             @chmod($destPath, 0644);
             return $storedRel;
+        }
+        if ($type === IMAGETYPE_JPEG) {
+            $jpgPath = $destDir . '/logo.jpg';
+            if (!move_uploaded_file($tmpPath, $jpgPath)) {
+                throw new RuntimeException('No se pudo guardar el logo.');
+            }
+            @chmod($jpgPath, 0644);
+            return CommerceStorage::relativePath($idCommerce, 'logo', 'logo.jpg');
         }
         throw new RuntimeException('El servidor no soporta el procesamiento del logo.');
     }
@@ -603,11 +581,13 @@ function handleLogoUpload(int $idCommerce): ?string
         imagedestroy($src);
         throw new RuntimeException('No se pudo procesar el logo.');
     }
-    $white = imagecolorallocate($canvas, 255, 255, 255);
-    imagefill($canvas, 0, 0, $white);
+    imagealphablending($canvas, false);
+    imagesavealpha($canvas, true);
+    $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+    imagefill($canvas, 0, 0, $transparent);
     imagecopyresampled($canvas, $src, 0, 0, 0, 0, $width, $height, $width, $height);
 
-    if (!imagejpeg($canvas, $destPath, 90)) {
+    if (!imagepng($canvas, $destPath, 6)) {
         imagedestroy($canvas);
         imagedestroy($src);
         throw new RuntimeException('No se pudo guardar el logo.');

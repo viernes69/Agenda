@@ -292,7 +292,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $bookingMpConfig = $showBooking ? MercadoPago::commerceConfig($commerceId, $slug) : [];
         $bookingMpCheckoutEnabled = $showBooking
             && !empty($reservasCfg['mercado_pago_enabled'])
-            && MercadoPago::isCommerceCheckoutAllowed($commercePlan)
+            && MercadoPago::isReservationCheckoutAllowed($commercePlan)
             && !empty($bookingMpConfig['enabled'])
             && trim((string)($bookingMpConfig['access_token'] ?? '')) !== '';
         $bookingMpRequired = $bookingMpCheckoutEnabled && !empty($reservasCfg['mercado_pago_required']);

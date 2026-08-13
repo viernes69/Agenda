@@ -32,30 +32,19 @@ ob_start();
               <span>Nueva hora</span>
               <input type="time" data-admin-res-edit-hora step="60">
             </label>
-            <button type="button" class="btn btn-secondary" data-admin-res-guardar-fecha>Guardar fecha</button>
+            <button type="button" class="btn btn-secondary" data-admin-res-guardar-fecha>Guardar cambio</button>
           </div>
-        </div>
-        <div class="admin-reserva-actions">
-          <button type="button" class="btn btn-warning" data-admin-res-ver-cliente>Datos del cliente</button>
-          <button type="button" class="btn btn-danger" data-admin-res-rechazar>Rechazar</button>
-          <button type="button" class="btn btn-secondary" data-admin-res-aprobar>Reservar</button>
-          <button type="button" class="btn btn-success" data-admin-res-atender>Atender</button>
-          <button type="button" class="btn btn-primary" data-admin-res-finalizar>Finalizar</button>
         </div>
       </div>
     </div>
   </div>
 <style>
-  .admin-reserva-actions {
-    display: flex;
-    gap: .5rem;
-    margin-top: 1rem;
-    flex-wrap: wrap;
+  [data-admin-modal="reserva"] .modal__dialog {
+    max-height: none !important;
   }
-  .admin-reserva-actions .btn {
-    padding: .45rem .9rem;
-    font-size: .88rem;
-    min-width: 0;
+  [data-admin-modal="reserva"] .modal__body {
+    overflow-y: visible !important;
+    max-height: none !important;
   }
   .admin-reserva-reprogram {
     margin-top: 1rem;
@@ -89,5 +78,3 @@ ob_start();
 <?php
 return trim(ob_get_clean());
 ?>
-
-

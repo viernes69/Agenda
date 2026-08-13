@@ -27,6 +27,9 @@
   };
 
   window.openServiceFlow = async (resId) => {
+    if (resId) {
+      serviceModal.setAttribute('data-service-reserva-id', String(resId));
+    }
     if (modalLoading) modalLoading.show(serviceModal);
     open();
   };
@@ -34,9 +37,11 @@
   closeEls.forEach((x) => x.addEventListener('click', () => { close(); }));
 
   finishBtn && finishBtn.addEventListener('click', async () => {
+    finishBtn.disabled = true;
     try {
       const reservaModal = document.querySelector('[data-admin-modal="reserva"]');
-      const id = reservaModal && reservaModal.getAttribute('data-admin-reserva-id');
+      const id = serviceModal.getAttribute('data-service-reserva-id')
+        || (reservaModal && reservaModal.getAttribute('data-admin-reserva-id'));
       if (!id) { close(); return; }
       const res = await fetch(apiBase, {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -56,6 +61,7 @@
           if (reservaModal && !reservaModal.hidden) {
             const stPill = reservaModal.querySelector('[data-admin-res-status]');
             if (stPill) { stPill.textContent = 'Finalizado'; stPill.className = 'status-pill st-finalizado'; }
+            reservaModal.setAttribute('data-admin-res-status-key', 'finalizado');
             const btnResume = reservaModal.querySelector('[data-admin-res-retomar]');
             if (btnResume) btnResume.hidden = true;
             const btnRech = reservaModal.querySelector('[data-admin-res-rechazar]');
@@ -73,6 +79,10 @@
         adminNotify(msg, 'error');
       }
     } catch (_) { adminNotify('No se pudo finalizar la reserva', 'error'); }
-    finally { close(); }
+    finally {
+      finishBtn.disabled = false;
+      serviceModal.removeAttribute('data-service-reserva-id');
+      close();
+    }
   });
 })();

@@ -65,7 +65,7 @@ ob_start();
       </section>
       <section class="admin-form__group">
         <h3 class="admin-form__title">Pagos online</h3>
-        <p class="admin-form__hint" data-admin-config-reservas-payment-lock hidden>Mejor&aacute; tu plan para activar Mercado Pago en reservas.</p>
+        <p class="admin-form__hint" data-admin-config-reservas-payment-lock hidden>Adqui&eacute;relo con el plan Pro.</p>
         <div class="admin-form__switch-grid admin-form__switch-grid--compact">
           <label class="admin-form__switch" data-admin-config-reservas-payment-switch="mercado_pago_enabled">
             <input type="checkbox" data-admin-config-reservas-toggle="mercado_pago_enabled">

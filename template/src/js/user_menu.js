@@ -93,7 +93,7 @@
     const labels = {
       pendiente: 'Pendiente',
       aprobado: 'Reservado',
-      'en progreso': 'En progreso',
+      'en progreso': 'Atendiendo',
       cancelado: 'Cancelado',
       rechazado: 'Rechazado',
       finalizado: 'Finalizado',
