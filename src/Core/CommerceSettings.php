@@ -10,7 +10,7 @@ final class CommerceSettings
 {
     public const SECTIONS = [
         'horarios', 'reservas', 'moneda', 'fiscal', 'redes',
-        'seo', 'legal', 'notificaciones', 'funciones', 'carrito', 'tema', 'mercado_pago', 'email_plantillas',
+        'seo', 'legal', 'notificaciones', 'funciones', 'carrito', 'tema', 'mercado_pago', 'public_content', 'email_plantillas',
     ];
 
     public static function get(int $idCommerce, string $section, array $defaults = []): array
@@ -130,6 +130,7 @@ final class CommerceSettings
                 'pending_url' => '',
                 'notification_url' => '',
             ],
+            'public_content' => ['text' => [], 'images' => []],
             'tema' => ['publico' => 'claro', 'privado' => 'claro'],
             default => [],
         };

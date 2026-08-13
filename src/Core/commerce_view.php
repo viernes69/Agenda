@@ -143,6 +143,9 @@ if (!function_exists('agenduy_render_commerce')) {
         $tema = CommerceSettings::get($commerceId, 'tema', $legacyInfo['temas'] ?? CommerceSettings::defaultsForSection('tema'));
         $reservasCfg = CommerceSettings::get($commerceId, 'reservas', $legacyInfo['reservas'] ?? CommerceSettings::defaultsForSection('reservas'));
         $carritoCfg = CommerceSettings::get($commerceId, 'carrito', $legacyInfo['carrito'] ?? CommerceSettings::defaultsForSection('carrito'));
+        $publicContent = CommerceSettings::get($commerceId, 'public_content', CommerceSettings::defaultsForSection('public_content'));
+        $publicTextOverrides = is_array($publicContent['text'] ?? null) ? $publicContent['text'] : [];
+        $publicImageOverrides = is_array($publicContent['images'] ?? null) ? $publicContent['images'] : [];
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
         $rubroType = trim((string)($commerce['rubro_tipo'] ?? ($legacyInfo['rubro'] ?? '')));
         $rubroLabel = trim((string)($commerce['rubro_nombre'] ?? ($legacyInfo['rubro_nombre'] ?? '')));
@@ -272,6 +275,71 @@ if (!function_exists('agenduy_render_commerce')) {
         $tenantAssetUrl = static function (string $relative) use ($commerceId, $slug): string {
             return CommerceStorage::publicUrl($commerceId, $slug, $relative);
         };
+
+        $publicTextValue = static function (string $key, string $default) use ($publicTextOverrides): string {
+            $value = $publicTextOverrides[$key] ?? null;
+            if (is_scalar($value) && trim((string)$value) !== '') {
+                return trim((string)$value);
+            }
+            return $default;
+        };
+        $publicImageValue = static function (string $key, string $default = '') use ($publicImageOverrides): string {
+            $value = $publicImageOverrides[$key] ?? null;
+            if (is_scalar($value) && trim((string)$value) !== '') {
+                return trim((string)$value);
+            }
+            return $default;
+        };
+        $editableText = static function (string $key, string $default, string $label) use ($publicTextValue, $isCommerceOwner): string {
+            $value = $publicTextValue($key, $default);
+            $html = '<span class="public-editable" data-public-edit-field data-public-edit-type="text" data-public-edit-key="'
+                . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" data-public-edit-label="'
+                . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><span data-public-edit-value>'
+                . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</span>';
+            if ($isCommerceOwner) {
+                $html .= '<button type="button" class="public-edit-btn" data-public-edit-trigger aria-label="Editar '
+                    . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></button>';
+            }
+            return $html . '</span>';
+        };
+        $imageEditButton = static function (string $key, string $label) use ($isCommerceOwner): string {
+            if (!$isCommerceOwner) {
+                return '';
+            }
+            return '<button type="button" class="public-edit-btn public-edit-btn--floating" data-public-edit-image="'
+                . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" data-public-edit-label="'
+                . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" aria-label="Editar '
+                . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></button>';
+        };
+        $dashboardEditLink = static function (string $section, string $label) use ($isCommerceOwner, $slug): string {
+            if (!$isCommerceOwner) {
+                return '';
+            }
+            return '<a class="public-edit-btn public-edit-btn--floating public-edit-btn--link" href="'
+                . htmlspecialchars(CommercePanel::dashboardUrlForSlug($slug, $section), ENT_QUOTES, 'UTF-8')
+                . '" aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="'
+                . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></a>';
+        };
+
+        $heroDefaultEyebrow = $isStoreMode
+            ? ($rubroLabel !== '' ? $rubroLabel : 'Catalogo online')
+            : ($rubroLabel !== '' ? $rubroLabel : 'Reservas online 24/7');
+        $heroDefaultTitle = $isStoreMode
+            ? 'Explora el catalogo de ' . $titulo
+            : 'Reservá tu turno en ' . $titulo . ' en segundos';
+        $heroDefaultLead = $slogan !== ''
+            ? $slogan
+            : ($isStoreMode
+                ? 'Conoce productos, arma tu pedido y coordina entrega o retiro por WhatsApp.'
+                : 'Elegí tu servicio, día y horario. Sin llamadas, sin esperas.');
+        $heroImageRel = $publicImageValue('hero.image', '');
+        $heroImageUrl = $heroImageRel !== '' ? $tenantAssetUrl($heroImageRel) : ($hasLogo ? $logoUrl : '');
+        $aboutImageRel = $publicImageValue('about.image', '');
+        $aboutImageUrl = $aboutImageRel !== '' ? $tenantAssetUrl($aboutImageRel) : ($hasLogo ? $logoUrl : $coverImageUrl);
+        $contactDefaultSubtitle = $ciudad !== ''
+            ? 'Estamos en ' . $ciudad . '. Pasá, escribinos o reservá online.'
+            : 'Pasá, escribinos o reservá online.';
+        $siteEditCsrf = $isCommerceOwner ? CSRF::generate('public_site_edit') : '';
 
         $csrf = CSRF::generate('public_booking');
         $googleClientId = GoogleAuth::isEnabled() ? GoogleAuth::clientId() : '';
@@ -433,9 +501,9 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap hero__inner">
                 <div>
                     <?php if ($isStoreMode): ?>
-                    <span class="hero__eyebrow"><i class="bx bx-store"></i> <?= $rubroLabel !== '' ? htmlspecialchars($rubroLabel, ENT_QUOTES, 'UTF-8') : 'Catalogo online' ?></span>
-                    <h1>Explora el catalogo de <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h1>
-                    <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Conoce productos, arma tu pedido y coordina entrega o retiro por WhatsApp.' ?></p>
+                    <span class="hero__eyebrow"><i class="bx bx-store"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal') ?></span>
+                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal') ?></h1>
+                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal') ?></p>
                     <div class="hero__actions">
                         <a href="#productos" class="btn btn--primary btn--lg"><i class="bx bx-package"></i> Ver catalogo</a>
                         <?php if ($whatsappDigits !== ''): ?>
@@ -443,28 +511,29 @@ if (!function_exists('agenduy_render_commerce')) {
                         <?php endif; ?>
                     </div>
                     <div class="hero__stats">
-                        <div><div class="stat__num">+<?= count($localProducts) ?></div><div class="stat__lbl">Productos</div></div>
-                        <div><div class="stat__num">WA</div><div class="stat__lbl">Pedidos directos</div></div>
-                        <div><div class="stat__num">24/7</div><div class="stat__lbl">Catalogo visible</div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '+' . count($localProducts), 'dato destacado 1') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Productos', 'descripcion destacada 1') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', 'WA', 'dato destacado 2') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Pedidos directos', 'descripcion destacada 2') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '24/7', 'dato destacado 3') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Catalogo visible', 'descripcion destacada 3') ?></div></div>
                     </div>
                     <?php else: ?>
-                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $rubroLabel !== '' ? htmlspecialchars($rubroLabel, ENT_QUOTES, 'UTF-8') : 'Reservas online 24/7' ?></span>
-                    <h1>Reservá tu turno en <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?> en segundos</h1>
-                    <p class="lead"><?= $slogan !== '' ? htmlspecialchars($slogan, ENT_QUOTES, 'UTF-8') : 'Elegí tu servicio, día y horario. Sin llamadas, sin esperas.' ?></p>
+                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal') ?></span>
+                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal') ?></h1>
+                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal') ?></p>
                     <div class="hero__actions">
                         <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Reservar ahora</a>
                         <a href="#servicios" class="btn btn--ghost btn--lg">Ver servicios</a>
                     </div>
                     <div class="hero__stats">
-                        <div><div class="stat__num">24/7</div><div class="stat__lbl">Reservas online</div></div>
-                        <div><div class="stat__num">+<?= count($services) ?></div><div class="stat__lbl">Servicios</div></div>
-                        <div><div class="stat__num">⭐ 4.9</div><div class="stat__lbl">Calificación</div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '24/7', 'dato destacado 1') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Reservas online', 'descripcion destacada 1') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', '+' . count($services), 'dato destacado 2') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Servicios', 'descripcion destacada 2') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '4.9', 'dato destacado 3') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Calificación', 'descripcion destacada 3') ?></div></div>
                     </div>
                     <?php endif; ?>
                 </div>
                 <div class="hero__visual">
-                    <?php if ($hasLogo): ?>
-                        <img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="">
+                    <?= $imageEditButton('hero.image', 'imagen principal') ?>
+                    <?php if ($heroImageUrl !== ''): ?>
+                        <img src="<?= htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" data-public-edit-image-preview="hero.image">
                     <?php else: ?>
                         <div class="hero__visual-fallback" aria-hidden="true">
                             <span class="hero__visual-initial"><?= htmlspecialchars(mb_strtoupper($initial, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -478,45 +547,45 @@ if (!function_exists('agenduy_render_commerce')) {
         <section class="steps alt" aria-label="Cómo reservar">
             <div class="wrap">
                 <?php if ($isStoreMode): ?>
-                <span class="eyebrow">Simple y directo</span>
-                <h2 class="section-title">Compra en 3 pasos</h2>
-                <p class="section-sub">Explora el catalogo, arma tu pedido y coordina los detalles por WhatsApp.</p>
+                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y directo', 'etiqueta de pasos') ?></span>
+                <h2 class="section-title"><?= $editableText('steps.title', 'Compra en 3 pasos', 'titulo de pasos') ?></h2>
+                <p class="section-sub"><?= $editableText('steps.subtitle', 'Explora el catalogo, arma tu pedido y coordina los detalles por WhatsApp.', 'texto de pasos') ?></p>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-card__num">1</span>
-                        <h3>Elegi productos</h3>
-                        <p>Revisa precios, tipos y detalles del catalogo disponible.</p>
+                        <h3><?= $editableText('steps.1.title', 'Elegi productos', 'titulo paso 1') ?></h3>
+                        <p><?= $editableText('steps.1.text', 'Revisa precios, tipos y detalles del catalogo disponible.', 'texto paso 1') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">2</span>
-                        <h3>Arma tu pedido</h3>
-                        <p>Agrega al carrito lo que quieras consultar o comprar.</p>
+                        <h3><?= $editableText('steps.2.title', 'Arma tu pedido', 'titulo paso 2') ?></h3>
+                        <p><?= $editableText('steps.2.text', 'Agrega al carrito lo que quieras consultar o comprar.', 'texto paso 2') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">3</span>
-                        <h3>Coordina entrega</h3>
-                        <p>Envia el pedido por WhatsApp y acuerda retiro, envio o pago.</p>
+                        <h3><?= $editableText('steps.3.title', 'Coordina entrega', 'titulo paso 3') ?></h3>
+                        <p><?= $editableText('steps.3.text', 'Envia el pedido por WhatsApp y acuerda retiro, envio o pago.', 'texto paso 3') ?></p>
                     </article>
                 </div>
                 <?php else: ?>
-                <span class="eyebrow">Simple y rápido</span>
-                <h2 class="section-title">Reservá en 3 pasos</h2>
-                <p class="section-sub">Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.</p>
+                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y rápido', 'etiqueta de pasos') ?></span>
+                <h2 class="section-title"><?= $editableText('steps.title', 'Reservá en 3 pasos', 'titulo de pasos') ?></h2>
+                <p class="section-sub"><?= $editableText('steps.subtitle', 'Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.', 'texto de pasos') ?></p>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-card__num">1</span>
-                        <h3>Elegí el servicio</h3>
-                        <p>Explorá nuestra carta y seleccioná lo que necesitás.</p>
+                        <h3><?= $editableText('steps.1.title', 'Elegí el servicio', 'titulo paso 1') ?></h3>
+                        <p><?= $editableText('steps.1.text', 'Explorá nuestra carta y seleccioná lo que necesitás.', 'texto paso 1') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">2</span>
-                        <h3>Seleccioná día y hora</h3>
-                        <p>Disponibilidad en tiempo real según nuestros horarios.</p>
+                        <h3><?= $editableText('steps.2.title', 'Seleccioná día y hora', 'titulo paso 2') ?></h3>
+                        <p><?= $editableText('steps.2.text', 'Disponibilidad en tiempo real según nuestros horarios.', 'texto paso 2') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">3</span>
-                        <h3>Confirmá tu reserva</h3>
-                        <p>Recibís confirmación por email. También avisamos al negocio.</p>
+                        <h3><?= $editableText('steps.3.title', 'Confirmá tu reserva', 'titulo paso 3') ?></h3>
+                        <p><?= $editableText('steps.3.text', 'Recibís confirmación por email. También avisamos al negocio.', 'texto paso 3') ?></p>
                     </article>
                 </div>
                 <?php endif; ?>
@@ -526,9 +595,9 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($showServices): ?>
         <section id="servicios" class="alt">
             <div class="wrap">
-                <span class="eyebrow">Servicios</span>
-                <h2 class="section-title">Lo que ofrecemos</h2>
-                <p class="section-sub">Servicios profesionales con la mejor calidad. Reservá el que más te guste.</p>
+                <span class="eyebrow"><?= $editableText('services.eyebrow', 'Servicios', 'etiqueta de servicios') ?></span>
+                <h2 class="section-title"><?= $editableText('services.title', 'Lo que ofrecemos', 'titulo de servicios') ?></h2>
+                <p class="section-sub"><?= $editableText('services.subtitle', 'Servicios profesionales con la mejor calidad. Reservá el que más te guste.', 'texto de servicios') ?></p>
                 <?php if (empty($services)): ?>
                     <p class="section-sub">Próximamente más servicios.</p>
                 <?php else: ?>
@@ -550,6 +619,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             }
                         ?>
                         <article class="svc-card" data-svc-id="<?= $svcId ?>" data-svc-name="<?= htmlspecialchars($s['nombre'], ENT_QUOTES, 'UTF-8') ?>" data-svc-duration="<?= (int)$s['duracion_min'] ?>" data-svc-price="<?= (float)$s['precio'] ?>" tabindex="0">
+                            <?= $dashboardEditLink('servicios', 'Modificar servicio') ?>
                             <?php if ($svcImgUrl !== ''): ?>
                             <div class="svc-card__media">
                                 <img src="<?= htmlspecialchars($svcImgUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string)$s['nombre'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy">
@@ -590,9 +660,9 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($showCatalogSection): ?>
         <section id="productos">
             <div class="wrap">
-                <span class="eyebrow">Productos</span>
-                <h2 class="section-title">Nuestra tienda</h2>
-                <p class="section-sub"><?= htmlspecialchars($cartEnabled ? 'Agrega al carrito y coordina tu pedido en minutos.' : 'Explora los productos disponibles y consulta al comercio para comprar.', ENT_QUOTES, 'UTF-8') ?></p>
+                <span class="eyebrow"><?= $editableText('products.eyebrow', 'Productos', 'etiqueta de productos') ?></span>
+                <h2 class="section-title"><?= $editableText('products.title', 'Nuestra tienda', 'titulo de productos') ?></h2>
+                <p class="section-sub"><?= $editableText('products.subtitle', $cartEnabled ? 'Agrega al carrito y coordina tu pedido en minutos.' : 'Explora los productos disponibles y consulta al comercio para comprar.', 'texto de productos') ?></p>
                 <?php if (!$showProducts): ?>
                     <p class="section-sub">El catalogo esta en preparacion. Volve pronto o contacta al comercio para consultar productos.</p>
                     <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
@@ -636,6 +706,7 @@ if (!function_exists('agenduy_render_commerce')) {
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-name="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= $dashboardEditLink('productos', 'Modificar producto') ?>
                         <div class="prod-card__media">
                             <?php if (!empty($allImages)): ?>
                                 <div class="prod-gallery" data-gallery>
@@ -692,17 +763,18 @@ if (!function_exists('agenduy_render_commerce')) {
         <section id="nosotros">
             <div class="wrap about">
                 <div class="about__text">
-                    <span class="eyebrow">Nosotros</span>
-                    <h2 class="section-title">Sobre <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h2>
-                    <p><?= htmlspecialchars($aboutDescription, ENT_QUOTES, 'UTF-8') ?></p>
+                    <span class="eyebrow"><?= $editableText('about.eyebrow', 'Nosotros', 'etiqueta sobre nosotros') ?></span>
+                    <h2 class="section-title"><?= $editableText('about.title', 'Sobre ' . $titulo, 'titulo sobre nosotros') ?></h2>
+                    <p><?= $editableText('about.description', $aboutDescription, 'texto sobre nosotros') ?></p>
                     <ul class="about-highlights">
-                        <?php foreach ($aboutHighlights as $highlight): ?>
-                        <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= htmlspecialchars($highlight, ENT_QUOTES, 'UTF-8') ?></span></li>
+                        <?php foreach ($aboutHighlights as $idx => $highlight): ?>
+                        <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= $editableText('about.highlight_' . ($idx + 1), (string)$highlight, 'destacado ' . ($idx + 1)) ?></span></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
                 <div class="about__media">
-                    <img src="<?= htmlspecialchars($hasLogo ? $logoUrl : $coverImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="">
+                    <?= $imageEditButton('about.image', 'imagen sobre nosotros') ?>
+                    <img src="<?= htmlspecialchars($aboutImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" data-public-edit-image-preview="about.image">
                 </div>
             </div>
         </section>
@@ -710,9 +782,10 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($hasConfiguredSchedule): ?>
         <section id="horarios" class="alt">
             <div class="wrap">
-                <span class="eyebrow">Horarios</span>
-                <h2 class="section-title">Cuándo podés venir</h2>
-                <p class="section-sub"><?= htmlspecialchars($scheduleSummary, ENT_QUOTES, 'UTF-8') ?></p>
+                <?= $dashboardEditLink('config', 'Modificar horarios') ?>
+                <span class="eyebrow"><?= $editableText('schedule.eyebrow', 'Horarios', 'etiqueta de horarios') ?></span>
+                <h2 class="section-title"><?= $editableText('schedule.title', 'Cuándo podés venir', 'titulo de horarios') ?></h2>
+                <p class="section-sub"><?= $editableText('schedule.subtitle', $scheduleSummary, 'texto de horarios') ?></p>
                 <div class="schedule">
                     <?php foreach ($horarios as $key => $label):
                         $d = $scheduleRaw[$key] ?? ['abierto' => false, 'inicio' => '', 'fin' => ''];
@@ -735,9 +808,10 @@ if (!function_exists('agenduy_render_commerce')) {
 
         <section id="contacto">
             <div class="wrap">
-                <span class="eyebrow">Contacto</span>
-                <h2 class="section-title">Cómo encontrarnos</h2>
-                <p class="section-sub">Estamos en <?= htmlspecialchars($ciudad, ENT_QUOTES, 'UTF-8') ?>. Pasá, escribinos o reservá online.</p>
+                <?= $dashboardEditLink('config', 'Modificar datos de contacto') ?>
+                <span class="eyebrow"><?= $editableText('contact.eyebrow', 'Contacto', 'etiqueta de contacto') ?></span>
+                <h2 class="section-title"><?= $editableText('contact.title', 'Cómo encontrarnos', 'titulo de contacto') ?></h2>
+                <p class="section-sub"><?= $editableText('contact.subtitle', $contactDefaultSubtitle, 'texto de contacto') ?></p>
                 <div class="contact-grid">
                     <?php if ($calle !== ''): ?>
                     <div class="contact-card">
@@ -809,9 +883,9 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($showBooking): ?>
         <section id="reservar" class="alt" style="text-align:center">
             <div class="wrap">
-                <span class="eyebrow">Reservar</span>
-                <h2 class="section-title">Listo para reservar</h2>
-                <p class="section-sub" style="margin: 0 auto 1.8rem">Elegí un servicio arriba y hacé clic en "Reservar". Vas a recibir confirmación por email o WhatsApp.</p>
+                <span class="eyebrow"><?= $editableText('booking_cta.eyebrow', 'Reservar', 'etiqueta final de reserva') ?></span>
+                <h2 class="section-title"><?= $editableText('booking_cta.title', 'Listo para reservar', 'titulo final de reserva') ?></h2>
+                <p class="section-sub" style="margin: 0 auto 1.8rem"><?= $editableText('booking_cta.subtitle', 'Elegí un servicio arriba y hacé clic en "Reservar". Vas a recibir confirmación por email o WhatsApp.', 'texto final de reserva') ?></p>
                 <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap">
                     <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Ver servicios y reservar</a>
                     <button type="button" class="btn btn--ghost btn--lg" data-open-cancel-appointment><i class="bx bx-calendar-x"></i> Cancelar reserva</button>
@@ -1056,6 +1130,45 @@ if (!function_exists('agenduy_render_commerce')) {
         </div>
         <?php endif; ?>
 
+        <?php if ($isCommerceOwner): ?>
+        <div class="public-edit-modal" id="public-edit-modal" role="dialog" aria-modal="true" aria-labelledby="public-edit-title" hidden>
+            <div class="public-edit-modal__backdrop" data-public-edit-close></div>
+            <form class="public-edit-modal__dialog" id="public-edit-form">
+                <div class="public-edit-modal__head">
+                    <div>
+                        <span class="public-edit-modal__eyebrow">Editar página</span>
+                        <h3 id="public-edit-title">Modificar contenido</h3>
+                    </div>
+                    <button type="button" class="public-edit-modal__close" data-public-edit-close aria-label="Cerrar">×</button>
+                </div>
+                <div class="public-edit-modal__body">
+                    <label class="public-edit-modal__field" id="public-edit-text-wrap">
+                        <span>Texto</span>
+                        <textarea id="public-edit-text" rows="4" maxlength="700"></textarea>
+                    </label>
+                    <label class="public-edit-modal__field" id="public-edit-image-wrap" hidden>
+                        <span>Imagen</span>
+                        <input id="public-edit-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                        <small>JPG, PNG, WebP o GIF. Máximo 5 MB.</small>
+                    </label>
+                    <p class="public-edit-modal__error" id="public-edit-error" hidden></p>
+                </div>
+                <div class="public-edit-modal__foot">
+                    <button type="button" class="btn btn--ghost" data-public-edit-close>Cancelar</button>
+                    <button type="submit" class="btn btn--primary" id="public-edit-submit">Guardar</button>
+                </div>
+            </form>
+        </div>
+        <script>
+        window.__PUBLIC_SITE_EDITOR__ = <?= json_encode([
+            'enabled' => true,
+            'endpoint' => url('src/API/public_content.php'),
+            'csrf' => $siteEditCsrf,
+            'slug' => $slug,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        </script>
+        <?php endif; ?>
+
         <?php if ($hasDlocalPlans): ?>
         <script>window.__DLOCAL_ENDPOINTS__ = <?= json_encode(['subscribe' => url('src/API/dlocal/subscribe.php')], JSON_UNESCAPED_SLASHES) ?>;</script>
         <script src="<?= htmlspecialchars(url('public/assets/js/dlocal-plans.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
@@ -1140,6 +1253,157 @@ if (!function_exists('agenduy_render_commerce')) {
                     setTimeout(() => toast.remove(), 250);
                 }, 6500);
             }
+
+            (function publicSiteEditor() {
+                const cfg = window.__PUBLIC_SITE_EDITOR__ || {};
+                if (!cfg.enabled) return;
+                const modal = document.getElementById('public-edit-modal');
+                const form = document.getElementById('public-edit-form');
+                const title = document.getElementById('public-edit-title');
+                const textWrap = document.getElementById('public-edit-text-wrap');
+                const imageWrap = document.getElementById('public-edit-image-wrap');
+                const textarea = document.getElementById('public-edit-text');
+                const imageInput = document.getElementById('public-edit-image');
+                const submit = document.getElementById('public-edit-submit');
+                const error = document.getElementById('public-edit-error');
+                const cssEscape = window.CSS && typeof window.CSS.escape === 'function'
+                    ? window.CSS.escape.bind(window.CSS)
+                    : (value) => String(value).replace(/["\\]/g, '\\$&');
+                let active = null;
+                if (!modal || !form || !textarea || !imageInput) return;
+
+                const close = () => {
+                    modal.hidden = true;
+                    modal.classList.remove('is-visible');
+                    active = null;
+                    if (error) {
+                        error.hidden = true;
+                        error.textContent = '';
+                    }
+                    if (submit) submit.disabled = false;
+                    imageInput.value = '';
+                };
+                const open = (nextActive) => {
+                    active = nextActive;
+                    if (title) title.textContent = nextActive.label || 'Modificar contenido';
+                    if (textWrap) textWrap.hidden = nextActive.type !== 'text';
+                    if (imageWrap) imageWrap.hidden = nextActive.type !== 'image';
+                    if (nextActive.type === 'text') {
+                        textarea.value = nextActive.field?.querySelector('[data-public-edit-value]')?.textContent?.trim() || '';
+                        requestAnimationFrame(() => textarea.focus());
+                    }
+                    modal.hidden = false;
+                    requestAnimationFrame(() => modal.classList.add('is-visible'));
+                };
+                const showError = (message) => {
+                    if (!error) return;
+                    error.textContent = message || 'No se pudo guardar.';
+                    error.hidden = false;
+                };
+
+                document.addEventListener('click', (event) => {
+                    const textBtn = event.target.closest('[data-public-edit-trigger]');
+                    if (textBtn) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const field = textBtn.closest('[data-public-edit-field]');
+                        if (!field) return;
+                        open({
+                            type: 'text',
+                            key: field.dataset.publicEditKey || '',
+                            label: field.dataset.publicEditLabel || 'Modificar texto',
+                            field
+                        });
+                        return;
+                    }
+                    const imageBtn = event.target.closest('[data-public-edit-image]');
+                    if (imageBtn) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        open({
+                            type: 'image',
+                            key: imageBtn.dataset.publicEditImage || '',
+                            label: imageBtn.dataset.publicEditLabel || 'Modificar imagen'
+                        });
+                    }
+                });
+                modal.querySelectorAll('[data-public-edit-close]').forEach(btn => btn.addEventListener('click', close));
+                modal.addEventListener('click', event => {
+                    if (event.target === modal || event.target.classList.contains('public-edit-modal__backdrop')) {
+                        close();
+                    }
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape' && !modal.hidden) close();
+                });
+
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    if (!active || !active.key) return;
+                    if (submit) submit.disabled = true;
+                    if (error) {
+                        error.hidden = true;
+                        error.textContent = '';
+                    }
+                    try {
+                        let response;
+                        if (active.type === 'text') {
+                            response = await fetch(cfg.endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': cfg.csrf || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    action: 'save_text',
+                                    slug: cfg.slug || commerceSlug,
+                                    key: active.key,
+                                    value: textarea.value.trim()
+                                })
+                            });
+                        } else {
+                            const file = imageInput.files && imageInput.files[0];
+                            if (!file) {
+                                showError('Elegí una imagen.');
+                                if (submit) submit.disabled = false;
+                                return;
+                            }
+                            const data = new FormData();
+                            data.append('action', 'save_image');
+                            data.append('slug', cfg.slug || commerceSlug);
+                            data.append('key', active.key);
+                            data.append('image', file);
+                            response = await fetch(cfg.endpoint, {
+                                method: 'POST',
+                                headers: { 'X-CSRF-Token': cfg.csrf || '', 'Accept': 'application/json' },
+                                body: data
+                            });
+                        }
+                        const json = await response.json().catch(() => null);
+                        if (!response.ok || !json || !json.ok) {
+                            throw new Error(json && json.error ? json.error : 'No se pudo guardar.');
+                        }
+                        if (active.type === 'text') {
+                            const target = active.field?.querySelector('[data-public-edit-value]');
+                            if (target) target.textContent = json.value || '';
+                        } else {
+                            const img = document.querySelector('img[data-public-edit-image-preview="' + cssEscape(active.key) + '"]');
+                            if (img && json.url) {
+                                img.src = json.url;
+                            } else {
+                                window.location.reload();
+                                return;
+                            }
+                        }
+                        showPublicToast('Contenido actualizado.', 'success');
+                        close();
+                    } catch (err) {
+                        showError(err && err.message ? err.message : 'No se pudo guardar.');
+                        if (submit) submit.disabled = false;
+                    }
+                });
+            })();
 
             (function showAppointmentPaymentReturn() {
                 const params = new URLSearchParams(window.location.search);

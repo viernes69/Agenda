@@ -6,7 +6,7 @@ use Agenduy\Core\CommerceStorage;
 require_once dirname(__DIR__) . '/Core/bootstrap.php';
 
 $storedPath = ltrim(str_replace('\\', '/', trim((string)($_GET['p'] ?? ''))), '/');
-if (!preg_match('#^commerce-assets/([1-9][0-9]*)/(logo|services|products|barbers)/([^/]+)$#', $storedPath, $matches)) {
+if (!preg_match('#^commerce-assets/([1-9][0-9]*)/(logo|services|products|barbers|site)/([^/]+)$#', $storedPath, $matches)) {
     http_response_code(404);
     exit;
 }
