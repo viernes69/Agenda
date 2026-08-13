@@ -91,6 +91,8 @@ $stylesPath = __DIR__ . '/src/css/styles.css';
 $stylesVer = is_file($stylesPath) ? (string)filemtime($stylesPath) : (string)time();
 $logoIconPath = __DIR__ . '/src/media/logo/logo-icon.png';
 $logoVer = is_file($logoIconPath) ? (string)filemtime($logoIconPath) : (string)time();
+$loaderLogoPath = __DIR__ . '/src/media/logo/logo-icon-loader.png';
+$loaderLogoVer = is_file($loaderLogoPath) ? (string)filemtime($loaderLogoPath) : $logoVer;
 $siteUrl = rtrim(url(''), '/');
 $seoTitle = 'Agendarte UY | Reservas online y agenda digital en Uruguay';
 $seoDescription = LandingContent::SITE_DESCRIPTION;
@@ -169,11 +171,11 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
 <div id="page-loader" role="status" aria-live="assertive" aria-label="Cargando contenido">
   <div class="page-loader__glow"></div>
   <div class="page-loader__card">
-    <img src="<?= h(url('src/media/logo/logo-vertical.png?v=' . $logoVer)) ?>"
+    <img src="<?= h(url('src/media/logo/logo-icon-loader.png?v=' . $loaderLogoVer)) ?>"
          alt="Agendarte UY"
          class="page-loader__logo"
-         width="160"
-         height="120"
+         width="156"
+         height="164"
          decoding="async">
     <div class="page-loader__spinner">
       <span></span>

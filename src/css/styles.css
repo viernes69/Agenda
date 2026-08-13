@@ -539,17 +539,37 @@ body.modal-open{
   z-index: 1;
 }
 
+.hero::before{
+  content:'';
+  position:absolute;
+  z-index:-1;
+  top:clamp(-40px, -5vw, -18px);
+  bottom:clamp(-46px, -6vw, -22px);
+  left:50%;
+  width:min(100vw, 1500px);
+  transform:translateX(-50%);
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 42% 88% at 18% 26%, rgba(124, 58, 237, .18), transparent 72%),
+    radial-gradient(ellipse 48% 82% at 82% 30%, rgba(59, 130, 246, .16), transparent 74%),
+    radial-gradient(ellipse 38% 60% at 50% 78%, rgba(20, 184, 166, .10), transparent 72%),
+    linear-gradient(90deg, transparent 0%, rgba(124, 58, 237, .11) 18%, rgba(248, 250, 252, .08) 50%, rgba(59, 130, 246, .11) 82%, transparent 100%);
+  filter:blur(.5px);
+  -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 11%, #000 89%, transparent 100%);
+  mask-image:linear-gradient(90deg, transparent 0%, #000 11%, #000 89%, transparent 100%);
+}
+
+[data-theme="dark"] .hero::before{
+  background:
+    radial-gradient(ellipse 42% 88% at 18% 26%, rgba(139, 92, 246, .24), transparent 72%),
+    radial-gradient(ellipse 48% 82% at 82% 30%, rgba(96, 165, 250, .18), transparent 74%),
+    radial-gradient(ellipse 38% 60% at 50% 78%, rgba(45, 212, 191, .12), transparent 72%),
+    linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, .13) 18%, rgba(15, 23, 42, .06) 50%, rgba(96, 165, 250, .13) 82%, transparent 100%);
+}
+
 /* Orbes Decorativos Premium */
 .hero-bg-orbs {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  transform: translate(-50%, -50%);
-  z-index: -1;
-  pointer-events: none;
-  overflow: hidden;
+  display: none;
 }
 .orb {
   position: absolute;
@@ -2621,8 +2641,20 @@ body.modal-open{
   display:flex;
   align-items:center;
   justify-content:center;
-  background: var(--bg);
+  background: rgba(248, 250, 252, 0.34);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  backdrop-filter: blur(14px) saturate(1.08);
   transition: opacity .6s ease, visibility .6s ease;
+}
+[data-theme="dark"] #page-loader{
+  background: rgba(11, 15, 25, 0.34);
+}
+@supports (background: color-mix(in srgb, white 50%, transparent)){
+  #page-loader{
+    background:
+      radial-gradient(ellipse 34rem 25rem at 50% 38%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 72%),
+      color-mix(in srgb, var(--bg) 34%, transparent);
+  }
 }
 #page-loader.page-loader--hidden{
   opacity:0;
@@ -2634,16 +2666,17 @@ body.modal-open{
   width:340px;
   height:340px;
   border-radius:50%;
-  background: radial-gradient(circle, var(--primary-soft), transparent 70%);
+  background: radial-gradient(circle, rgba(124, 58, 237, .22), transparent 70%);
+  opacity:.85;
   animation: pulseGlow 3s ease-in-out infinite;
 }
 .page-loader__card{
   position:relative;
   padding:32px;
   border-radius: var(--radius-xl);
-  background: var(--surface);
-  border:1px solid var(--border);
-  box-shadow: var(--shadow-lg);
+  background: transparent;
+  border:1px solid transparent;
+  box-shadow: none;
   max-width:320px;
   width:90%;
   text-align:center;
@@ -2656,6 +2689,7 @@ body.modal-open{
   width:min(160px, 70vw);
   height:auto;
   object-fit:contain;
+  filter: drop-shadow(0 18px 34px rgba(124, 58, 237, .28));
 }
 .page-loader__spinner{
   position:relative;
