@@ -756,7 +756,9 @@
     if (!target || !target.closest) return;
     const actionBtn = target.closest('[data-order-action]');
     if (!actionBtn) return;
-    if (!ordersDetails.contains(actionBtn) && !(table && table.contains(actionBtn))) return;
+    
+    const isInsideContainer = actionBtn.closest('.admin-orders, [data-admin-orders-table]');
+    if (!isInsideContainer) return;
 
     const itemEl = orderElement(actionBtn);
     const orderId = actionBtn.getAttribute('data-order-id')
