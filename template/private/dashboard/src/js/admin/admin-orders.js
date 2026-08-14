@@ -527,6 +527,12 @@
     const panel = editPanelFor(itemEl);
     if (!panel) return;
     const orderId = itemEl.dataset.orderId || '';
+    const client = itemEl.dataset.orderClient || (itemEl.children && itemEl.children[1] ? itemEl.children[1].textContent.trim() : 'Cliente');
+    const dateText = itemEl.dataset.orderDate || '';
+    const timeText = itemEl.dataset.orderTime || '';
+    const fullDate = [dateText, timeText].filter(Boolean).join(' - ');
+    const phone = itemEl.dataset.orderClientPhone || '';
+
     let rows = parseItemsData(itemEl).map((row) => ({ ...row }));
 
     const renderEditor = () => {
@@ -550,18 +556,42 @@
         : '<p class="admin-orders__edit-empty">Sin productos. Agregá al menos uno.</p>';
 
       panel.innerHTML = `
-        <p class="admin-orders__edit-title">Cambiar venta #${escapeHtml(String(orderId))}</p>
-        <div class="admin-orders__edit-lines">${linesHtml}</div>
+        <div class="admin-orders__edit-header">
+          <p class="admin-orders__edit-title"><i class="bx bx-edit-alt"></i> Cambiar venta #${escapeHtml(String(orderId))}</p>
+          <div class="admin-orders__edit-meta">
+            <div class="admin-orders__edit-meta-item">
+              <i class="bx bx-user"></i>
+              <div>
+                <span class="admin-orders__edit-meta-label">Cliente</span>
+                <strong>${escapeHtml(client)}</strong>
+                ${phone ? `<small>(${escapeHtml(phone)})</small>` : ''}
+              </div>
+            </div>
+            ${fullDate ? `
+            <div class="admin-orders__edit-meta-item">
+              <i class="bx bx-calendar"></i>
+              <div>
+                <span class="admin-orders__edit-meta-label">Fecha</span>
+                <strong>${escapeHtml(fullDate)}</strong>
+              </div>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+        <div class="admin-orders__edit-section">
+          <p class="admin-orders__edit-subtitle"><i class="bx bx-package"></i> Productos</p>
+          <div class="admin-orders__edit-lines">${linesHtml}</div>
+        </div>
         <div class="admin-orders__edit-add">
           <select class="admin-orders__edit-add-select" aria-label="Producto a agregar">
-            <option value="">Agregar producto…</option>
+            <option value="">+ Agregar producto…</option>
             ${optionsHtml}
           </select>
-          <button type="button" class="admin-orders__edit-add-btn" data-edit-add>Agregar</button>
+          <button type="button" class="admin-orders__edit-add-btn" data-edit-add><i class="bx bx-plus"></i> Agregar</button>
         </div>
         <div class="admin-orders__edit-footer">
           <button type="button" class="admin-orders__sale-btn admin-orders__sale-btn--ghost" data-edit-cancel>Cancelar</button>
-          <button type="button" class="admin-orders__sale-btn admin-orders__sale-btn--finalize" data-edit-save>Guardar cambios</button>
+          <button type="button" class="admin-orders__sale-btn admin-orders__sale-btn--finalize" data-edit-save><i class="bx bx-check"></i> Guardar cambios</button>
         </div>
       `;
       panel.hidden = false;

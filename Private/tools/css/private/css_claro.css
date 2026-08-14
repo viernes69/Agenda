@@ -5776,3 +5776,142 @@ body {
   color: #0f172a !important;
 }
 
+/* Edit Order Panel enhancements */
+.admin-orders__edit {
+  margin-top: .6rem;
+  padding: 1rem;
+  border-radius: .9rem;
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  background: rgba(15, 23, 42, 0.75);
+  display: grid;
+  gap: .85rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08) !important;
+}
+
+.admin-orders__edit-header {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding-bottom: .6rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-header {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.admin-orders__edit-title {
+  margin: 0;
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-title {
+  color: #0f172a !important;
+}
+
+.admin-orders__edit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  font-size: .8rem;
+}
+
+.admin-orders__edit-meta-item {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  color: var(--text);
+}
+
+.admin-orders__edit-meta-item i {
+  font-size: 1.1rem;
+  color: #8b5cf6;
+}
+
+.admin-orders__edit-meta-item div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.admin-orders__edit-meta-label {
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #94a3b8;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-meta-label {
+  color: #64748b !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-meta-item strong {
+  color: #0f172a !important;
+}
+
+.admin-orders__edit-section {
+  display: grid;
+  gap: .45rem;
+}
+
+.admin-orders__edit-subtitle {
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-subtitle {
+  color: #64748b !important;
+}
+
+.admin-orders__edit-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: .5rem;
+  align-items: center;
+  padding: .45rem .65rem;
+  border-radius: .6rem;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-line {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-name {
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-qty-btn,
+:root[data-admin-theme="light"] .admin-orders__edit-add-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__edit-qty-btn:hover,
+:root[data-admin-theme="light"] .admin-orders__edit-add-btn:hover {
+  background: #e2e8f0 !important;
+}
+
+
