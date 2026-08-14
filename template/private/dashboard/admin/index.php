@@ -1194,7 +1194,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=7">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260813">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -2554,7 +2554,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/theme-toggle.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>?v=20260813"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>

@@ -5678,3 +5678,101 @@ body {
 :root[data-admin-theme="light"] .table td::before {
   color: #64748b;
 }
+
+:root[data-admin-theme="light"] .admin-product-type {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+:root[data-admin-theme="light"] .admin-clients-empty,
+:root[data-admin-theme="light"] .admin-barbers-empty,
+:root[data-admin-theme="light"] .admin-services-empty,
+:root[data-admin-theme="light"] .admin-products-empty {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__sale-btn--finalize {
+  background: #10b981 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+}
+:root[data-admin-theme="light"] .admin-orders__sale-btn--finalize:hover:not(:disabled) {
+  background: #059669 !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__sale-btn--cancel {
+  background: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+:root[data-admin-theme="light"] .admin-orders__sale-btn--cancel:hover:not(:disabled) {
+  background: #dc2626 !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__sale-btn--edit {
+  background: #0284c7 !important;
+  border-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+:root[data-admin-theme="light"] .admin-orders__sale-btn--edit:hover:not(:disabled) {
+  background: #0369a1 !important;
+}
+
+:root[data-admin-theme="light"] .admin-orders__sale-btn--print {
+  background: #7c3aed !important;
+  border-color: #6d28d9 !important;
+  color: #ffffff !important;
+}
+:root[data-admin-theme="light"] .admin-orders__sale-btn--print:hover:not(:disabled) {
+  background: #6d28d9 !important;
+}
+
+:root[data-admin-theme="light"] .modal__dialog,
+:root[data-admin-theme="light"] .modal__dialog--sm,
+:root[data-admin-theme="light"] .modal__dialog--md,
+:root[data-admin-theme="light"] .modal__dialog--lg,
+:root[data-admin-theme="light"] .modal__dialog--barber,
+:root[data-admin-theme="light"] .modal__dialog--xl,
+:root[data-admin-theme="light"] .admin-layout .modal__dialog,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog--sm,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog--lg {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2) !important;
+}
+
+:root[data-admin-theme="light"] .modal__dialog input,
+:root[data-admin-theme="light"] .modal__dialog select,
+:root[data-admin-theme="light"] .modal__dialog textarea,
+:root[data-admin-theme="light"] .admin-layout .modal input,
+:root[data-admin-theme="light"] .admin-layout .modal select,
+:root[data-admin-theme="light"] .admin-layout .modal textarea {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .modal__dialog label,
+:root[data-admin-theme="light"] .modal__dialog legend,
+:root[data-admin-theme="light"] .modal__dialog p,
+:root[data-admin-theme="light"] .modal__dialog span,
+:root[data-admin-theme="light"] .modal__dialog h1,
+:root[data-admin-theme="light"] .modal__dialog h2,
+:root[data-admin-theme="light"] .modal__dialog h3,
+:root[data-admin-theme="light"] .modal__dialog h4,
+:root[data-admin-theme="light"] .admin-layout .modal label,
+:root[data-admin-theme="light"] .admin-layout .modal legend,
+:root[data-admin-theme="light"] .admin-layout .modal p,
+:root[data-admin-theme="light"] .admin-layout .modal span,
+:root[data-admin-theme="light"] .admin-layout .modal h1,
+:root[data-admin-theme="light"] .admin-layout .modal h2,
+:root[data-admin-theme="light"] .admin-layout .modal h3,
+:root[data-admin-theme="light"] .admin-layout .modal h4 {
+  color: #0f172a !important;
+}
+
