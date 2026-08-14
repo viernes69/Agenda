@@ -2554,7 +2554,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/theme-toggle.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>?v=20260813_2"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>?v=20260813_3"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>

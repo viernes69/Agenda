@@ -2085,7 +2085,7 @@ $summaryCards = [
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="../src/js/admin/core.js"></script>
-  <script src="../src/js/admin/admin-orders.js?v=20260813_2"></script>
+  <script src="../src/js/admin/admin-orders.js?v=20260813_3"></script>
   <script src="../src/js/admin/plan-trial-modal.js"></script>
   <script src="../src/js/admin/plan-membership-modal.js"></script>
   <script src="../src/js/admin/modal-loading.js"></script>

@@ -212,59 +212,218 @@
     if (!itemEl) return false;
     const data = orderPrintData(itemEl);
     if (!data.id) return false;
+
+    const info = window.ADMIN_INFO_BARBERIA || {};
+    const contact = info.contacto || {};
+    const dir = info.direccion || {};
+
+    const logoImgEl = document.querySelector('.admin-logo img, .admin-brand img, .admin-logo-img');
+    const logoUrl = info.logo_src || info.logo || (logoImgEl ? logoImgEl.src : '');
+    const bName = info.nombre || data.business || 'Comercio';
+    const whatsapp = contact.whatsapp || info.whatsapp || contact.telefono || info.telefono || '';
+    const emailStr = contact.email || info.email || '';
+    const addressList = [dir.calle, dir.ciudad, dir.pais].filter((s) => s && String(s).trim() !== '');
+    const addressStr = addressList.join(', ');
+
     const rowsHtml = data.rows.length
       ? data.rows.map((row) => {
         const name = row.name || productNameById(row.product);
-        const variant = row.variant_label ? ' - ' + row.variant_label : '';
-        const subtotal = Number(row.price) * Number(row.quantity || 0);
-        return `<tr><td>${escapeHtml(String(row.quantity))}x ${escapeHtml(name + variant)}</td><td>${escapeHtml(formatMoney(subtotal))}</td></tr>`;
+        const variant = row.variant_label ? ' (' + row.variant_label + ')' : '';
+        const unitPrice = Number(row.price);
+        const qty = Number(row.quantity || 0);
+        const subtotal = Number.isFinite(unitPrice) ? unitPrice * qty : 0;
+        return `
+          <tr>
+            <td>
+              <div class="row-name">${escapeHtml(name + variant)}</div>
+              <div class="row-meta">${escapeHtml(String(qty))} x ${escapeHtml(formatMoney(unitPrice))}</div>
+            </td>
+            <td class="row-total">${escapeHtml(formatMoney(subtotal))}</td>
+          </tr>`;
       }).join('')
-      : '<tr><td colspan="2">Sin productos</td></tr>';
-    const details = [
+      : '<tr><td colspan="2" style="text-align:center; padding:10px; color:#64748b;">Sin productos</td></tr>';
+
+    const clientDetails = [
       ['Cliente', data.client],
-      ['Cedula', data.cedula],
-      ['Telefono', data.phone],
+      ['Cédula', data.cedula],
+      ['Teléfono', data.phone],
       ['Email', data.email],
-      ['Tipo de pago', data.payment],
-      ['Fecha', data.date],
+      ['Forma de Pago', data.payment],
+      ['Fecha y Hora', data.date],
       ['Estado', data.status],
-      ['Entrega', data.address],
+      ['Entrega / Dirección', data.address],
     ].filter(([, value]) => String(value || '').trim() !== '')
-      .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
+      .map(([label, value]) => `
+        <div class="detail-row">
+          <span class="detail-label">${escapeHtml(label)}:</span>
+          <span class="detail-val">${escapeHtml(value)}</span>
+        </div>`)
       .join('');
+
     const html = `<!doctype html>
       <html lang="es">
       <head>
         <meta charset="utf-8">
-        <title>Pedido #${escapeHtml(data.id)}</title>
+        <title>Ticket Pedido #${escapeHtml(data.id)}</title>
         <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; padding: 18px; font-family: Arial, sans-serif; color: #111827; background: #fff; }
-          .ticket { width: 320px; max-width: 100%; margin: 0 auto; }
-          h1 { margin: 0 0 4px; font-size: 20px; }
-          h2 { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: #4b5563; }
-          p { margin: 4px 0; font-size: 13px; line-height: 1.35; }
-          table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
-          td { padding: 7px 0; border-top: 1px dashed #cbd5e1; vertical-align: top; }
-          td:last-child { text-align: right; white-space: nowrap; }
-          .total { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 10px; border-top: 2px solid #111827; font-size: 16px; font-weight: 800; }
-          .foot { margin-top: 18px; text-align: center; color: #6b7280; font-size: 12px; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 12px;
+            color: #0f172a;
+            background: #fff;
+            padding: 14px 10px;
+          }
+          .ticket {
+            width: 300px;
+            max-width: 100%;
+            margin: 0 auto;
+          }
+          .header {
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #cbd5e1;
+            margin-bottom: 10px;
+          }
+          .logo {
+            max-width: 85px;
+            max-height: 85px;
+            object-fit: contain;
+            margin-bottom: 6px;
+            border-radius: 8px;
+          }
+          .brand-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+            margin-bottom: 4px;
+          }
+          .header-info {
+            font-size: 11px;
+            color: #475569;
+            line-height: 1.4;
+          }
+          .order-tag {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 12px;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 800;
+            border-radius: 6px;
+            letter-spacing: .02em;
+          }
+          .section-title {
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 12px 0 6px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .details {
+            font-size: 11.5px;
+            margin-bottom: 8px;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 2.5px 0;
+          }
+          .detail-label {
+            color: #64748b;
+            font-weight: 500;
+          }
+          .detail-val {
+            font-weight: 700;
+            color: #0f172a;
+            text-align: right;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+          }
+          td {
+            padding: 6px 0;
+            border-top: 1px dashed #e2e8f0;
+            vertical-align: top;
+          }
+          .row-name {
+            font-weight: 700;
+            font-size: 12px;
+            color: #0f172a;
+          }
+          .row-meta {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 1px;
+          }
+          .row-total {
+            text-align: right;
+            font-weight: 700;
+            font-size: 12px;
+            white-space: nowrap;
+          }
+          .total-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding: 10px 0;
+            border-top: 2px solid #0f172a;
+            border-bottom: 2px dashed #cbd5e1;
+            font-size: 16px;
+            font-weight: 800;
+          }
+          .foot {
+            margin-top: 14px;
+            text-align: center;
+            color: #64748b;
+            font-size: 10.5px;
+            line-height: 1.45;
+          }
           @media print {
             body { padding: 0; }
-            .ticket { width: 72mm; padding: 4mm; }
+            .ticket { width: 72mm; padding: 2mm; }
           }
         </style>
       </head>
       <body>
         <main class="ticket">
-          <h1>${escapeHtml(data.business)}</h1>
-          <h2>Pedido #${escapeHtml(data.id)}</h2>
-          ${details}
+          <header class="header">
+            ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="Logo" class="logo">` : ''}
+            <h1 class="brand-title">${escapeHtml(bName)}</h1>
+            <div class="header-info">
+              ${addressStr ? `<p>📍 ${escapeHtml(addressStr)}</p>` : ''}
+              ${whatsapp ? `<p>📱 WhatsApp: ${escapeHtml(whatsapp)}</p>` : ''}
+              ${emailStr ? `<p>✉️ ${escapeHtml(emailStr)}</p>` : ''}
+            </div>
+            <div class="order-tag">PEDIDO #${escapeHtml(data.id)}</div>
+          </header>
+          
+          <div class="section-title">Detalles del Cliente</div>
+          <div class="details">${clientDetails}</div>
+          
+          <div class="section-title">Productos</div>
           <table><tbody>${rowsHtml}</tbody></table>
-          <div class="total"><span>Total</span><span>${escapeHtml(formatMoney(data.total))}</span></div>
-          <p class="foot">Generado desde Agendarte UY</p>
+
+          <div class="total-box">
+            <span>TOTAL</span>
+            <span>${escapeHtml(formatMoney(data.total))}</span>
+          </div>
+
+          <footer class="foot">
+            <p>¡Muchas gracias por su compra!</p>
+            <p style="font-size: 9.5px; color: #94a3b8; margin-top: 4px;">Generado con Agendarte UY</p>
+          </footer>
         </main>
-        <script>window.onload = function(){ window.focus(); setTimeout(function(){ window.print(); }, 120); };</script>
+        <script>window.onload = function(){ window.focus(); setTimeout(function(){ window.print(); }, 150); };</script>
       </body>
       </html>`;
     const frame = document.createElement('iframe');
