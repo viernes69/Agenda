@@ -1299,69 +1299,6 @@ if (!function_exists('agenduy_render_commerce')) {
                         <?php if ($googleClientId !== ''): ?>
                         <div class="cart-google" id="cart-google-wrap" hidden>
                             <div id="cart-google-btn"></div>
-                <?php if ($showProducts): ?>
-                <div class="modal__foot" id="booking-foot-upsell" hidden>
-                    <button type="button" class="btn btn--ghost" id="booking-upsell-skip">No, gracias</button>
-                    <button type="button" class="btn btn--primary" id="booking-upsell-wa">
-                        <i class="bx bxl-whatsapp" aria-hidden="true"></i> Finalizar mi compra
-                    </button>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <?php if ($showBooking): ?>
-        <!-- Modal cancelar reserva -->
-        <div class="modal-bg" id="cancel-appointment-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-appointment-title">
-            <div class="modal">
-                <div class="modal__header">
-                    <h3 id="cancel-appointment-title">Cancelar reserva</h3>
-                    <button class="modal__close" type="button" data-close-cancel-appointment aria-label="Cerrar">×</button>
-                </div>
-                <div class="modal__body">
-                    <div id="cancel-appointment-alert" hidden></div>
-                    <form id="cancel-appointment-form" novalidate>
-                        <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="field field--row">
-                            <div>
-                                <label for="cancel-appointment-id">Número de reserva</label>
-                                <input type="text" id="cancel-appointment-id" name="id_appointment" inputmode="numeric" required placeholder="154">
-                            </div>
-                            <div>
-                                <label for="cancel-appointment-cedula">Cédula</label>
-                                <input type="text" id="cancel-appointment-cedula" name="cedula" inputmode="numeric" required placeholder="12345678">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal__foot">
-                    <button type="button" class="btn btn--ghost" data-close-cancel-appointment>Volver</button>
-                    <button type="submit" form="cancel-appointment-form" class="btn btn--primary" id="cancel-appointment-submit">Cancelar reserva</button>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($cartEnabled): ?>
-        <!-- Modal carrito -->
-        <div class="modal-bg" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-            <div class="modal modal--cart">
-                <div class="modal__header">
-                    <h3 id="cart-title">Tu pedido</h3>
-                    <button class="modal__close" type="button" data-close-cart aria-label="Cerrar">×</button>
-                </div>
-                <div class="modal__body">
-                    <div id="cart-empty" class="cart-empty" hidden>
-                        <i class="bx bx-cart" aria-hidden="true"></i>
-                        <p>Tu carrito está vacío.</p>
-                        <a href="#productos" class="btn btn--ghost" data-close-cart>Ver productos</a>
-                    </div>
-                    <div id="cart-content">
-                        <div class="cart-lines" id="cart-lines"></div>
-                        <div class="cart-total" id="cart-total"></div>
-                        <?php if ($googleClientId !== ''): ?>
-                        <div class="cart-google" id="cart-google-wrap" hidden>
-                            <div id="cart-google-btn"></div>
                             <p class="hint" id="cart-google-hint" hidden role="status"></p>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
