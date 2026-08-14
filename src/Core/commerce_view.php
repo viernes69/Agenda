@@ -1299,6 +1299,69 @@ if (!function_exists('agenduy_render_commerce')) {
                         <?php if ($googleClientId !== ''): ?>
                         <div class="cart-google" id="cart-google-wrap" hidden>
                             <div id="cart-google-btn"></div>
+                <?php if ($showProducts): ?>
+                <div class="modal__foot" id="booking-foot-upsell" hidden>
+                    <button type="button" class="btn btn--ghost" id="booking-upsell-skip">No, gracias</button>
+                    <button type="button" class="btn btn--primary" id="booking-upsell-wa">
+                        <i class="bx bxl-whatsapp" aria-hidden="true"></i> Finalizar mi compra
+                    </button>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php if ($showBooking): ?>
+        <!-- Modal cancelar reserva -->
+        <div class="modal-bg" id="cancel-appointment-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-appointment-title">
+            <div class="modal">
+                <div class="modal__header">
+                    <h3 id="cancel-appointment-title">Cancelar reserva</h3>
+                    <button class="modal__close" type="button" data-close-cancel-appointment aria-label="Cerrar">×</button>
+                </div>
+                <div class="modal__body">
+                    <div id="cancel-appointment-alert" hidden></div>
+                    <form id="cancel-appointment-form" novalidate>
+                        <input type="hidden" name="slug" value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="field field--row">
+                            <div>
+                                <label for="cancel-appointment-id">Número de reserva</label>
+                                <input type="text" id="cancel-appointment-id" name="id_appointment" inputmode="numeric" required placeholder="154">
+                            </div>
+                            <div>
+                                <label for="cancel-appointment-cedula">Cédula</label>
+                                <input type="text" id="cancel-appointment-cedula" name="cedula" inputmode="numeric" required placeholder="12345678">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal__foot">
+                    <button type="button" class="btn btn--ghost" data-close-cancel-appointment>Volver</button>
+                    <button type="submit" form="cancel-appointment-form" class="btn btn--primary" id="cancel-appointment-submit">Cancelar reserva</button>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($cartEnabled): ?>
+        <!-- Modal carrito -->
+        <div class="modal-bg" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+            <div class="modal modal--cart">
+                <div class="modal__header">
+                    <h3 id="cart-title">Tu pedido</h3>
+                    <button class="modal__close" type="button" data-close-cart aria-label="Cerrar">×</button>
+                </div>
+                <div class="modal__body">
+                    <div id="cart-empty" class="cart-empty" hidden>
+                        <i class="bx bx-cart" aria-hidden="true"></i>
+                        <p>Tu carrito está vacío.</p>
+                        <a href="#productos" class="btn btn--ghost" data-close-cart>Ver productos</a>
+                    </div>
+                    <div id="cart-content">
+                        <div class="cart-lines" id="cart-lines"></div>
+                        <div class="cart-total" id="cart-total"></div>
+                        <?php if ($googleClientId !== ''): ?>
+                        <div class="cart-google" id="cart-google-wrap" hidden>
+                            <div id="cart-google-btn"></div>
                             <p class="hint" id="cart-google-hint" hidden role="status"></p>
                             <div class="booking-or-divider"><span>o completá tus datos</span></div>
                         </div>
@@ -1309,6 +1372,25 @@ if (!function_exists('agenduy_render_commerce')) {
                         <?php endif; ?>
                         <div class="cart-contact" id="cart-contact">
                             <p class="cart-contact__title">Datos para confirmarte el pedido</p>
+                            <div class="cart-delivery-selector" id="cart-delivery-selector">
+                                <span class="cart-delivery__title">Forma de entrega</span>
+                                <div class="cart-delivery__options">
+                                    <label class="cart-delivery__option">
+                                        <input type="radio" name="cart-delivery-type" value="retiro" id="cart-delivery-retiro" checked>
+                                        <div class="cart-delivery__card">
+                                            <i class="bx bx-store-alt" aria-hidden="true"></i>
+                                            <span>Retirar en local</span>
+                                        </div>
+                                    </label>
+                                    <label class="cart-delivery__option">
+                                        <input type="radio" name="cart-delivery-type" value="envio" id="cart-delivery-envio">
+                                        <div class="cart-delivery__card">
+                                            <i class="bx bx-truck" aria-hidden="true"></i>
+                                            <span>Envío a domicilio</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
                             <div class="cart-contact__grid">
                                 <label for="cart-customer-name">
                                     Nombre
@@ -1327,12 +1409,13 @@ if (!function_exists('agenduy_render_commerce')) {
                                     <input type="text" id="cart-customer-cedula" inputmode="numeric" autocomplete="off" placeholder="12345678" pattern="[0-9]{7,}" maxlength="20" required>
                                 </label>
                             </div>
+                            <div class="cart-address-field" id="cart-address-field" hidden>
+                                <label for="cart-customer-address">
+                                    Dirección de envío <span class="required-star">*</span>
+                                    <input type="text" id="cart-customer-address" autocomplete="street-address" placeholder="Calle, N°, Apto / Esquina, Barrio">
+                                </label>
+                            </div>
                             <p class="cart-contact__hint">Te enviamos la confirmacion por email y WhatsApp.</p>
-                        </div>
-                        <p class="hint" id="cart-wa-hint" hidden></p>
-                    </div>
-                </div>
-                <div class="modal__foot">
                     <button type="button" class="btn btn--ghost" data-close-cart>Seguir mirando</button>
                     <?php if ($storeMpCheckoutEnabled): ?>
                     <button type="button" class="btn btn--primary" id="cart-mp-btn">
@@ -1890,16 +1973,24 @@ if (!function_exists('agenduy_render_commerce')) {
             }
 
             function buildStoreWaMessage(items, paymentUrl) {
+                const isEnvio = cartDeliveryEnvio && cartDeliveryEnvio.checked;
+                const direccion = String(cartCustomerAddress?.value || '').trim();
+                const deliveryLine = isEnvio
+                    ? ('Forma de entrega: 🚚 Envío a domicilio\nDirección de envío: ' + (direccion || 'A coordinar'))
+                    : 'Forma de entrega: 🏬 Retiro en local del comercio';
+
                 const lines = [
                     'Hola! Quiero pedir estos productos de ' + commerceName + ':',
                     '',
                     buildProductsMessage(items),
+                    '',
+                    deliveryLine,
                 ];
                 const mpUrl = String(paymentUrl || '').trim();
                 if (mpUrl) {
                     lines.push('', 'Link de pago Mercado Pago:', mpUrl);
                 }
-                lines.push('', cartInstructions || 'Coordinamos entrega o retiro por este medio. Gracias!');
+                lines.push('', cartInstructions || 'Coordinamos la compra por este medio. Gracias!');
                 return lines.join('\n');
             }
 
@@ -1938,7 +2029,6 @@ if (!function_exists('agenduy_render_commerce')) {
             }
 
             async function registerPendingOrder(items, meta) {
-                meta = meta || {};
                 if (!items || !items.length) {
                     return { ok: true, skipped: true };
                 }
@@ -2190,6 +2280,18 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartLines = document.getElementById('cart-lines');
             const cartTotalEl = document.getElementById('cart-total');
             const cartEmpty = document.getElementById('cart-empty');
+                    } else if (rem) {
+                        setCartQty(rem.getAttribute('data-cart-remove'), 0);
+                    }
+                });
+            }
+
+            const cartOpenBtn = document.getElementById('cart-open');
+            const cartCountEl = document.getElementById('cart-count');
+            const cartModal = document.getElementById('cart-modal');
+            const cartLines = document.getElementById('cart-lines');
+            const cartTotalEl = document.getElementById('cart-total');
+            const cartEmpty = document.getElementById('cart-empty');
             const cartContent = document.getElementById('cart-content');
             const cartWaBtn = document.getElementById('cart-wa-btn');
             const cartMpBtn = document.getElementById('cart-mp-btn');
@@ -2198,6 +2300,20 @@ if (!function_exists('agenduy_render_commerce')) {
             const cartCustomerEmail = document.getElementById('cart-customer-email');
             const cartCustomerPhone = document.getElementById('cart-customer-phone');
             const cartCustomerCedula = document.getElementById('cart-customer-cedula');
+            const cartDeliveryRetiro = document.getElementById('cart-delivery-retiro');
+            const cartDeliveryEnvio = document.getElementById('cart-delivery-envio');
+            const cartAddressField = document.getElementById('cart-address-field');
+            const cartCustomerAddress = document.getElementById('cart-customer-address');
+
+            function updateDeliveryUI() {
+                const isEnvio = cartDeliveryEnvio && cartDeliveryEnvio.checked;
+                if (cartAddressField) {
+                    cartAddressField.hidden = !isEnvio;
+                }
+            }
+
+            if (cartDeliveryRetiro) cartDeliveryRetiro.addEventListener('change', updateDeliveryUI);
+            if (cartDeliveryEnvio) cartDeliveryEnvio.addEventListener('change', updateDeliveryUI);
 
             function isValidEmail(value) {
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
@@ -2205,19 +2321,29 @@ if (!function_exists('agenduy_render_commerce')) {
 
             function prefillCartContact() {
                 const guest = typeof loadSavedGuest === 'function' ? loadSavedGuest() : null;
-                if (!guest) return;
-                if (cartCustomerName && !String(cartCustomerName.value || '').trim()) {
-                    cartCustomerName.value = String(guest.nombre || '').trim();
+                if (guest) {
+                    if (cartCustomerName && !String(cartCustomerName.value || '').trim()) {
+                        cartCustomerName.value = String(guest.nombre || '').trim();
+                    }
+                    if (cartCustomerEmail && !String(cartCustomerEmail.value || '').trim()) {
+                        cartCustomerEmail.value = String(guest.email || '').trim();
+                    }
+                    if (cartCustomerPhone && !String(cartCustomerPhone.value || '').trim()) {
+                        cartCustomerPhone.value = String(guest.telefono || '').trim();
+                    }
+                    if (cartCustomerCedula && !String(cartCustomerCedula.value || '').trim()) {
+                        cartCustomerCedula.value = String(guest.cedula || '').trim();
+                    }
+                    if (cartCustomerAddress && !String(cartCustomerAddress.value || '').trim()) {
+                        cartCustomerAddress.value = String(guest.direccion || '').trim();
+                    }
+                    if (guest.delivery_type === 'envio' && cartDeliveryEnvio) {
+                        cartDeliveryEnvio.checked = true;
+                    } else if (cartDeliveryRetiro) {
+                        cartDeliveryRetiro.checked = true;
+                    }
                 }
-                if (cartCustomerEmail && !String(cartCustomerEmail.value || '').trim()) {
-                    cartCustomerEmail.value = String(guest.email || '').trim();
-                }
-                if (cartCustomerPhone && !String(cartCustomerPhone.value || '').trim()) {
-                    cartCustomerPhone.value = String(guest.telefono || '').trim();
-                }
-                if (cartCustomerCedula && !String(cartCustomerCedula.value || '').trim()) {
-                    cartCustomerCedula.value = String(guest.cedula || '').trim();
-                }
+                updateDeliveryUI();
             }
 
             function collectCartCustomerMeta() {
@@ -2225,6 +2351,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 const email = String(cartCustomerEmail?.value || '').trim();
                 const telefono = String(cartCustomerPhone?.value || '').trim();
                 const cedula = String(cartCustomerCedula?.value || '').replace(/\D/g, '');
+                const isEnvio = cartDeliveryEnvio && cartDeliveryEnvio.checked;
+                const deliveryType = isEnvio ? 'envio' : 'retiro';
+                const direccion = String(cartCustomerAddress?.value || '').trim();
+
                 if (!isValidEmail(email)) {
                     window.alert('Ingresa un email valido para enviarte la confirmacion.');
                     cartCustomerEmail?.focus();
@@ -2240,10 +2370,20 @@ if (!function_exists('agenduy_render_commerce')) {
                     cartCustomerCedula?.focus();
                     return null;
                 }
-                if (typeof saveGuest === 'function') {
-                    saveGuest({ nombre, email, telefono, cedula });
+                if (isEnvio && !direccion) {
+                    window.alert('Por favor ingresá tu dirección para el envío a domicilio.');
+                    cartCustomerAddress?.focus();
+                    return null;
                 }
-                return { nombre, email, telefono, cedula };
+
+                const addressText = isEnvio
+                    ? ('Envío a domicilio: ' + direccion)
+                    : 'Retiro en el comercio';
+
+                if (typeof saveGuest === 'function') {
+                    saveGuest({ nombre, email, telefono, cedula, direccion, delivery_type: deliveryType });
+                }
+                return { nombre, email, telefono, cedula, direccion, delivery_type: deliveryType, address: addressText };
             }
 
             function openCartModal() {
