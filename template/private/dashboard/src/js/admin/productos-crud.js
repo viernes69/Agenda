@@ -221,17 +221,18 @@
     if (/^(https?:|blob:|data:)/i.test(ref)) return ref;
     if (ref.startsWith('/')) return ref;
     const rel = ref.replace(/^\/+/, '');
+    const appBase = appPublicBase();
     if (rel.startsWith('commerce-assets/')) {
-      const appBase = appPublicBase();
       const prefix = appBase || '';
       return `${prefix}/src/API/commerce_asset.php?p=${encodeURIComponent(rel)}`;
     }
-    if (rel.startsWith('src/media/commerce/')) {
-      const appBase = appPublicBase();
+    if (rel.startsWith('src/') || rel.startsWith('storage/') || rel.startsWith('uploads/') || rel.startsWith('assets/')) {
       return appBase ? `${appBase}/${rel}` : `/${rel}`;
     }
-    const base = tenantPublicBase();
-    return base ? `${base}/${rel}` : `../../../${rel}`;
+    const tenantBase = tenantPublicBase();
+    if (tenantBase) return `${tenantBase}/${rel}`;
+    if (appBase) return `${appBase}/${rel}`;
+    return `/${rel}`;
   };
   const parseImages = (data) => {
     const raw = data?.Imagenes ?? data?.imagenes ?? '';

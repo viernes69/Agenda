@@ -682,6 +682,201 @@ foreach ($clientes as $cliente) {
   $email = trim((string)($cliente['Email'] ?? ''));
   if ($email !== '') { $clientesStats['con_email']++; }
   $tel = trim((string)($cliente['Telefono'] ?? ''));
+if ((string)($r['Fecha_Reserva'] ?? '') === $today) { $reservasHoy++; }
+  if ($st === 'pendiente') { $reservasPend++; }
+  if ($st !== 'finalizado' && $st !== 'cancelado') { $reservasActivas++; }
+}
+
+$statusOrderSeed = ['pendiente', 'aprobado', 'en progreso', 'rechazado', 'cancelado', 'finalizado'];
+$statusList = $statusOrderSeed;
+foreach ($statusOrderSeed as $seed) {
+  unset($statusRegistry[$seed]);
+}
+if (!empty($statusRegistry)) {
+  foreach ($statusRegistry as $rest => $_) {
+    $statusList[] = $rest;
+  }
+}
+$statusFilterRaw = strtolower(trim((string)($_GET['res_status'] ?? '')));
+$statusFilter = $statusFilterRaw === '' ? '' : ($statusFilterRaw === 'todos' ? 'todos' : \Agenduy\Core\TenantLocalDb::normalizeStatusKey($statusFilterRaw));
+$defaultStatus = 'todos';
+if ($statusFilter === '' || ($statusFilter !== 'todos' && !in_array($statusFilter, $statusList, true))) {
+  $statusFilter = $defaultStatus;
+}
+
+$dateFilter = trim((string)($_GET['res_date'] ?? ''));
+if ($dateFilter !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFilter)) {
+  $dateFilter = '';
+}
+
+$reservaDatesMap = [];
+foreach ($reservas as $r) {
+  if (!is_array($r)) continue;
+  $fechaRaw = trim((string)($r['Fecha_Reserva'] ?? ''));
+  if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaRaw)) {
+    $reservaDatesMap[$fechaRaw] = true;
+  }
+}
+$reservaDates = array_keys($reservaDatesMap);
+sort($reservaDates);
+$reservaDatesJson = json_encode(array_values($reservaDates), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+$statusOptions = array_merge(['todos'], $statusList);
+$formatStatusLabel = static function($value) {
+  return \Agenduy\Core\TenantLocalDb::statusLabel((string)$value);
+};
+$statusOptionLabels = [];
+foreach ($statusOptions as $option) {
+  $statusOptionLabels[$option] = ($option === 'todos') ? 'Todos' : $formatStatusLabel($option);
+}
+$currentStatusLabel = $statusOptionLabels[$statusFilter] ?? ($statusFilter === 'todos' ? 'Todos' : $formatStatusLabel($statusFilter));
+$nowTs = time();
+$ultimas = [];
+foreach ($reservas as $r) {
+  $st = \Agenduy\Core\TenantLocalDb::normalizeStatusKey((string)($r['Status'] ?? ''));
+
+  $fecha = trim((string)($r['Fecha_Reserva'] ?? ''));
+  $hora = trim((string)($r['Hora_Reserva'] ?? ''));
+  $hora = $hora !== '' ? $hora : '00:00:00';
+  $timestamp = PHP_INT_MAX;
+  if ($fecha !== '') {
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $fecha . ' ' . $hora);
+    if (!$dt) {
+      $dt = DateTime::createFromFormat('Y-m-d H:i', $fecha . ' ' . substr($hora, 0, 5));
+    }
+    if ($dt instanceof DateTime) {
+      $timestamp = (int)$dt->format('U');
+    }
+  }
+
+  $include = false;
+  if ($statusFilter === 'todos') {
+    $include = true;
+  } elseif ($statusFilter === 'pendiente') {
+    $include = ($st === 'pendiente');
+  } else {
+    $include = ($st === $statusFilter);
+  }
+
+  if ($include && $dateFilter !== '' && $fecha !== $dateFilter) {
+    $include = false;
+  }
+
+  if ($include) {
+    $r['_status_norm'] = $st;
+    $r['_timestamp'] = $timestamp;
+    $ultimas[] = $r;
+  }
+}
+
+usort($ultimas, function($a, $b) {
+  $ta = isset($a['_timestamp']) ? (int)$a['_timestamp'] : PHP_INT_MAX;
+  $tb = isset($b['_timestamp']) ? (int)$b['_timestamp'] : PHP_INT_MAX;
+  if ($ta === $tb) {
+    // Same slot: newest registration first (higher ID).
+    $ia = isset($a['ID_Reserva']) ? (int)$a['ID_Reserva'] : 0;
+    $ib = isset($b['ID_Reserva']) ? (int)$b['ID_Reserva'] : 0;
+    return $ib <=> $ia;
+  }
+  return $ta <=> $tb;
+});
+$renderedCount = count($ultimas);
+
+$formatNumber = static function($value) {
+  return number_format((int)$value, 0, ',', '.');
+};
+$normalizeAmount = static function($value): float {
+  if ($value === null || $value === '') {
+    return 0.0;
+  }
+  if (is_numeric($value)) {
+    return (float)$value;
+  }
+  $normalized = str_replace(',', '.', (string)$value);
+  return is_numeric($normalized) ? (float)$normalized : 0.0;
+};
+
+$formatCurrency = static function($value): string {
+  return '$ ' . number_format((float)$value, 2, ',', '.');
+};
+
+$finalizedAmount = 0.0;
+foreach ($ultimas as $row) {
+  if (($row['_status_norm'] ?? '') !== 'finalizado') {
+    continue;
+  }
+  $sid = (string)($row['ID_Servicio'] ?? '');
+  $serviceData = $serviciosMap[$sid] ?? [];
+  if (isset($row['Precio']) && is_numeric($row['Precio']) && (float)$row['Precio'] > 0) {
+    $finalizedAmount += $normalizeAmount($row['Precio']);
+  } else {
+    $finalizedAmount += $normalizeAmount($serviceData['Precio'] ?? 0);
+  }
+}
+$finalizedAmountLabel = 'Total finalizado: ' . $formatCurrency($finalizedAmount);
+
+$barberStats = [
+  'total' => 0,
+  'online' => 0,
+  'offline' => 0,
+  'disponibles' => 0,
+  'admins' => 0,
+  'func' => 0,
+  'con_comision' => 0,
+];
+foreach ($barberos as $barbero) {
+  $id = $barbero['ID_Barber'] ?? null;
+  if ($id === null || $id === '' || !is_numeric($id)) { continue; }
+  $barberStats['total']++;
+  $status = strtolower(trim((string)($barbero['Status'] ?? '')));
+  if ($status === 'online') { $barberStats['online']++; }
+  if ($status === 'offline' || $status === '') { $barberStats['offline']++; }
+  $dispo = strtolower(trim((string)($barbero['Disponibilidad'] ?? '')));
+  if ($dispo === 'disponible') { $barberStats['disponibles']++; }
+  $rol = strtolower(trim((string)($barbero['Rol'] ?? '')));
+  if ($rol === 'admin') { $barberStats['admins']++; }
+  else { $barberStats['func']++; }
+  $comRaw = $barbero['Comision'] ?? null;
+  if ($comRaw !== null && $comRaw !== '') {
+    $normalized = str_replace(',', '.', (string)$comRaw);
+    if (is_numeric($normalized)) {
+      $barberStats['con_comision']++;
+    }
+  }
+  $commissionNormalized = $normalizeCommission($barbero['Comision'] ?? null);
+  if ($commissionNormalized !== null) {
+    $barberCommissionMap[(string)(int)$id] = $commissionNormalized;
+  }
+}
+
+$clientIdsWithReservations = [];
+foreach ($reservas as $reserva) {
+  $cid = $reserva['ID_Cliente'] ?? null;
+  if ($cid === null || $cid === '' || !is_numeric($cid)) { continue; }
+  $clientIdsWithReservations[(string)$cid] = true;
+}
+$clientIdsWithOrders = [];
+foreach ($carritos as $carrito) {
+  $oid = $carrito['ID_Cliente'] ?? null;
+  if ($oid !== null && $oid !== '' && is_numeric($oid)) {
+    $clientIdsWithOrders[(string)(int)$oid] = true;
+  }
+}
+$clientesStats = [
+  'total' => 0,
+  'con_reservas' => count($clientIdsWithReservations),
+  'con_pedidos' => count($clientIdsWithOrders),
+  'con_email' => 0,
+  'con_telefono' => 0,
+];
+$clientNameMap = [];
+foreach ($clientes as $cliente) {
+  $id = $cliente['ID_Cliente'] ?? null;
+  if ($id === null || $id === '' || !is_numeric($id)) { continue; }
+  $clientesStats['total']++;
+  $email = trim((string)($cliente['Email'] ?? ''));
+  if ($email !== '') { $clientesStats['con_email']++; }
+  $tel = trim((string)($cliente['Telefono'] ?? ''));
   $wa = trim((string)($cliente['Whatsapp'] ?? ''));
   if ($tel !== '' || $wa !== '') { $clientesStats['con_telefono']++; }
   $nombre = trim((string)($cliente['Nombre'] ?? ''));
@@ -699,6 +894,7 @@ $productNameMap = [];
 $productPriceMap = [];
 $productTypeMap = [];
 $productPointsMap = [];
+$productImgMap = [];
 foreach ($productos as $producto) {
   $id = $producto['ID_Product'] ?? null;
   if ($id === null || $id === '' || !is_numeric($id)) { continue; }
@@ -719,8 +915,9 @@ foreach ($productos as $producto) {
   $productIdKey = (string)(int)$id;
   $productNameMap[$productIdKey] = trim((string)($producto['Nombre'] ?? ('Producto ' . $productIdKey)));
   $productPriceMap[$productIdKey] = isset($producto['Precio']) && is_numeric($producto['Precio']) ? (float)$producto['Precio'] : 0.0;
-$productTypeMap[$productIdKey] = $tipo;
+  $productTypeMap[$productIdKey] = $tipo;
   $productPointsMap[$productIdKey] = isset($producto['Puntos']) && is_numeric($producto['Puntos']) ? (int)$producto['Puntos'] : 0;
+  $productImgMap[$productIdKey] = $img;
 }
 $productosStats['tipos'] = count($productoTipos);
 
@@ -864,6 +1061,7 @@ foreach ($carritos as $carrito) {
       'variant_label' => trim((string)($item['variant_label'] ?? '')),
       'name' => trim((string)($item['name'] ?? '')) !== '' ? trim((string)$item['name']) : ($productNameMap[(string)$pid] ?? ('Producto ' . $pid)),
       'price' => isset($item['price']) && is_numeric($item['price']) ? (float)$item['price'] : ($productPriceMap[(string)$pid] ?? 0.0),
+      'image' => trim((string)($item['image'] ?? ($productImgMap[(string)$pid] ?? ''))),
     ];
   }
   $clientRow = $clientId !== null ? ($clientesMap[(string)$clientId] ?? []) : [];
@@ -1521,10 +1719,24 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                 data-items='<?php echo $orderItemsJson; ?>'>
                 <td><strong>#<?php echo (int)$order['id']; ?></strong></td>
                 <td><?php echo e($order['client']); ?></td>
-                <td><?php echo e(implode(', ', array_map(function($i) {
-                  $variant = trim((string)($i['variant_label'] ?? ''));
-                  return $i['quantity'] . 'x ' . $i['name'] . ($variant !== '' ? ' - ' . $variant : '');
-                }, $order['items_data'] ?? []))); ?></td>
+                <td>
+                  <div class="admin-order-products-cell">
+                    <?php foreach ($order['items_data'] as $item): ?>
+                      <?php
+                        $itemImg = trim((string)($item['image'] ?? ($productImgMap[(string)$item['product']] ?? '')));
+                        $variant = trim((string)($item['variant_label'] ?? ''));
+                      ?>
+                      <div class="admin-order-product-item">
+                        <?php if ($itemImg !== ''): ?>
+                          <img src="<?php echo e($itemImg); ?>" alt="" class="admin-order-product-thumb">
+                        <?php else: ?>
+                          <div class="admin-order-product-thumb-placeholder"><i class="bx bx-package"></i></div>
+                        <?php endif; ?>
+                        <span><strong><?php echo e($item['quantity']); ?>x</strong> <?php echo e($item['name']); ?><?php echo $variant !== '' ? ' <small>(' . e($variant) . ')</small>' : ''; ?></span>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                </td>
                 <td><?php echo e($order['date']); ?></td>
                 <td><?php echo e($order['payment_type']); ?></td>
                 <td>
@@ -2554,7 +2766,7 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/core.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/theme-toggle.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>?v=20260813_3"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-orders.js')); ?>?v=20260814_4"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-trial-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/plan-membership-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/modal-loading.js')); ?>"></script>

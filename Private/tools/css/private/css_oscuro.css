@@ -5914,4 +5914,166 @@ body {
   background: #e2e8f0 !important;
 }
 
+/* Top Bar & Plan Banner in Light Mode */
+:root[data-admin-theme="light"] .admin-share-link,
+:root[data-admin-theme="light"] .admin-plan-banner {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-share-link__btn {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+}
+
+:root[data-admin-theme="light"] .admin-share-link__btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Summary Card CTA button in Light Mode */
+:root[data-admin-theme="light"] .summary-card__cta {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #6d28d9 !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+:root[data-admin-theme="light"] .summary-card__cta:hover {
+  background: #6d28d9 !important;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35) !important;
+}
+
+/* Order Products Cell & Thumbnail */
+.admin-order-products-cell {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.admin-order-product-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .88rem;
+  line-height: 1.25;
+}
+
+.admin-order-product-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.admin-order-product-thumb-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: rgba(124, 58, 237, 0.08);
+  color: var(--primary);
+  display: inline-grid;
+  place-items: center;
+  font-size: .95rem;
+}
+
+:root[data-admin-theme="light"] .admin-order-product-thumb {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+}
+
+:root[data-admin-theme="light"] .admin-order-product-thumb-placeholder {
+  border-color: #e2e8f0 !important;
+  background: #f1f5f9 !important;
+  color: #7c3aed !important;
+}
+
+/* Config Modals Light Mode Polish (Info negocio, Contacto, MercadoPago, Módulos, etc.) */
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog--sm,
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__dialog--lg {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22) !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__header,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__eyebrow {
+  color: #6d28d9 !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__header h2,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__header h2,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__header h3 {
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__subtitle,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__subtitle {
+  color: #64748b !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__close,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__close {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__close:hover,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__close:hover {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #991b1b !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__body,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__body {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal[data-admin-modal^="config-"] .modal__footer,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__footer,
+:root[data-admin-theme="light"] .admin-layout .modal .modal__foot {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+:root[data-admin-theme="light"] .admin-form__card,
+:root[data-admin-theme="light"] .admin-config-card,
+:root[data-admin-theme="light"] fieldset {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal .btn-success,
+:root[data-admin-theme="light"] .admin-layout .modal button[type="submit"] {
+  background: #10b981 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-admin-theme="light"] .admin-layout .modal .btn-success:hover,
+:root[data-admin-theme="light"] .admin-layout .modal button[type="submit"]:hover {
+  background: #059669 !important;
+}
+
 
