@@ -1910,8 +1910,10 @@ if (!function_exists('agenduy_render_commerce')) {
             }
 
             function buildStoreWaMessage(items, paymentUrl) {
-                const isEnvio = cartDeliveryEnvio && cartDeliveryEnvio.checked;
-                const direccion = String(cartCustomerAddress?.value || '').trim();
+                const deliveryEnvioEl = document.getElementById('cart-delivery-envio');
+                const customerAddressEl = document.getElementById('cart-customer-address');
+                const isEnvio = deliveryEnvioEl && deliveryEnvioEl.checked;
+                const direccion = String(customerAddressEl?.value || '').trim();
                 const deliveryLine = isEnvio
                     ? ('Forma de entrega: 🚚 Envío a domicilio\nDirección de envío: ' + (direccion || 'A coordinar'))
                     : 'Forma de entrega: 🏬 Retiro en local del comercio';
