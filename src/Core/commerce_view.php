@@ -1353,6 +1353,10 @@ if (!function_exists('agenduy_render_commerce')) {
                                 </label>
                             </div>
                             <p class="cart-contact__hint">Te enviamos la confirmacion por email y WhatsApp.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal__foot">
                     <button type="button" class="btn btn--ghost" data-close-cart>Seguir mirando</button>
                     <?php if ($storeMpCheckoutEnabled): ?>
                     <button type="button" class="btn btn--primary" id="cart-mp-btn">
@@ -2331,6 +2335,7 @@ if (!function_exists('agenduy_render_commerce')) {
                 if (cartModal) cartModal.classList.add('is-open');
                 renderGoogleAuthButtons();
             }
+
             function closeCartModal() {
                 if (cartModal) cartModal.classList.remove('is-open');
             }
@@ -2373,45 +2378,33 @@ if (!function_exists('agenduy_render_commerce')) {
                     renderCartLines(upsellCart, items, { controls: true });
                     bindCartLineActions(upsellCart);
                 }
-                const upsellWa = document.getElementById('booking-upsell-wa');
-                if (upsellWa) upsellWa.disabled = !cartWhatsAppEnabled || !waDigits;
-                const upsellHint = document.getElementById('booking-upsell-wa-hint');
-                if (upsellHint) {
-                    if (!cartWhatsAppEnabled) {
-                        upsellHint.hidden = false;
-                        upsellHint.textContent = 'WhatsApp para pedidos esta desactivado en esta tienda.';
-                    } else if (!waDigits) {
-                        upsellHint.hidden = false;
-                        upsellHint.textContent = 'WhatsApp no configurado. Contactá al comercio en el local o por teléfono.';
-                    } else {
-                        upsellHint.hidden = true;
-                    }
-                }
             }
 
+            document.addEventListener('click', (e) => {
+                const addBtn = e.target.closest('[data-add-to-cart]');
+                if (addBtn) {
+                    const card = addBtn.closest('.prod-card');
+                    if (!card) return;
+                    addToCart(
+                        card.dataset.productId,
+                        card.dataset.productName,
+                        card.dataset.productPrice,
+                        1,
+                        card.dataset.productVariant || 0,
+                        card.dataset.productVariantLabel || '',
+                        card.dataset.productOriginalPrice || card.dataset.productPrice
+                    );
+                    addBtn.classList.add('is-added');
+                    const prev = addBtn.innerHTML;
+                    addBtn.innerHTML = '<i class="bx bx-check" aria-hidden="true"></i> Agregado';
+                    setTimeout(() => {
+                        addBtn.classList.remove('is-added');
+                        addBtn.innerHTML = prev;
+                    }, 1200);
+                }
+            });
+
             if (hasProducts) {
-                document.querySelectorAll('[data-add-to-cart]').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const card = e.target.closest('.prod-card');
-                        if (!card) return;
-                        addToCart(
-                            card.dataset.productId,
-                            card.dataset.productName,
-                            card.dataset.productPrice,
-                            1,
-                            card.dataset.productVariant || 0,
-                            card.dataset.productVariantLabel || '',
-                            card.dataset.productOriginalPrice || card.dataset.productPrice
-                        );
-                        btn.classList.add('is-added');
-                        const prev = btn.innerHTML;
-                        btn.innerHTML = '<i class="bx bx-check" aria-hidden="true"></i> Agregado';
-                        setTimeout(() => {
-                            btn.classList.remove('is-added');
-                            btn.innerHTML = prev;
-                        }, 1200);
-                    });
-                });
                 if (cartOpenBtn) cartOpenBtn.addEventListener('click', openCartModal);
                 document.querySelectorAll('[data-close-cart]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -2450,7 +2443,6 @@ if (!function_exists('agenduy_render_commerce')) {
                 }
                 renderCartUI();
             }
-
             const modal = document.getElementById('booking-modal');
             const form = document.getElementById('booking-form');
             const alertBox = document.getElementById('booking-alert');
