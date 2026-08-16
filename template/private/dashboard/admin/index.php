@@ -1360,11 +1360,15 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
     : url('');
 
-$commerceLogoRaw = trim((string)($infoBarberia['logo'] ?? ''));
-$commerceIdForLogo = (int)($infoBarberia['ID_Negocio'] ?? 0);
-$commerceLogoUrl = ($commerceLogoRaw !== '' && class_exists(\Agenduy\Core\CommerceStorage::class))
-    ? \Agenduy\Core\CommerceStorage::publicUrl($commerceIdForLogo, $tenantSlug, $commerceLogoRaw)
-    : '';
+$commerceLogoRaw = trim((string)($infoBarberia['logo'] ?? ($infoBarberia['imagen'] ?? ($infoBarberia['Logo'] ?? ($infoBarberia['avatar'] ?? '')))));
+$commerceLogoUrl = '';
+if ($commerceLogoRaw !== '') {
+    if (preg_match('#^https?://#i', $commerceLogoRaw)) {
+        $commerceLogoUrl = $commerceLogoRaw;
+    } else {
+        $commerceLogoUrl = admin_tenant_asset_url($commerceLogoRaw);
+    }
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -1398,7 +1402,7 @@ $commerceLogoUrl = ($commerceLogoRaw !== '' && class_exists(\Agenduy\Core\Commer
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260813_2">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260815_v5">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1745,7 +1749,7 @@ $commerceLogoUrl = ($commerceLogoRaw !== '' && class_exists(\Agenduy\Core\Commer
                       ?>
                       <div class="admin-order-product-item">
                         <?php if ($itemImg !== ''): ?>
-                          <img src="<?php echo e($itemImg); ?>" alt="" class="admin-order-product-thumb">
+                          <img src="<?php echo e($itemImg); ?>" alt="" class="admin-order-product-thumb" style="width:36px;height:36px;min-width:36px;min-height:36px;max-width:36px;max-height:36px;object-fit:cover;border-radius:8px;flex-shrink:0;display:inline-block;">
                         <?php else: ?>
                           <div class="admin-order-product-thumb-placeholder"><i class="bx bx-package"></i></div>
                         <?php endif; ?>

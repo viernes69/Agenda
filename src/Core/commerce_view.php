@@ -312,7 +312,18 @@ if (!function_exists('agenduy_render_commerce')) {
         $initial = mb_substr($titulo, 0, 1, 'UTF-8');
 
         $commerceId = (int)($commerce['id_commerce'] ?? 0);
-        $logoUrl = CommerceStorage::publicUrl($commerceId, $slug, $logo);
+        $rawLogo = trim((string)($logo !== '' ? $logo : ($infoBarberia['logo'] ?? ($infoBarberia['imagen'] ?? ($infoBarberia['Logo'] ?? '')))));
+        $logoUrl = '';
+        if ($rawLogo !== '') {
+            if (preg_match('#^https?://#i', $rawLogo)) {
+                $logoUrl = $rawLogo;
+            } else {
+                $logoUrl = CommerceStorage::publicUrl($commerceId, $slug, $rawLogo);
+                if ($logoUrl === '') {
+                    $logoUrl = url($slug . '/' . ltrim($rawLogo, '/'));
+                }
+            }
+        }
         $hasLogo = $logoUrl !== '';
 
         $tenantAssetUrl = static function (string $relative) use ($commerceId, $slug): string {
@@ -2352,7 +2363,10 @@ if (!function_exists('agenduy_render_commerce')) {
                         ? '<span>Total</span><strong>' + formatMoney(cartTotal(items)) + '</strong>'
                         : '';
                 }
-                if (cartEmpty) cartEmpty.hidden = items.length > 0;
+                if (cartEmpty) {
+                    cartEmpty.hidden = items.length > 0;
+                    cartEmpty.style.setProperty('display', items.length > 0 ? 'none' : 'grid', 'important');
+                }
                 if (cartContent) cartContent.hidden = items.length === 0;
                 if (cartMpBtn) cartMpBtn.disabled = items.length === 0 || !storeMpCheckoutEnabled;
                 if (cartWaBtn) cartWaBtn.disabled = items.length === 0 || !cartWhatsAppEnabled || !waDigits;
