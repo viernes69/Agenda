@@ -1402,7 +1402,7 @@ if ($commerceLogoRaw !== '') {
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260815_v8">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260815_v9">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1627,57 +1627,6 @@ if ($commerceLogoRaw !== '') {
           </div>
         </details>
       </header>
-      <?php if ($planBannerData !== null):
-        $planStatusAttr = isset($planBannerData['status']) ? (string)$planBannerData['status'] : '';
-        $planDaysAttr = (isset($planBannerData['days_remaining']) && $planBannerData['days_remaining'] !== null)
-          ? (string)(int)$planBannerData['days_remaining']
-          : '';
-        $planRenewalAttr = isset($planBannerData['renewal_iso']) ? (string)$planBannerData['renewal_iso'] : '';
-        $planBusinessAttr = isset($planBannerData['business_id']) ? (string)$planBannerData['business_id'] : '';
-      ?>
-        <section
-          class="admin-plan-banner <?php echo e($planBannerData['class']); ?>"
-          data-plan-banner
-          data-plan-status="<?php echo e($planStatusAttr); ?>"
-          data-plan-days="<?php echo e($planDaysAttr); ?>"
-          data-plan-renovacion="<?php echo e($planRenewalAttr); ?>"
-          data-plan-business="<?php echo e($planBusinessAttr); ?>"
-        >
-          <div class="admin-plan-banner__body">
-            <div class="admin-plan-banner__title-row">
-              <?php if (!empty($planBannerData['badge'])): ?>
-                <span class="admin-plan-banner__badge"><?php echo e($planBannerData['badge']); ?></span>
-              <?php endif; ?>
-              <h2 class="admin-plan-banner__title"><?php echo e($planBannerData['title']); ?></h2>
-            </div>
-            <?php if (!empty($planBannerData['message'])): ?>
-              <p class="admin-plan-banner__message"><?php echo e($planBannerData['message']); ?></p>
-            <?php endif; ?>
-            <?php if (!empty($planBannerData['details'])): ?>
-              <ul class="admin-plan-banner__details admin-plan-banner__details--inline">
-                <?php foreach ($planBannerData['details'] as $detail): ?>
-                  <?php
-                    $detailLabel = $detail['label'] ?? '';
-                    $detailValueRaw = $detail['value'] ?? '';
-                    $detailValue = is_string($detailValueRaw) ? trim($detailValueRaw) : (string)$detailValueRaw;
-                  ?>
-                  <?php if ($detailValue !== ''): ?>
-                    <li class="admin-plan-banner__detail">
-                      <span class="admin-plan-banner__detail-label"><?php echo e($detailLabel); ?></span>
-                      <span class="admin-plan-banner__detail-value"><?php echo e($detailValue); ?></span>
-                    </li>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              </ul>
-            <?php endif; ?>
-          </div>
-          <div class="admin-plan-banner__actions">
-            <button type="button" class="btn btn-outline admin-plan-banner__cta" data-plan-membership-open>
-              <?php echo e($planBannerData['cta_label'] ?? 'Ver planes'); ?>
-            </button>
-          </div>
-        </section>
-      <?php endif; ?>
       <section class="admin-section" id="resumen">
         <div class="summary-grid">
           <?php foreach ($summaryCards as $card): ?>

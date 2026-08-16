@@ -6490,6 +6490,11 @@ body {
   box-shadow: none !important;
   padding: .5rem 0 1rem 0 !important;
   margin-bottom: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: .75rem !important;
 }
 
 :root[data-admin-theme="light"] .admin-main__header {
@@ -6498,29 +6503,75 @@ body {
   box-shadow: none !important;
 }
 
+.admin-heading-group {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: .75rem 1rem !important;
+}
+
 .admin-share-link {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+}
+
+.admin-share-link__label,
+.admin-share-link__hint {
+  display: none !important;
+}
+
+.admin-share-link__btn {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+  padding: .4rem .85rem !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  font-size: .84rem !important;
+  transition: all .15s ease !important;
+}
+
+.admin-share-link__btn:hover {
+  border-color: #7c3aed !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15) !important;
+  color: #6d28d9 !important;
+}
+
+.admin-mode-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .4rem !important;
+  padding: .45rem .85rem !important;
+  border-radius: 999px !important;
+  font-size: .8rem !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
 }
 
 .admin-header-plan-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: .55rem;
-  padding: .35rem .75rem;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1.5px solid #cbd5e1;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
-  font-size: .82rem;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .55rem !important;
+  padding: .35rem .85rem !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+  font-size: .82rem !important;
 }
 
 :root[data-admin-theme="light"] .admin-header-plan-inline {
   background: #ffffff !important;
   border: 1.5px solid #cbd5e1 !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
 }
 
 .admin-plan-badge {
@@ -6557,7 +6608,7 @@ body {
   font-size: .78rem;
   cursor: pointer;
   padding: .25rem .65rem;
-  border-radius: 8px;
+  border-radius: 999px !important;
   transition: all .15s ease;
 }
 
