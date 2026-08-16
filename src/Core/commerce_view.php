@@ -556,6 +556,7 @@ if (!function_exists('agenduy_render_commerce')) {
         <link rel="icon" type="image/png" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
         <link rel="apple-touch-icon" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
         <link rel="manifest" href="<?= htmlspecialchars(url('template/manifest.webmanifest?v=' . $manifestVer), ENT_QUOTES, 'UTF-8') ?>">
+        <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="csrf-token" content="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
@@ -2211,18 +2212,6 @@ if (!function_exists('agenduy_render_commerce')) {
                         const key = inc.getAttribute('data-cart-inc');
                         const row = loadCart().find(i => String(i.key || cartItemKey(i.id, i.variant || 0)) === String(key));
                         setCartQty(key, (row ? Number(row.qty) : 0) + 1);
-                    } else if (rem) {
-                        setCartQty(rem.getAttribute('data-cart-remove'), 0);
-                    }
-                });
-            }
-
-            const cartOpenBtn = document.getElementById('cart-open');
-            const cartCountEl = document.getElementById('cart-count');
-            const cartModal = document.getElementById('cart-modal');
-            const cartLines = document.getElementById('cart-lines');
-            const cartTotalEl = document.getElementById('cart-total');
-            const cartEmpty = document.getElementById('cart-empty');
                     } else if (rem) {
                         setCartQty(rem.getAttribute('data-cart-remove'), 0);
                     }

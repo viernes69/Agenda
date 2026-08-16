@@ -12,13 +12,13 @@
   "lang": "es-UY",
   "icons": [
     {
-      "src": "src/img/favicon/favicon.png",
+      "src": "../src/img/favicon/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "src/img/favicon/favicon.png",
+      "src": "../src/img/favicon/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
