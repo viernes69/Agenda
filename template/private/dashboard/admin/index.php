@@ -2823,7 +2823,7 @@ if ($commerceLogoRaw !== '') {
   <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-summary-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/cliente-modal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/productos-crud.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-info-modal.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-info-modal.js')); ?>?v=20260815_v9"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-auth-guard.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-redes.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-seo.js')); ?>"></script>

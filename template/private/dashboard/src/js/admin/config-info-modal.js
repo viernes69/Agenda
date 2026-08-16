@@ -254,24 +254,37 @@
     if (!value) return '';
     const trimmed = String(value).trim();
     if (!trimmed) return '';
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed)) return trimmed;
+
+    if (typeof window.admin_tenant_asset_url === 'function') {
+      const resolved = window.admin_tenant_asset_url(trimmed);
+      if (resolved) return resolved;
+    }
+
     const rel = trimmed.replace(/^\/+/, '');
     const appBase = (() => {
-      const raw = String(window.__TENANT_CONFIG__?.basePath || window.location.origin || '').replace(/\/+$/, '');
-      try {
-        return new URL(raw || '/', window.location.origin).href.replace(/\/+$/, '');
-      } catch (_) {
-        return raw;
+      const shareBtn = document.querySelector('[data-share-copy]');
+      const shareUrl = shareBtn ? (shareBtn.getAttribute('data-share-copy') || shareBtn.textContent.trim()) : '';
+      if (shareUrl) {
+        try {
+          const parsed = new URL(shareUrl);
+          return `${parsed.protocol}//${parsed.host}`;
+        } catch (_) {}
       }
+      const metaBase = document.querySelector('meta[name="url-base"]');
+      if (metaBase && metaBase.getAttribute('content')) {
+        return metaBase.getAttribute('content').replace(/\/+$/, '');
+      }
+      return window.location.origin;
     })();
+
     if (rel.startsWith('commerce-assets/')) {
-      const endpoint = `${appBase}/src/API/commerce_asset.php`;
-      return `${endpoint}?p=${encodeURIComponent(rel)}`;
+      return `${appBase}/src/API/commerce_asset.php?p=${encodeURIComponent(rel)}`;
     }
-    if (rel.startsWith('src/media/commerce/')) {
-      return appBase ? `${appBase}/${rel}` : `/${rel}`;
+    if (rel.startsWith('src/media/commerce/') || rel.startsWith('uploads/')) {
+      return `${appBase}/${rel}`;
     }
-    return `../../../${rel}`;
+    return `${appBase}/uploads/${rel}`;
   };
 
   const updateLogoPreview = (value) => {
@@ -409,17 +422,37 @@
     });
   }
 
+  const getAutoWebsiteUrl = () => {
+    const shareBtn = document.querySelector('[data-share-copy]');
+    if (shareBtn) {
+      const copyVal = shareBtn.getAttribute('data-share-copy') || shareBtn.textContent.trim();
+      if (copyVal && /^https?:\/\//i.test(copyVal)) return copyVal;
+    }
+    const metaUrl = document.querySelector('meta[name="url-base"]');
+    if (metaUrl && metaUrl.getAttribute('content')) {
+      const base = metaUrl.getAttribute('content').replace(/\/+$/, '');
+      const slugMeta = document.querySelector('meta[name="tenant-slug"]');
+      const slug = slugMeta ? slugMeta.getAttribute('content') : '';
+      return slug ? `${base}/${slug}` : base;
+    }
+    return window.location.href.split('#')[0];
+  };
+
   const syncWebsiteDisplay = (value) => {
     if (!websiteContainer || !websiteValueEl) return;
-    const displayValue = value || 'Sin sitio web configurado.';
+    const autoWebsite = getAutoWebsiteUrl();
+    const displayValue = (value && String(value).trim() !== '') ? String(value).trim() : autoWebsite;
     websiteValueEl.textContent = displayValue;
-    websiteContainer.dataset.state = value ? 'filled' : 'empty';
+    if (websiteHiddenInput && (!websiteHiddenInput.value || websiteHiddenInput.value.trim() === '')) {
+      websiteHiddenInput.value = displayValue;
+    }
+    websiteContainer.dataset.state = 'filled';
   };
 
   if (websiteEditBtn && websiteHiddenInput) {
     websiteEditBtn.addEventListener('click', (evt) => {
       evt.preventDefault();
-      const promptValue = window.prompt('Ingresa la URL del sitio web', websiteHiddenInput.value || '');
+      const promptValue = window.prompt('Ingresa la URL del sitio web', websiteHiddenInput.value || getAutoWebsiteUrl());
       if (promptValue === null) return;
       const trimmed = promptValue.trim();
       websiteHiddenInput.value = trimmed;
@@ -430,7 +463,7 @@
   if (websiteCopyBtn && websiteHiddenInput) {
     websiteCopyBtn.addEventListener('click', async (evt) => {
       evt.preventDefault();
-      const value = websiteHiddenInput.value.trim();
+      const value = (websiteHiddenInput.value || getAutoWebsiteUrl()).trim();
       if (!value) {
         adminNotify('No hay un sitio web configurado para copiar.', 'info');
         return;
@@ -471,8 +504,8 @@
       websiteHiddenInput.value = websiteValue;
       syncWebsiteDisplay(websiteValue);
     }
-    const logoValue = (data && typeof data.logo_src === 'string') ? data.logo_src : '';
-    currentLogoSrc = logoValue || currentLogoSrc || 'src/img/logo.jpg';
+    const logoValue = (data && (data.logo_src || data.logo || data.imagen || data.Logo || data.avatar)) || '';
+    currentLogoSrc = logoValue || currentLogoSrc || '';
     updateLogoPreview(currentLogoSrc);
     resetLogoInput();
   };
