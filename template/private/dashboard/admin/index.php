@@ -1402,7 +1402,7 @@ if ($commerceLogoRaw !== '') {
   <link rel="manifest" href="<?php echo e(admin_panel_href('../manifest.admin.php')); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../../../src/css/main.css')); ?>">
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
-  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260815_v7">
+  <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/admin.css')); ?>?v=20260815_v8">
   <link rel="stylesheet" href="<?php echo e(\Agenduy\Core\AdminBrand::cssUrl()); ?>">
   <link rel="stylesheet" href="<?php echo e(admin_panel_href('../src/reservas-ledger.css')); ?>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -1470,6 +1470,20 @@ if ($commerceLogoRaw !== '') {
             <i class="bx <?php echo $isStoreMode ? 'bx-store' : 'bx-calendar-check'; ?>" aria-hidden="true"></i>
             <?php echo e($modeLabel); ?>
           </span>
+          <?php if ($planBannerData !== null): ?>
+          <div class="admin-header-plan-inline">
+            <span class="admin-plan-badge admin-plan-badge--<?php echo e($planBannerData['status'] ?? 'activo'); ?>">
+              <?php echo e($planBannerData['badge'] ?? 'Activo'); ?>
+            </span>
+            <strong class="admin-plan-title"><?php echo e($planBannerData['title'] ?? 'Plan'); ?></strong>
+            <?php if (!empty($planBannerData['message'])): ?>
+              <span class="admin-plan-msg"><?php echo e($planBannerData['message']); ?></span>
+            <?php endif; ?>
+            <button type="button" class="admin-plan-cta-btn" data-plan-membership-open>
+              <?php echo e($planBannerData['cta_label'] ?? 'Gestionar plan'); ?>
+            </button>
+          </div>
+          <?php endif; ?>
         </div>
         <div class="admin-header-actions">
           <button type="button" class="admin-theme-toggle" data-admin-theme-toggle aria-label="Cambiar modo visual">

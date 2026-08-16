@@ -6483,4 +6483,87 @@ body {
   color: #ffffff !important;
 }
 
+/* ─── Unified Top Header & Inline Plan Badge (No Unnecessary Container Cards) ─── */
+.admin-main__header {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: .5rem 0 1rem 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+:root[data-admin-theme="light"] .admin-main__header {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.admin-share-link {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.admin-header-plan-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .35rem .75rem;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  font-size: .82rem;
+}
+
+:root[data-admin-theme="light"] .admin-header-plan-inline {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+.admin-plan-badge {
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.admin-plan-badge--activo,
+.admin-plan-badge--active {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.admin-plan-title {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+.admin-plan-msg {
+  color: #334155 !important;
+  font-weight: 600 !important;
+  font-size: .78rem;
+}
+
+.admin-plan-cta-btn {
+  background: #f3e8ff !important;
+  border: 1px solid #ddd6fe !important;
+  color: #6d28d9 !important;
+  font-weight: 800 !important;
+  font-size: .78rem;
+  cursor: pointer;
+  padding: .25rem .65rem;
+  border-radius: 8px;
+  transition: all .15s ease;
+}
+
+.admin-plan-cta-btn:hover {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
 
