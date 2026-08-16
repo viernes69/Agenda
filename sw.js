@@ -2,7 +2,7 @@
  * Agendarte UY - Service Worker
  * Cache básico para la app web progresiva.
  */
-const CACHE = 'agendarte-v2';
+const CACHE = 'agendarte-v3';
 const ASSET_RE = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf)(?:\?.*)?$/i;
 
 self.addEventListener('install', (event) => {
@@ -42,20 +42,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first for static assets to ensure instant updates on production deployments
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const refresh = fetch(request).then((response) => {
-        if (response && response.ok && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      }).catch(() => cached || new Response('Offline', { status: 503 }));
-      if (cached) {
-        event.waitUntil(refresh);
-        return cached;
+    fetch(request).then((response) => {
+      if (response && response.ok && response.type === 'basic') {
+        const clone = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, clone));
       }
-      return refresh;
-    })
+      return response;
+    }).catch(() => caches.match(request).then((cached) => cached || new Response('Offline', { status: 503 })))
   );
 });
