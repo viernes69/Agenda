@@ -1359,6 +1359,12 @@ $panelApiEndpoints = $isCentralPanelEmbed ? \Agenduy\Core\CommercePanel::dashboa
 $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     ? \Agenduy\Core\CommercePanel::publicUrlForSlug($tenantSlug)
     : url('');
+
+$commerceLogoRaw = trim((string)($infoBarberia['logo'] ?? ''));
+$commerceIdForLogo = (int)($infoBarberia['ID_Negocio'] ?? 0);
+$commerceLogoUrl = ($commerceLogoRaw !== '' && class_exists(\Agenduy\Core\CommerceStorage::class))
+    ? \Agenduy\Core\CommerceStorage::publicUrl($commerceIdForLogo, $tenantSlug, $commerceLogoRaw)
+    : '';
 ?>
 <!doctype html>
 <html lang="es">
@@ -1403,6 +1409,11 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
   <div class="admin-layout is-collapsed">
     <aside class="admin-aside">
       <div class="admin-brand">
+        <?php if ($commerceLogoUrl !== ''): ?>
+          <span class="admin-brand__commerce-logo">
+            <img src="<?php echo e($commerceLogoUrl); ?>" alt="Logo" class="admin-brand__logo-img">
+          </span>
+        <?php endif; ?>
         <?php echo \Agenduy\Core\AdminBrand::sidebarBrandInnerHtml(); ?>
         <small class="muted admin-brand__tenant"><?php echo e($infoBarberia['rubro_nombre'] ?? ($businessName !== '' ? $businessName : 'Mi negocio')); ?></small>
       </div>
@@ -1425,6 +1436,11 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
     <main class="admin-main">
       <header class="admin-main__header">
         <div class="admin-heading-group">
+          <?php if ($commerceLogoUrl !== ''): ?>
+          <span class="admin-header-logo">
+            <img src="<?php echo e($commerceLogoUrl); ?>" alt="Logo del comercio" class="admin-header-logo__img">
+          </span>
+          <?php endif; ?>
           <?php if ($publicShareUrl !== ''): ?>
           <div class="admin-share-link">
             <p class="admin-share-link__label">Comparte este enlace con tus clientes</p>
@@ -1723,7 +1739,8 @@ $tenantPublicUrl = ($tenantSlug !== '' && $tenantSlug !== 'template')
                   <div class="admin-order-products-cell">
                     <?php foreach ($order['items_data'] as $item): ?>
                       <?php
-                        $itemImg = trim((string)($item['image'] ?? ($productImgMap[(string)$item['product']] ?? '')));
+                        $rawImg = trim((string)($item['image'] ?? ($productImgMap[(string)$item['product']] ?? '')));
+                        $itemImg = $rawImg !== '' ? admin_tenant_asset_url($rawImg) : '';
                         $variant = trim((string)($item['variant_label'] ?? ''));
                       ?>
                       <div class="admin-order-product-item">
