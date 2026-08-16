@@ -111,8 +111,8 @@ final class Seed
         $results['memberships'] = $seeded;
 
         // 3) Super admin inicial
-        $email = $superAdminEmail ?: 'admin@agenduy.uy';
-        $pwd   = $superAdminPassword ?: 'Agenduy2026!';
+        $email = $superAdminEmail ?: 'admin@agendarte.uy';
+        $pwd   = $superAdminPassword ?: 'Agendarte2026!';
         $existsUser = $db->fetchOne('SELECT id_user FROM users WHERE email = :e', [':e' => $email]);
         if (!$existsUser) {
             $db->insert('users', [
