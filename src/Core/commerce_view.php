@@ -903,7 +903,8 @@ if (!function_exists('agenduy_render_commerce')) {
                         data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-original-price="<?= htmlspecialchars((string)$pBasePrice, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-variant="0"
-                        data-product-variant-label="<?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        data-product-variant-label="<?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-image="<?= htmlspecialchars(!empty($pMedia[0]['src']) ? $tenantAssetUrl((string)$pMedia[0]['src']) : '', ENT_QUOTES, 'UTF-8') ?>">
                         <?= $dashboardEditLink('productos', 'Modificar producto') ?>
                         <div class="prod-card__media">
                             <?php if (!empty($pMedia)): ?>
@@ -2380,7 +2381,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 const addBtn = e.target.closest('[data-add-to-cart]');
                 if (addBtn) {
                     const card = addBtn.closest('.prod-card');
-                    if (!card) return;
+                    const activeSlideImg = card.querySelector('.prod-gallery__slide.is-active img')?.src
+                        || card.dataset.productImage
+                        || card.querySelector('.prod-card__media img')?.src
+                        || '';
                     addToCart(
                         card.dataset.productId,
                         card.dataset.productName,
@@ -2388,7 +2392,8 @@ if (!function_exists('agenduy_render_commerce')) {
                         1,
                         card.dataset.productVariant || 0,
                         card.dataset.productVariantLabel || '',
-                        card.dataset.productOriginalPrice || card.dataset.productPrice
+                        card.dataset.productOriginalPrice || card.dataset.productPrice,
+                        activeSlideImg
                     );
                     addBtn.classList.add('is-added');
                     const prev = addBtn.innerHTML;
