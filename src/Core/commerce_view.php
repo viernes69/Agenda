@@ -572,8 +572,8 @@ if (!function_exists('agenduy_render_commerce')) {
                     <?php else: ?>
                         <span class="brand__logo"><?= htmlspecialchars(mb_strtoupper($initial, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
                     <?php endif; ?>
-                    <span>
-                        <?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?>
+                    <span class="brand__text">
+                        <span class="brand__name"><?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if ($slogan !== ''): ?>
                             <div class="brand__sub"><?= htmlspecialchars(mb_substr($slogan, 0, 40, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></div>
                         <?php endif; ?>
@@ -598,7 +598,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     <?php endif; ?>
                     <a href="#contacto">Contacto</a>
                 </nav>
-                <div style="display:flex; gap:.5rem; align-items:center">
+                <div class="topbar-actions">
                     <?php if ($showProducts): ?>
                     <button class="cart-btn" type="button" id="cart-open" aria-label="Ver carrito" hidden>
                         <i class="bx bx-cart" aria-hidden="true"></i>
@@ -613,13 +613,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     </button>
                     <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
-                        <i class="bx bx-grid-alt"></i> Panel
+                        <i class="bx bx-grid-alt"></i> <span>Panel</span>
                     </a>
                     <?php endif; ?>
                     <?php if ($showBooking): ?>
-                    <a href="#servicios" class="btn btn--primary">Reservar</a>
+                    <a href="#servicios" class="btn btn--primary topbar-cta">Reservar</a>
                     <?php elseif ($showCatalogSection): ?>
-                    <a href="#productos" class="btn btn--primary">Catalogo</a>
+                    <a href="#productos" class="btn btn--primary topbar-cta">Catalogo</a>
                     <?php endif; ?>
                     <button class="menu-btn" type="button" id="menu-btn" aria-label="Menú">
                         <i class="bx bx-menu"></i>
@@ -644,8 +644,15 @@ if (!function_exists('agenduy_render_commerce')) {
                 <a href="#horarios">Horarios</a>
                 <?php endif; ?>
                 <a href="#contacto">Contacto</a>
+                <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
+                <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
+                    <i class="bx bx-grid-alt"></i> Panel de administración
+                </a>
+                <?php endif; ?>
                 <?php if ($showBooking): ?>
-                <a href="#servicios">Reservar ahora</a>
+                <a href="#servicios" class="mobile-menu__cta-link"><i class="bx bx-calendar"></i> Reservar ahora</a>
+                <?php elseif ($showCatalogSection): ?>
+                <a href="#productos" class="mobile-menu__cta-link"><i class="bx bx-store"></i> Ver catálogo</a>
                 <?php endif; ?>
             </div>
         </header>
