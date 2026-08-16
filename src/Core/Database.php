@@ -123,6 +123,7 @@ final class Database
         $this->ensurePlatformSettingsTable();
         $this->ensureStoreOrderPaymentsTable();
         $this->ensureAppointmentPaymentsTable();
+        $this->ensureSuperAdminUser();
     }
 
     /**
@@ -240,6 +241,34 @@ final class Database
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_status ON store_order_payments(status)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_payment ON store_order_payments(payment_id)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_preference ON store_order_payments(preference_id)');
+    }
+
+    private function ensureSuperAdminUser(): void
+    {
+        try {
+            $email = 'admin@agendarte.uy';
+            $stmt = $this->pdo->prepare('SELECT id_user FROM users WHERE email = ? OR email = "admin@agenduy.uy" LIMIT 1');
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $pwd  = 'Agendarte2026!';
+            $hash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
+
+            if ($user) {
+                $update = $this->pdo->prepare(
+                    "UPDATE users SET email = ?, role = 'super_admin', password_hash = ?, activo = 1, failed_attempts = 0, locked_until = NULL, updated_at = datetime('now') WHERE id_user = ?"
+                );
+                $update->execute([$email, $hash, (int)$user['id_user']]);
+            } else {
+                $insert = $this->pdo->prepare(
+                    "INSERT INTO users (role, id_commerce, nombre, apellido, cedula, email, telefono, whatsapp, password_hash, activo, failed_attempts, locked_until, created_at, updated_at)
+                     VALUES ('super_admin', NULL, 'Administrador', 'Agendarte', '', ?, '', '', ?, 1, 0, NULL, datetime('now'), datetime('now'))"
+                );
+                $insert->execute([$email, $hash]);
+            }
+        } catch (Throwable $e) {
+            // Ignore error if users table is not initialized yet
+        }
     }
 
     private function ensureAppointmentPaymentsTable(): void
