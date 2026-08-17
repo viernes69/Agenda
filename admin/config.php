@@ -95,9 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $providers = $db->fetchAll('SELECT * FROM payment_provider_config ORDER BY provider');
 $platformContact = PlatformSettings::contact();
 
-// Asegurar que smtp y ultramsg aparezcan aunque aún no tengan fila guardada
+// Asegurar que paypal, mercadopago, transfer, smtp y ultramsg aparezcan aunque aún no tengan fila guardada
 $known = array_column($providers, 'provider');
-foreach (['smtp', 'ultramsg', 'google_oauth'] as $extra) {
+foreach (['paypal', 'mercadopago', 'transfer', 'smtp', 'ultramsg', 'google_oauth'] as $extra) {
     if (!in_array($extra, $known, true)) {
         $providers[] = ['provider' => $extra, 'is_enabled' => 0, 'config_json' => '{}', 'notes' => ''];
     }

@@ -124,6 +124,7 @@ final class Database
         $this->ensureStoreOrderPaymentsTable();
         $this->ensureAppointmentPaymentsTable();
         $this->ensureSuperAdminUser();
+        $this->ensurePaymentProviderDefaults();
     }
 
     /**
@@ -268,6 +269,23 @@ final class Database
             }
         } catch (Throwable $e) {
             // Ignore error if users table is not initialized yet
+        }
+    }
+
+    private function ensurePaymentProviderDefaults(): void
+    {
+        try {
+            $providers = ['paypal', 'mercadopago', 'transfer', 'smtp', 'ultramsg', 'google_oauth'];
+            $check = $this->pdo->prepare('SELECT COUNT(*) FROM payment_provider_config WHERE provider = ?');
+            $insert = $this->pdo->prepare("INSERT INTO payment_provider_config (provider, is_enabled, config_json, notes, created_at, updated_at) VALUES (?, 0, '{}', '', datetime('now'), datetime('now'))");
+            foreach ($providers as $p) {
+                $check->execute([$p]);
+                if ((int)$check->fetchColumn() === 0) {
+                    $insert->execute([$p]);
+                }
+            }
+        } catch (Throwable $e) {
+            // Table might not exist yet
         }
     }
 
