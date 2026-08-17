@@ -2,7 +2,7 @@
  * Agendarte UY - Service Worker
  * Cache básico para la app web progresiva.
  */
-const CACHE = 'agendarte-v12';
+const CACHE = 'agendarte-v13';
 const ASSET_RE = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf)(?:\?.*)?$/i;
 
 self.addEventListener('install', (event) => {

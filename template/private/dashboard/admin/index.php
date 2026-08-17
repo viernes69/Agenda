@@ -2786,9 +2786,9 @@ if ($commerceLogoRaw !== '') {
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-mercadopago.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-platform-payments.js')); ?>?v=20260816_v1"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-platform-payments.js')); ?>?v=20260816_v2"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
-  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>?v=20260816_v2"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-live-refresh.js')); ?>"></script>
   </body>
