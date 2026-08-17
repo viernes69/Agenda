@@ -89,7 +89,72 @@ try {
         }
         $themes = applyThemeFiles($tenantRoot, $projectRoot);
         $updated = updateCommerceConfig(adminConfigTenantSlug(), ['temas' => $themes]);
-        respond(['ok' => true, 'data' => $updated, 'applied' => $themes]);
+    }
+
+    if ($action === 'platform_payments_get') {
+        $paypal = \Agenduy\Core\ProviderConfig::get('paypal');
+        $mp = \Agenduy\Core\ProviderConfig::get('mercadopago');
+        $transfer = \Agenduy\Core\ProviderConfig::get('transfer');
+
+        respond([
+            'ok' => true,
+            'data' => [
+                'paypal' => [
+                    'is_enabled' => !empty($paypal['is_enabled']),
+                    'client_id' => (string)($paypal['config']['client_id'] ?? ''),
+                    'client_secret' => (string)($paypal['config']['client_secret'] ?? ''),
+                    'sandbox' => !empty($paypal['config']['sandbox']),
+                ],
+                'mercadopago' => [
+                    'is_enabled' => !empty($mp['is_enabled']),
+                    'access_token' => (string)($mp['config']['access_token'] ?? ''),
+                    'public_key' => (string)($mp['config']['public_key'] ?? ''),
+                ],
+                'transfer' => [
+                    'is_enabled' => !empty($transfer['is_enabled']),
+                    'banco' => (string)($transfer['config']['banco'] ?? ''),
+                    'titular' => (string)($transfer['config']['titular'] ?? ''),
+                    'cuenta' => (string)($transfer['config']['cuenta'] ?? ''),
+                    'moneda' => (string)($transfer['config']['moneda'] ?? 'UYU'),
+                    'instrucciones' => (string)($transfer['config']['instrucciones'] ?? ''),
+                ],
+            ]
+        ]);
+    }
+
+    if ($action === 'platform_payments_update') {
+        $payload = requestData();
+        $userId = (int)($_SESSION['user']['id_user'] ?? 0);
+
+        if (isset($payload['paypal']) && is_array($payload['paypal'])) {
+            $p = $payload['paypal'];
+            \Agenduy\Core\ProviderConfig::save('paypal', [
+                'client_id' => trim((string)($p['client_id'] ?? '')),
+                'client_secret' => trim((string)($p['client_secret'] ?? '')),
+                'sandbox' => !empty($p['sandbox']),
+            ], !empty($p['is_enabled']), $userId, 'Ajustes de PayPal plataforma');
+        }
+
+        if (isset($payload['mercadopago']) && is_array($payload['mercadopago'])) {
+            $m = $payload['mercadopago'];
+            \Agenduy\Core\ProviderConfig::save('mercadopago', [
+                'access_token' => trim((string)($m['access_token'] ?? '')),
+                'public_key' => trim((string)($m['public_key'] ?? '')),
+            ], !empty($m['is_enabled']), $userId, 'Ajustes de Mercado Pago plataforma');
+        }
+
+        if (isset($payload['transfer']) && is_array($payload['transfer'])) {
+            $t = $payload['transfer'];
+            \Agenduy\Core\ProviderConfig::save('transfer', [
+                'banco' => trim((string)($t['banco'] ?? '')),
+                'titular' => trim((string)($t['titular'] ?? '')),
+                'cuenta' => trim((string)($t['cuenta'] ?? '')),
+                'moneda' => trim((string)($t['moneda'] ?? 'UYU')),
+                'instrucciones' => trim((string)($t['instrucciones'] ?? '')),
+            ], !empty($t['is_enabled']), $userId, 'Ajustes de Transferencia Bancaria');
+        }
+
+        respond(['ok' => true, 'message' => 'Métodos de pago de suscripciones actualizados correctamente.']);
     }
 
     throw new InvalidArgumentException('Accion no soportada: ' . $action);
@@ -116,7 +181,7 @@ function assertAdminRequest(): void
 
     $centralRole = strtolower(trim((string)($user['role'] ?? '')));
     $legacyRole = strtolower(trim((string)($user['Rol'] ?? $user['rol'] ?? '')));
-    $isAdmin = $centralRole === 'commerce_admin' || $legacyRole === 'admin';
+    $isAdmin = $centralRole === 'commerce_admin' || $centralRole === 'super_admin' || $legacyRole === 'admin';
     if (!$isAdmin) {
         throw new UnexpectedValueException('Sesion de administrador requerida.');
     }

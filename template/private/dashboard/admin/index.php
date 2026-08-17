@@ -2377,7 +2377,8 @@ if ($commerceLogoRaw !== '') {
               ['id' => $isStoreMode ? 'carrito' : 'reservas', 'title' => $isStoreMode ? 'Config. de Carrito / Pedidos' : 'Config. de Reservas', 'icon' => $isStoreMode ? 'bx-cart' : 'bx-calendar-check'],
               ['id' => 'moneda', 'title' => 'Config. de Moneda', 'icon' => 'bx-money'],
               ['id' => 'fiscal', 'title' => 'Config. Fiscal', 'icon' => 'bx-receipt'],
-              ['id' => 'mercadopago', 'title' => 'Mercado Pago', 'icon' => 'bx-credit-card'],
+              ['id' => 'mercadopago', 'title' => 'Mercado Pago (Tienda)', 'icon' => 'bx-credit-card'],
+              ['id' => 'platform_payments', 'title' => 'Cobro de Suscripciones', 'icon' => 'bx-wallet-alt'],
               ['id' => 'redes', 'title' => 'Contacto y redes', 'icon' => 'bx-share-alt'],
               ['id' => 'seo', 'title' => 'SEO', 'icon' => 'bx-line-chart'],
               ['id' => 'notificaciones', 'title' => 'Notificaciones', 'icon' => 'bx-bell'],
@@ -2467,6 +2468,7 @@ if ($commerceLogoRaw !== '') {
         'admin_config_features_modal.php',
         'admin_config_cart_modal.php',
         'admin_config_mercadopago_modal.php',
+        'admin_config_platform_payments_modal.php',
         'admin_config_fiscal_modal.php',
         'admin_config_moneda_modal.php',
         'admin_hours_modal.php',
@@ -2784,6 +2786,7 @@ if ($commerceLogoRaw !== '') {
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-fiscal.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-moneda.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-mercadopago.js')); ?>"></script>
+  <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-config-platform-payments.js')); ?>?v=20260816_v1"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-hours.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/config-cards.js')); ?>"></script>
   <script src="<?php echo e(admin_panel_href('../src/js/admin/pwa.js')); ?>"></script>

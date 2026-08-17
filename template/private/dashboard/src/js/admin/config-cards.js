@@ -74,6 +74,8 @@
       }
     } else if (configId === 'notificaciones' && window.AdminConfigNotificacionesModal && typeof window.AdminConfigNotificacionesModal.open === 'function') {
       window.AdminConfigNotificacionesModal.open();
+    } else if (configId === 'platform_payments' && window.AdminConfigPlatformPaymentsModal && typeof window.AdminConfigPlatformPaymentsModal.open === 'function') {
+      window.AdminConfigPlatformPaymentsModal.open();
     } else if (configId === 'funciones' && window.AdminConfigFeaturesModal && typeof window.AdminConfigFeaturesModal.open === 'function') {
       openWithGuard('Funciones', window.AdminConfigFeaturesModal.open);
     }
