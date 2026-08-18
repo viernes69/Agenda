@@ -117,7 +117,7 @@ $tipos = array_values(array_unique(array_map('trim', $tipos)));
             <input type="hidden" name="Imagenes_Actuales[<?php echo $i; ?>]" value="" data-admin-product-image-current="<?php echo $i; ?>">
             <input type="hidden" name="Imagenes_Quitar[<?php echo $i; ?>]" value="" data-admin-product-image-remove-value="<?php echo $i; ?>">
             <label class="admin-product-image-slot__preview" for="admin-product-image-<?php echo $i; ?>" tabindex="0">
-              <img src="" alt="" data-admin-product-image-preview="<?php echo $i; ?>" style="display:none;" hidden>
+              <img data-admin-product-image-preview="<?php echo $i; ?>" style="display:none;" hidden alt="">
               <span data-admin-product-image-empty="<?php echo $i; ?>"><i class="bx bx-image-add"></i></span>
             </label>
             <input id="admin-product-image-<?php echo $i; ?>" class="admin-product-image-slot__file" name="Imagenes_Nuevas[<?php echo $i; ?>]" type="file" accept="image/*" data-admin-product-image-input="<?php echo $i; ?>">

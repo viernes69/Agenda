@@ -305,11 +305,27 @@
     const url = resolved ? resolveImageUrl(resolved) : '';
     if (slotEl) slotEl.classList.toggle('has-image', Boolean(url));
     if (img) {
-      img.hidden = !url;
-      img.src = url;
-      img.alt = alt || 'Vista previa';
+      if (url) {
+        img.hidden = false;
+        img.style.display = 'block';
+        img.src = url;
+        img.alt = alt || 'Vista previa';
+      } else {
+        img.hidden = true;
+        img.style.display = 'none';
+        img.removeAttribute('src');
+        img.alt = '';
+      }
     }
-    if (empty) empty.hidden = Boolean(url);
+    if (empty) {
+      if (url) {
+        empty.hidden = true;
+        empty.style.display = 'none';
+      } else {
+        empty.hidden = false;
+        empty.style.display = '';
+      }
+    }
     syncSlotMeta(slot);
   };
   const clearImageSlot = (slot) => {
