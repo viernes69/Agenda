@@ -13,6 +13,9 @@ use Agenduy\Core\Keys;
 use Agenduy\Core\TenantMigrator;
 use Agenduy\Core\TenantAudit;
 use Agenduy\Core\TenantConfig;
+use Agenduy\Core\CommerceStorage;
+use Agenduy\Core\CentralCommerceData;
+use Agenduy\Core\CommercePanel;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'super_admin') { header('Location: ' . Auth::loginUrl()); exit; }
@@ -82,17 +85,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    ? $_POST['status'] : 'trial',
                 'updated_at'     => date('Y-m-d H:i:s'),
             ];
+            $logoExisting = trim((string)($_POST['logo_existing'] ?? ''));
+            $removeLogo = !empty($_POST['remove_logo']);
+            $logoPath = $removeLogo ? '' : $logoExisting;
+
             if ($data['id_rubro'] <= 0) {
                 $firstRubro = $db->fetchOne('SELECT id_rubro FROM rubros ORDER BY id_rubro ASC LIMIT 1');
                 $data['id_rubro'] = $firstRubro ? (int)$firstRubro['id_rubro'] : 1;
             }
+
             if ($id > 0) {
+                if (isset($_FILES['logo']) && is_array($_FILES['logo']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    $file = $_FILES['logo'];
+                    $ext = strtolower((string)pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+                    $allowed = ['jpg','jpeg','png','webp','svg','gif'];
+                    if (in_array($ext, $allowed, true) && $file['size'] <= 5*1024*1024) {
+                        $uploadDir = CommerceStorage::kindDir($id, 'logo');
+                        $token = substr(str_replace('.', '', (string)microtime(true)), -6);
+                        $filename = 'logo_' . date('Ymd_His') . '_' . $token . '.' . $ext;
+                        $dest = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+                        if (move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                            @chmod($dest, 0644);
+                            $logoPath = CommerceStorage::relativePath($id, 'logo', $filename);
+                        }
+                    }
+                }
+                $data['logo'] = $logoPath;
                 $db->update('commerces', $data, 'id_commerce = :id', [':id' => $id]);
+
+                // Sincronizar con base local del comercio si existe
+                try {
+                    if (CommercePanel::localDatabaseExists($id)) {
+                        $localDb = @include CommercePanel::localDatabasePath($id);
+                        if (is_array($localDb)) {
+                            if (!isset($localDb['info_barberia']) || !is_array($localDb['info_barberia'])) {
+                                $localDb['info_barberia'] = [];
+                            }
+                            $localDb['info_barberia']['logo'] = $logoPath;
+                            CentralCommerceData::writeDatabase($id, $localDb);
+                        }
+                    }
+                } catch (\Throwable $e) {}
+
                 $flash = ['type' => 'ok', 'msg' => 'Comercio actualizado.'];
             } else {
                 $data['serial'] = Keys::serial();
                 $data['trial_expires_at'] = date('Y-m-d', strtotime('+30 days'));
+                $data['logo'] = '';
                 $id = $db->insert('commerces', $data);
+
+                if (isset($_FILES['logo']) && is_array($_FILES['logo']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    $file = $_FILES['logo'];
+                    $ext = strtolower((string)pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+                    $allowed = ['jpg','jpeg','png','webp','svg','gif'];
+                    if (in_array($ext, $allowed, true) && $file['size'] <= 5*1024*1024) {
+                        $uploadDir = CommerceStorage::kindDir($id, 'logo');
+                        $token = substr(str_replace('.', '', (string)microtime(true)), -6);
+                        $filename = 'logo_' . date('Ymd_His') . '_' . $token . '.' . $ext;
+                        $dest = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+                        if (move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                            @chmod($dest, 0644);
+                            $logoPath = CommerceStorage::relativePath($id, 'logo', $filename);
+                            $db->update('commerces', ['logo' => $logoPath], 'id_commerce = :id', [':id' => $id]);
+                        }
+                    }
+                }
+
                 // Crear usuario admin inicial si se dio email
                 $emailAdmin = trim((string)($_POST['admin_email'] ?? ''));
                 $pwdAdmin   = trim((string)($_POST['admin_password'] ?? ''));
@@ -338,10 +396,11 @@ require __DIR__ . '/partials/header.php';
 
 <article class="card">
     <h2><?= $edit ? 'Editar comercio' : 'Nuevo comercio' ?></h2>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         <?= CSRF::field('commerces_admin') ?>
         <input type="hidden" name="action" value="save_commerce">
         <input type="hidden" name="id_commerce" value="<?= (int)($edit['id_commerce'] ?? 0) ?>">
+        <input type="hidden" name="logo_existing" value="<?= htmlspecialchars($edit['logo'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         <div class="form-grid">
             <div class="field">
                 <label>Slug (URL)</label>
@@ -400,6 +459,33 @@ require __DIR__ . '/partials/header.php';
             <div class="field">
                 <label>Ciudad</label>
                 <input type="text" name="ciudad" value="<?= htmlspecialchars($edit['ciudad'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="field col-2">
+                <label>Logo del comercio</label>
+                <?php
+                $currentLogo = trim((string)($edit['logo'] ?? ''));
+                $currentLogoUrl = '';
+                if ($currentLogo !== '') {
+                    $currentLogoUrl = CommerceStorage::publicUrl((int)($edit['id_commerce'] ?? 0), (string)($edit['slug'] ?? ''), $currentLogo);
+                    if ($currentLogoUrl === '' && !preg_match('#^https?://#i', $currentLogo)) {
+                        $currentLogoUrl = url($currentLogo);
+                    }
+                }
+                ?>
+                <?php if ($currentLogoUrl !== ''): ?>
+                    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.6rem; padding:0.6rem 0.85rem; background:var(--surface-2, #1f2530); border-radius:8px; border:1px solid var(--border, #2a313c)">
+                        <img src="<?= htmlspecialchars($currentLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Logo actual" style="width:52px; height:52px; object-fit:contain; background:#fff; border-radius:8px; padding:3px; border:1px solid var(--border, #444)">
+                        <div style="flex:1">
+                            <strong style="font-size:0.9rem">Logo actual asignado</strong>
+                            <div class="muted" style="font-size:0.8rem">Podés subir otro archivo abajo para reemplazarlo o marcar para eliminarlo.</div>
+                        </div>
+                        <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:var(--danger, #dc2626); cursor:pointer">
+                            <input type="checkbox" name="remove_logo" value="1"> Quitar logo
+                        </label>
+                    </div>
+                <?php endif; ?>
+                <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif">
+                <span class="hint">Formatos soportados: PNG, JPG, WebP, SVG o GIF (máx. 5 MB). Se mostrará en la cabecera y pie de la web del comercio.</span>
             </div>
             <div class="field col-2">
                 <label>Calle y número</label>

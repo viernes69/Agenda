@@ -330,6 +330,14 @@ require __DIR__ . '/partials/header.php';
                     <input type="password" name="token" value="" placeholder="<?= ($cfg['token'] ?? '') !== '' ? '•••••••• (dejar vacío para conservar)' : '' ?>" autocomplete="new-password">
                     <span class="hint">Se obtiene en el panel de UltraMsg (docs.ultramsg.com).</span>
                 </div>
+                <div class="field col-2">
+                    <label>Probar envío de WhatsApp</label>
+                    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center">
+                        <input type="text" id="ultramsg-test-phone" placeholder="Ej: +598 99 123 456" style="flex:1; min-width:220px">
+                        <button type="button" class="btn btn-secondary" id="ultramsg-test-btn">Enviar WhatsApp de prueba</button>
+                    </div>
+                    <p class="hint" id="ultramsg-test-msg" role="status"></p>
+                </div>
             <?php elseif ($p['provider'] === 'google_oauth'): ?>
                 <div class="field col-2">
                     <label>Google Client ID (OAuth 2.0)</label>
@@ -366,39 +374,78 @@ require __DIR__ . '/partials/header.php';
     var btn = document.getElementById('smtp-test-btn');
     var emailInput = document.getElementById('smtp-test-email');
     var msg = document.getElementById('smtp-test-msg');
-    if (!btn || !emailInput || !msg) return;
-    btn.addEventListener('click', function () {
-        var email = String(emailInput.value || '').trim();
-        if (!email) {
-            msg.textContent = 'Ingresá un email de prueba.';
-            msg.style.color = '#b91c1c';
-            return;
-        }
-        btn.disabled = true;
-        msg.textContent = 'Enviando...';
-        msg.style.color = '#475569';
-        fetch('api/test_mail.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ email: email, _csrf: <?= json_encode($configCsrf) ?> })
-        }).then(function (res) {
-            return res.json().catch(function () { return null; }).then(function (data) {
+    if (btn && emailInput && msg) {
+        btn.addEventListener('click', function () {
+            var email = String(emailInput.value || '').trim();
+            if (!email) {
+                msg.textContent = 'Ingresá un email de prueba.';
+                msg.style.color = '#b91c1c';
+                return;
+            }
+            btn.disabled = true;
+            msg.textContent = 'Enviando...';
+            msg.style.color = '#475569';
+            fetch('api/test_mail.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: email, _csrf: <?= json_encode($configCsrf) ?> })
+            }).then(function (res) {
+                return res.json().catch(function () { return null; }).then(function (data) {
+                    btn.disabled = false;
+                    if (!res.ok || !data || !data.ok) {
+                        msg.textContent = (data && data.error) ? data.error : 'No se pudo enviar.';
+                        msg.style.color = '#b91c1c';
+                        return;
+                    }
+                    msg.textContent = data.message || 'Enviado.';
+                    msg.style.color = '#15803d';
+                });
+            }).catch(function () {
                 btn.disabled = false;
-                if (!res.ok || !data || !data.ok) {
-                    msg.textContent = (data && data.error) ? data.error : 'No se pudo enviar.';
-                    msg.style.color = '#b91c1c';
-                    return;
-                }
-                msg.textContent = data.message || 'Enviado.';
-                msg.style.color = '#15803d';
+                msg.textContent = 'Error de conexión.';
+                msg.style.color = '#b91c1c';
             });
-        }).catch(function () {
-            btn.disabled = false;
-            msg.textContent = 'Error de conexión.';
-            msg.style.color = '#b91c1c';
         });
-    });
+    }
+
+    var ultraBtn = document.getElementById('ultramsg-test-btn');
+    var phoneInput = document.getElementById('ultramsg-test-phone');
+    var ultraMsg = document.getElementById('ultramsg-test-msg');
+    if (ultraBtn && phoneInput && ultraMsg) {
+        ultraBtn.addEventListener('click', function () {
+            var phone = String(phoneInput.value || '').trim();
+            if (!phone) {
+                ultraMsg.textContent = 'Ingresá un número de WhatsApp (ej: +598 99 123 456).';
+                ultraMsg.style.color = '#b91c1c';
+                return;
+            }
+            ultraBtn.disabled = true;
+            ultraMsg.textContent = 'Enviando WhatsApp de prueba...';
+            ultraMsg.style.color = '#475569';
+            fetch('api/test_ultramsg.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ phone: phone, _csrf: <?= json_encode($configCsrf) ?> })
+            }).then(function (res) {
+                return res.json().catch(function () { return null; }).then(function (data) {
+                    ultraBtn.disabled = false;
+                    if (!res.ok || !data || !data.ok) {
+                        ultraMsg.textContent = (data && data.error) ? data.error : 'No se pudo enviar.';
+                        ultraMsg.style.color = '#b91c1c';
+                        return;
+                    }
+                    ultraMsg.textContent = data.message || '¡WhatsApp enviado exitosamente!';
+                    ultraMsg.style.color = '#15803d';
+                });
+            }).catch(function () {
+                ultraBtn.disabled = false;
+                ultraMsg.textContent = 'Error de conexión al enviar WhatsApp.';
+                ultraMsg.style.color = '#b91c1c';
+            });
+        });
+    }
 })();
 </script>
 

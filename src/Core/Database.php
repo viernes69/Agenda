@@ -123,6 +123,7 @@ final class Database
         $this->ensurePlatformSettingsTable();
         $this->ensureStoreOrderPaymentsTable();
         $this->ensureAppointmentPaymentsTable();
+        $this->ensureNotificationsLogTable();
         $this->ensureSuperAdminUser();
         $this->ensurePaymentProviderDefaults();
     }
@@ -242,6 +243,29 @@ final class Database
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_status ON store_order_payments(status)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_payment ON store_order_payments(payment_id)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_store_payments_preference ON store_order_payments(preference_id)');
+    }
+
+    private function ensureNotificationsLogTable(): void
+    {
+        $this->pdo->exec(
+            "CREATE TABLE IF NOT EXISTS notifications_log (
+                id_notification   INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_commerce       INTEGER,
+                channel           TEXT    NOT NULL CHECK (channel IN ('email','whatsapp','push','sms','generic')),
+                recipient         TEXT    NOT NULL,
+                subject           TEXT    DEFAULT '',
+                body              TEXT    DEFAULT '',
+                status            TEXT    NOT NULL DEFAULT 'sent' CHECK (status IN ('sent','failed','queued','pending','cancelled')),
+                error_message     TEXT    DEFAULT NULL,
+                sent_at           TEXT    DEFAULT NULL,
+                created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (id_commerce) REFERENCES commerces(id_commerce) ON DELETE SET NULL
+            )"
+        );
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_notif_log_channel ON notifications_log(channel)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_notif_log_status ON notifications_log(status)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_notif_log_commerce ON notifications_log(id_commerce)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_notif_log_created ON notifications_log(created_at)');
     }
 
     private function ensureSuperAdminUser(): void

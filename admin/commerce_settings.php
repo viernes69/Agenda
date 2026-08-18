@@ -13,6 +13,8 @@ use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Crypto;
 use Agenduy\Core\Security;
+use Agenduy\Core\CommerceStorage;
+use Agenduy\Core\CentralCommerceData;
 
 Auth::start();
 if (!Auth::check() || Auth::role() !== 'commerce_admin') { header('Location: ' . Auth::loginUrl()); exit; }
@@ -29,6 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_info') {
+        $logoExisting = trim((string)($_POST['logo_existing'] ?? ''));
+        $removeLogo = !empty($_POST['remove_logo']);
+        $logoPath = $removeLogo ? '' : $logoExisting;
+
+        if (isset($_FILES['logo']) && is_array($_FILES['logo']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $file = $_FILES['logo'];
+            $ext = strtolower((string)pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+            $allowed = ['jpg','jpeg','png','webp','svg','gif'];
+            if (in_array($ext, $allowed, true) && $file['size'] <= 5*1024*1024) {
+                $uploadDir = CommerceStorage::kindDir($idCommerce, 'logo');
+                $token = substr(str_replace('.', '', (string)microtime(true)), -6);
+                $filename = 'logo_' . date('Ymd_His') . '_' . $token . '.' . $ext;
+                $dest = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+                if (move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                    @chmod($dest, 0644);
+                    $logoPath = CommerceStorage::relativePath($idCommerce, 'logo', $filename);
+                }
+            }
+        }
+
         $data = [
             'nombre'        => trim((string)($_POST['nombre'] ?? '')),
             'slogan'        => trim((string)($_POST['slogan'] ?? '')),
@@ -40,13 +62,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'ciudad'        => trim((string)($_POST['ciudad'] ?? '')),
             'calle'         => trim((string)($_POST['calle'] ?? '')),
             'timezone'      => trim((string)($_POST['timezone'] ?? 'America/Montevideo')),
+            'logo'          => $logoPath,
             'updated_at'    => date('Y-m-d H:i:s'),
         ];
         if ($data['nombre'] === '') {
             $flash = ['type' => 'error', 'msg' => 'El nombre es obligatorio.'];
         } else {
             $db->update('commerces', $data, 'id_commerce = :c', [':c' => $idCommerce]);
-            $flash = ['type' => 'ok', 'msg' => 'Datos guardados.'];
+
+            try {
+                if (CommercePanel::localDatabaseExists($idCommerce)) {
+                    $localDb = @include CommercePanel::localDatabasePath($idCommerce);
+                    if (is_array($localDb)) {
+                        if (!isset($localDb['info_barberia']) || !is_array($localDb['info_barberia'])) {
+                            $localDb['info_barberia'] = [];
+                        }
+                        $localDb['info_barberia']['logo'] = $logoPath;
+                        CentralCommerceData::writeDatabase($idCommerce, $localDb);
+                    }
+                }
+            } catch (\Throwable $e) {}
+
+            $flash = ['type' => 'ok', 'msg' => 'Datos guardados correctamente.'];
         }
     } elseif ($action === 'add_key') {
         $provider = (string)($_POST['provider'] ?? '');
@@ -126,9 +163,10 @@ $keys = $db->fetchAll('SELECT * FROM api_keys WHERE id_commerce = :c ORDER BY pr
 
     <article class="card">
         <h2>Datos del negocio</h2>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <?= CSRF::field('commerce_settings') ?>
             <input type="hidden" name="action" value="save_info">
+            <input type="hidden" name="logo_existing" value="<?= htmlspecialchars((string)($commerce['logo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
             <div class="form-grid">
                 <div class="field">
                     <label>Nombre</label>
@@ -153,6 +191,33 @@ $keys = $db->fetchAll('SELECT * FROM api_keys WHERE id_commerce = :c ORDER BY pr
                 <div class="field">
                     <label>Ciudad</label>
                     <input type="text" name="ciudad" value="<?= htmlspecialchars($commerce['ciudad'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div class="field col-2">
+                    <label>Logo del comercio</label>
+                    <?php
+                    $currentLogo = trim((string)($commerce['logo'] ?? ''));
+                    $currentLogoUrl = '';
+                    if ($currentLogo !== '') {
+                        $currentLogoUrl = CommerceStorage::publicUrl((int)$idCommerce, (string)($commerce['slug'] ?? ''), $currentLogo);
+                        if ($currentLogoUrl === '' && !preg_match('#^https?://#i', $currentLogo)) {
+                            $currentLogoUrl = url($currentLogo);
+                        }
+                    }
+                    ?>
+                    <?php if ($currentLogoUrl !== ''): ?>
+                        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.6rem; padding:0.6rem 0.85rem; background:var(--surface-2, #1f2530); border-radius:8px; border:1px solid var(--border, #2a313c)">
+                            <img src="<?= htmlspecialchars($currentLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Logo actual" style="width:52px; height:52px; object-fit:contain; background:#fff; border-radius:8px; padding:3px; border:1px solid var(--border, #444)">
+                            <div style="flex:1">
+                                <strong style="font-size:0.9rem">Logo actual asignado</strong>
+                                <div class="muted" style="font-size:0.8rem">Subí un nuevo archivo abajo para reemplazarlo o marcalo para eliminarlo.</div>
+                            </div>
+                            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:var(--danger, #dc2626); cursor:pointer">
+                                <input type="checkbox" name="remove_logo" value="1"> Quitar logo
+                            </label>
+                        </div>
+                    <?php endif; ?>
+                    <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif">
+                    <span class="hint">Formatos: PNG, JPG, WebP, SVG o GIF (máx. 5 MB).</span>
                 </div>
                 <div class="field col-2">
                     <label>Calle y número</label>

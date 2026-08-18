@@ -1,7 +1,7 @@
 <?php
 /**
  * Agenduy - Super Admin: Gestión de Productos de Comercios
- * Permite seleccionar cualquier comercio y agregar, editar o eliminar productos.
+ * Permite seleccionar cualquier comercio y agregar, editar o eliminar productos (hasta 4 fotos por producto).
  */
 declare(strict_types=1);
 
@@ -46,7 +46,7 @@ function products_flash_redirect(int $idCommerce, array $flash): void
 
 // Obtener todos los comercios
 $commerces = $db->fetchAll(
-    'SELECT c.id_commerce, c.nombre, c.slug, c.status, r.nombre AS rubro_nombre
+    'SELECT c.id_commerce, c.nombre, c.slug, c.status, c.logo, r.nombre AS rubro_nombre
      FROM commerces c
      LEFT JOIN rubros r ON r.id_rubro = c.id_rubro
      ORDER BY c.nombre COLLATE NOCASE ASC'
@@ -153,33 +153,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $etiqueta = trim((string)($_POST['etiqueta_venta'] ?? ''));
         $descripcion = trim((string)($_POST['descripcion'] ?? ''));
         $puntos = max(0, (int)($_POST['puntos'] ?? 0));
-        $imgSrc = trim((string)($_POST['img_src_existing'] ?? ''));
-
-        // Carga de archivo de imagen principal
-        if (isset($_FILES['imagen']) && is_array($_FILES['imagen']) && ($_FILES['imagen']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $file = $_FILES['imagen'];
-            $maxBytes = 5 * 1024 * 1024;
-            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-            $ext = strtolower((string)pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-
-            if ($file['size'] > $maxBytes) {
-                products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'La imagen supera el límite de 5 MB.']);
-            } elseif (!in_array($ext, $allowedExts, true)) {
-                products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'Formato no válido (usá JPG, PNG, WebP o GIF).']);
-            } else {
-                $uploadDir = CommerceStorage::kindDir($selectedId, 'products');
-                $token = substr(str_replace('.', '', (string)microtime(true)), -6);
-                $filename = 'producto_' . date('Ymd_His') . '_' . $token . '.' . $ext;
-                $dest = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
-                if (move_uploaded_file((string)$file['tmp_name'], $dest)) {
-                    @chmod($dest, 0644);
-                    $imgSrc = CommerceStorage::relativePath($selectedId, 'products', $filename);
-                }
-            }
-        }
 
         if ($nombre === '') {
             products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'El nombre del producto es obligatorio.']);
+        }
+
+        // Recolectar hasta 4 imágenes
+        $currentPosted = (array)($_POST['Imagenes_Actuales'] ?? []);
+        $pricesPosted  = (array)($_POST['Imagenes_Precios'] ?? []);
+        $labelsPosted  = (array)($_POST['Imagenes_Titulos'] ?? []);
+        $removePosted  = (array)($_POST['Imagenes_Quitar'] ?? []);
+        $coverSlot     = isset($_POST['Portada_Index']) && is_numeric($_POST['Portada_Index']) ? (int)$_POST['Portada_Index'] : 0;
+
+        $mediaItems = [];
+        $uploadDir = CommerceStorage::kindDir($selectedId, 'products');
+
+        for ($slot = 0; $slot < ProductCatalog::MAX_IMAGES; $slot++) {
+            $src = trim((string)($currentPosted[$slot] ?? ''));
+            $isRemoved = !empty($removePosted[$slot]);
+
+            // Comprobar archivo nuevo subido en este slot
+            if (
+                isset($_FILES['Imagenes_Nuevas']['name'][$slot]) &&
+                ($_FILES['Imagenes_Nuevas']['error'][$slot] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+            ) {
+                $file = [
+                    'name'     => $_FILES['Imagenes_Nuevas']['name'][$slot],
+                    'type'     => $_FILES['Imagenes_Nuevas']['type'][$slot] ?? '',
+                    'tmp_name' => $_FILES['Imagenes_Nuevas']['tmp_name'][$slot],
+                    'error'    => $_FILES['Imagenes_Nuevas']['error'][$slot],
+                    'size'     => $_FILES['Imagenes_Nuevas']['size'][$slot],
+                ];
+                $maxBytes = 5 * 1024 * 1024;
+                $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+                $ext = strtolower((string)pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+
+                if ($file['size'] > $maxBytes) {
+                    products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'La imagen ' . ($slot + 1) . ' supera los 5 MB.']);
+                } elseif (!in_array($ext, $allowedExts, true)) {
+                    products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'Formato no válido en imagen ' . ($slot + 1) . '. Usá JPG, PNG, WebP o GIF.']);
+                } else {
+                    $token = substr(str_replace('.', '', (string)microtime(true)), -6);
+                    $filename = 'producto_' . date('Ymd_His') . '_slot' . $slot . '_' . $token . '.' . $ext;
+                    $dest = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+                    if (move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                        @chmod($dest, 0644);
+                        $src = CommerceStorage::relativePath($selectedId, 'products', $filename);
+                    }
+                }
+            } elseif ($isRemoved) {
+                $src = '';
+            }
+
+            if ($src === '') {
+                continue;
+            }
+
+            $slotPrice = null;
+            $rawPrice = trim((string)($pricesPosted[$slot] ?? ''));
+            if ($rawPrice !== '' && is_numeric($rawPrice)) {
+                $slotPrice = round(max(0.0, (float)$rawPrice), 2);
+            }
+
+            $slotLabel = trim((string)($labelsPosted[$slot] ?? ''));
+            if ($slotLabel === '') {
+                $slotLabel = count($mediaItems) === 0 ? $nombre : ('Opción ' . (count($mediaItems) + 1));
+            }
+
+            $mediaItems[] = [
+                '_slot' => $slot,
+                'src'   => $src,
+                'price' => $slotPrice,
+                'label' => $slotLabel,
+                'cover' => false,
+            ];
+        }
+
+        // Determinar portada
+        $coverPos = 0;
+        foreach ($mediaItems as $pos => $item) {
+            if ((int)($item['_slot'] ?? -1) === $coverSlot) {
+                $coverPos = $pos;
+                break;
+            }
+        }
+
+        foreach ($mediaItems as $pos => &$item) {
+            $item['cover'] = ($pos === $coverPos);
+        }
+        unset($item);
+
+        if ($mediaItems !== [] && $coverPos > 0) {
+            $coverItem = $mediaItems[$coverPos];
+            array_splice($mediaItems, $coverPos, 1);
+            array_unshift($mediaItems, $coverItem);
+        }
+
+        foreach ($mediaItems as &$item) {
+            unset($item['_slot']);
+        }
+        unset($item);
+
+        $coverSrc = $mediaItems[0]['src'] ?? '';
+        $gallery = [];
+        foreach (array_slice($mediaItems, 1) as $item) {
+            $gallery[] = (string)$item['src'];
         }
 
         // Construir registro
@@ -189,16 +267,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Precio' => $precio,
             'Descripcion' => $descripcion,
             'Puntos' => $puntos,
-            'Img_src' => $imgSrc,
-            'Img_Gallery' => '',
-            'Imagenes' => json_encode([
-                [
-                    'src' => $imgSrc,
-                    'price' => $precio,
-                    'label' => $nombre,
-                    'cover' => true,
-                ]
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]',
+            'Img_src' => (string)$coverSrc,
+            'Img_Gallery' => implode('|', $gallery),
+            'Imagenes' => json_encode($mediaItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]',
             'Descuento_Porcentaje' => $descuento > 0 ? $descuento : '',
             'Etiqueta_Venta' => $etiqueta,
         ];
@@ -219,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $productData['ID_Product'] = $idProduct;
                 $localDb['productos'][] = $productData;
             }
-            $flashMsg = 'Producto "' . $nombre . '" actualizado correctamente.';
+            $flashMsg = 'Producto "' . $nombre . '" actualizado correctamente (' . count($mediaItems) . ' fotos).';
         } else {
             // Crear nuevo
             $maxId = 0;
@@ -231,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nextId = $maxId + 1;
             $productData['ID_Product'] = $nextId;
             $localDb['productos'][] = $productData;
-            $flashMsg = 'Producto "' . $nombre . '" agregado al comercio exitosamente.';
+            $flashMsg = 'Producto "' . $nombre . '" agregado al comercio exitosamente (' . count($mediaItems) . ' fotos).';
         }
 
         // Asegurar que la sección de productos esté activa en las funciones del comercio
@@ -295,18 +366,20 @@ foreach ($rawProducts as $idx => $prodRow) {
     $precio = ProductCatalog::basePrice($prodRow);
     $descuento = ProductCatalog::discountPercent($prodRow);
     $precioEfectivo = ProductCatalog::effectivePrice($precio, $descuento);
-    $img = trim((string)($prodRow['Img_src'] ?? ''));
+    $mediaList = ProductCatalog::mediaForRow($prodRow);
+    $imgCount = count($mediaList);
 
     $totalValor += $precio;
     if ($descuento > 0) $conDescuento++;
-    if ($img !== '') $conImagen++;
+    if ($imgCount > 0) $conImagen++;
 
-    // Resolver URL de imagen
+    // Resolver URL de portada
+    $coverSrc = $prodRow['Img_src'] ?? ($mediaList[0]['src'] ?? '');
     $imgUrl = '';
-    if ($img !== '') {
-        $imgUrl = CommerceStorage::publicUrl($selectedId, $selectedSlug, $img);
-        if ($imgUrl === '' && !preg_match('#^https?://#i', $img)) {
-            $imgUrl = url($img);
+    if ($coverSrc !== '') {
+        $imgUrl = CommerceStorage::publicUrl($selectedId, $selectedSlug, $coverSrc);
+        if ($imgUrl === '' && !preg_match('#^https?://#i', $coverSrc)) {
+            $imgUrl = url($coverSrc);
         }
     }
 
@@ -320,18 +393,52 @@ foreach ($rawProducts as $idx => $prodRow) {
         'etiqueta' => ProductCatalog::saleLabel($prodRow),
         'descripcion' => trim((string)($prodRow['Descripcion'] ?? '')),
         'puntos' => (int)($prodRow['Puntos'] ?? 0),
-        'img_src' => $img,
+        'img_src' => $coverSrc,
         'img_url' => $imgUrl,
+        'img_count' => $imgCount,
+        'media' => $mediaList,
+        'raw' => $prodRow,
     ];
 }
 
 // Producto a editar si vino por GET
 $editProduct = null;
+$editMediaSlots = [];
+for ($s = 0; $s < ProductCatalog::MAX_IMAGES; $s++) {
+    $editMediaSlots[$s] = [
+        'src' => '',
+        'url' => '',
+        'label' => '',
+        'price' => '',
+        'cover' => ($s === 0),
+    ];
+}
+
 if (isset($_GET['edit_id'])) {
     $editId = (int)$_GET['edit_id'];
     foreach ($products as $p) {
         if ($p['id'] === $editId) {
             $editProduct = $p;
+            $mediaRows = ProductCatalog::mediaForRow($p['raw']);
+            foreach ($mediaRows as $idx => $m) {
+                if ($idx < ProductCatalog::MAX_IMAGES) {
+                    $src = (string)($m['src'] ?? '');
+                    $mUrl = '';
+                    if ($src !== '') {
+                        $mUrl = CommerceStorage::publicUrl($selectedId, $selectedSlug, $src);
+                        if ($mUrl === '' && !preg_match('#^https?://#i', $src)) {
+                            $mUrl = url($src);
+                        }
+                    }
+                    $editMediaSlots[$idx] = [
+                        'src' => $src,
+                        'url' => $mUrl,
+                        'label' => (string)($m['label'] ?? ''),
+                        'price' => isset($m['price']) && $m['price'] !== null ? (string)$m['price'] : '',
+                        'cover' => !empty($m['cover']),
+                    ];
+                }
+            }
             break;
         }
     }
@@ -353,17 +460,30 @@ require __DIR__ . '/partials/header.php';
     <!-- Selector de Comercio Superior -->
     <header class="card" style="margin-bottom:1.5rem; background:linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(59,130,246,0.04) 100%); border-left:4px solid #7c3aed">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem">
-            <div style="flex:1; min-width:280px">
-                <span class="hint" style="text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#7c3aed">Super Admin · Catálogo Multi-Comercio</span>
-                <h1 style="margin:0.25rem 0 0.5rem; font-size:1.6rem; display:flex; align-items:center; gap:0.5rem">
-                    <span>📦 Productos de</span>
-                    <strong style="color:var(--text, #111827)"><?= htmlspecialchars((string)$selectedCommerce['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
-                </h1>
-                <p class="muted" style="margin:0; font-size:0.9rem">
-                    Rubro: <strong><?= htmlspecialchars((string)($selectedCommerce['rubro_nombre'] ?? 'Sin rubro'), ENT_QUOTES, 'UTF-8') ?></strong>
-                    · Slug: <code><?= htmlspecialchars($selectedSlug, ENT_QUOTES, 'UTF-8') ?></code>
-                    · Estado: <span class="badge badge--<?= htmlspecialchars((string)$selectedCommerce['status'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$selectedCommerce['status'], ENT_QUOTES, 'UTF-8') ?></span>
-                </p>
+            <div style="display:flex; align-items:center; gap:1rem; flex:1; min-width:280px">
+                <?php
+                $commLogo = trim((string)($selectedCommerce['logo'] ?? ''));
+                $commLogoUrl = '';
+                if ($commLogo !== '') {
+                    $commLogoUrl = CommerceStorage::publicUrl($selectedId, $selectedSlug, $commLogo);
+                    if ($commLogoUrl === '' && !preg_match('#^https?://#i', $commLogo)) $commLogoUrl = url($commLogo);
+                }
+                ?>
+                <?php if ($commLogoUrl !== ''): ?>
+                    <img src="<?= htmlspecialchars($commLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" style="width:54px; height:54px; object-fit:contain; background:#fff; border-radius:10px; padding:3px; border:1px solid rgba(0,0,0,0.1)">
+                <?php endif; ?>
+                <div>
+                    <span class="hint" style="text-transform:uppercase; letter-spacing:0.05em; font-weight:700; color:#7c3aed">Super Admin · Catálogo Multi-Comercio</span>
+                    <h1 style="margin:0.25rem 0 0.5rem; font-size:1.6rem; display:flex; align-items:center; gap:0.5rem">
+                        <span>📦 Productos de</span>
+                        <strong style="color:var(--text, #111827)"><?= htmlspecialchars((string)$selectedCommerce['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
+                    </h1>
+                    <p class="muted" style="margin:0; font-size:0.9rem">
+                        Rubro: <strong><?= htmlspecialchars((string)($selectedCommerce['rubro_nombre'] ?? 'Sin rubro'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        · Slug: <code><?= htmlspecialchars($selectedSlug, ENT_QUOTES, 'UTF-8') ?></code>
+                        · Estado: <span class="badge badge--<?= htmlspecialchars((string)$selectedCommerce['status'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$selectedCommerce['status'], ENT_QUOTES, 'UTF-8') ?></span>
+                    </p>
+                </div>
             </div>
 
             <!-- Selector desplegable -->
@@ -407,7 +527,7 @@ require __DIR__ . '/partials/header.php';
             <div style="font-size:2rem; font-weight:800; color:#16a34a; margin-top:0.25rem"><?= $conDescuento ?></div>
         </div>
         <div class="card" style="padding:1.1rem; text-align:center">
-            <span class="muted" style="font-size:0.85rem; font-weight:600; text-transform:uppercase">Con Imagen</span>
+            <span class="muted" style="font-size:0.85rem; font-weight:600; text-transform:uppercase">Con Imágenes</span>
             <div style="font-size:2rem; font-weight:800; color:#ea580c; margin-top:0.25rem"><?= $conImagen ?></div>
         </div>
     </div>
@@ -430,7 +550,6 @@ require __DIR__ . '/partials/header.php';
                 <?= CSRF::field('admin_products') ?>
                 <input type="hidden" name="action" value="save_product">
                 <input type="hidden" name="id_product" value="<?= (int)($editProduct['id'] ?? 0) ?>">
-                <input type="hidden" name="img_src_existing" value="<?= htmlspecialchars((string)($editProduct['img_src'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
 
                 <div class="form-grid" style="gap:1rem">
                     <div class="field col-2">
@@ -449,7 +568,7 @@ require __DIR__ . '/partials/header.php';
                     </div>
 
                     <div class="field">
-                        <label style="font-weight:600">Precio base ($)</label>
+                        <label style="font-weight:600">Precio base ($) *</label>
                         <input type="number" name="precio" step="0.01" min="0" required placeholder="Ej: 450" value="<?= htmlspecialchars((string)($editProduct['precio'] ?? '0'), ENT_QUOTES, 'UTF-8') ?>">
                     </div>
 
@@ -473,20 +592,61 @@ require __DIR__ . '/partials/header.php';
                         <textarea name="descripcion" rows="3" placeholder="Detalles, modo de uso, beneficios..."><?= htmlspecialchars((string)($editProduct['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
                     </div>
 
-                    <div class="field col-2">
-                        <label style="font-weight:600">Imagen del producto</label>
-                        <?php if (!empty($editProduct['img_url'])): ?>
-                            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.75rem; background:rgba(0,0,0,0.03); padding:0.5rem 0.75rem; border-radius:8px">
-                                <img src="<?= htmlspecialchars($editProduct['img_url'], ENT_QUOTES, 'UTF-8') ?>" alt="Preview" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid #ddd">
-                                <div style="font-size:0.85rem">
-                                    <span class="muted">Imagen actual cargada</span><br>
-                                    <small>Subí una nueva abajo para reemplazarla.</small>
-                                </div>
+                    <!-- Grilla de Hasta 4 Fotos -->
+                    <div class="field col-2" style="background:var(--surface-2, #1f2530); padding:1rem; border-radius:10px; border:1px solid var(--border, #2a313c)">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
+                            <div>
+                                <strong style="font-size:0.95rem">📸 Fotos del Producto (Hasta 4 fotos)</strong>
+                                <div class="muted" style="font-size:0.8rem">Marca una como Portada. Cada foto puede tener nombre o precio propio de variante.</div>
                             </div>
-                        <?php endif; ?>
-                        <input type="file" name="imagen" accept="image/jpeg,image/png,image/webp,image/gif" style="width:100%; padding:0.4rem; border:1px dashed var(--border, #ccc); border-radius:6px">
-                        <span class="hint">Formatos: JPG, PNG, WebP, GIF. Máximo 5 MB.</span>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.85rem">
+                            <?php for ($i = 0; $i < ProductCatalog::MAX_IMAGES; $i++): ?>
+                                <?php
+                                $slotData = $editMediaSlots[$i] ?? ['src' => '', 'url' => '', 'label' => '', 'price' => '', 'cover' => ($i === 0)];
+                                $hasImg = !empty($slotData['src']);
+                                ?>
+                                <div class="product-slot-card" id="slot-container-<?= $i ?>" style="background:var(--surface, #161b22); border:1px solid <?= !empty($slotData['cover']) ? '#7c3aed' : 'var(--border, #333)' ?>; border-radius:8px; padding:0.6rem; display:flex; flex-direction:column; gap:0.4rem; position:relative">
+                                    <input type="hidden" name="Imagenes_Actuales[<?= $i ?>]" value="<?= htmlspecialchars((string)$slotData['src'], ENT_QUOTES, 'UTF-8') ?>" id="img-actual-<?= $i ?>">
+                                    <input type="hidden" name="Imagenes_Quitar[<?= $i ?>]" value="" id="img-quitar-<?= $i ?>">
+
+                                    <!-- Previsualización -->
+                                    <div style="position:relative; width:100%; height:95px; background:rgba(0,0,0,0.06); border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px dashed var(--border, #555)">
+                                        <img src="<?= htmlspecialchars((string)$slotData['url'], ENT_QUOTES, 'UTF-8') ?>" id="preview-img-<?= $i ?>" alt="" style="width:100%; height:100%; object-fit:cover; <?= $hasImg ? '' : 'display:none;' ?>">
+                                        <span id="preview-empty-<?= $i ?>" style="color:var(--muted, #888); font-size:1.5rem; <?= $hasImg ? 'display:none;' : '' ?>">
+                                            📷
+                                        </span>
+                                        <?php if ($hasImg): ?>
+                                            <button type="button" onclick="quitarFoto(<?= $i ?>)" title="Quitar foto" style="position:absolute; top:4px; right:4px; background:rgba(220,38,38,0.85); color:#fff; border:none; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:0.75rem">
+                                                ✕
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Selector Portada y Subida -->
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.25rem; font-size:0.75rem; margin-top:0.2rem">
+                                        <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer; font-weight:600; color:<?= !empty($slotData['cover']) ? '#7c3aed' : 'var(--text)' ?>">
+                                            <input type="radio" name="Portada_Index" value="<?= $i ?>" <?= !empty($slotData['cover']) ? 'checked' : '' ?> onchange="actualizarPortadaUI(<?= $i ?>)">
+                                            <span>Portada</span>
+                                        </label>
+                                        <span class="muted">Foto <?= $i + 1 ?></span>
+                                    </div>
+
+                                    <!-- Input File -->
+                                    <input type="file" name="Imagenes_Nuevas[<?= $i ?>]" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewFoto(this, <?= $i ?>)" style="font-size:0.75rem; width:100%; padding:0.2rem; border-radius:4px; border:1px solid var(--border, #444); background:var(--surface-2, #1f2530)">
+
+                                    <!-- Nombre variante -->
+                                    <input type="text" name="Imagenes_Titulos[<?= $i ?>]" placeholder="Nombre opción" value="<?= htmlspecialchars((string)$slotData['label'], ENT_QUOTES, 'UTF-8') ?>" style="font-size:0.75rem; padding:0.3rem 0.4rem; border-radius:4px; border:1px solid var(--border, #444); background:var(--surface-2, #1f2530)">
+
+                                    <!-- Precio opcional -->
+                                    <input type="number" step="0.01" min="0" name="Imagenes_Precios[<?= $i ?>]" placeholder="Precio variante" value="<?= htmlspecialchars((string)$slotData['price'], ENT_QUOTES, 'UTF-8') ?>" style="font-size:0.75rem; padding:0.3rem 0.4rem; border-radius:4px; border:1px solid var(--border, #444); background:var(--surface-2, #1f2530)">
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+                        <span class="hint" style="display:block; margin-top:0.6rem">Formatos: JPG, PNG, WebP o GIF (máx. 5 MB por foto).</span>
                     </div>
+
                 </div>
 
                 <div class="actions" style="margin-top:1.25rem; display:flex; gap:0.75rem">
@@ -521,7 +681,7 @@ require __DIR__ . '/partials/header.php';
                         <table class="table" style="font-size:0.9rem">
                             <thead>
                                 <tr>
-                                    <th style="width:50px">Foto</th>
+                                    <th style="width:55px">Fotos</th>
                                     <th>Producto</th>
                                     <th>Categoría</th>
                                     <th>Precio</th>
@@ -533,13 +693,20 @@ require __DIR__ . '/partials/header.php';
                                 <?php foreach ($products as $prod): ?>
                                     <tr style="<?= ($editProduct && $editProduct['id'] === $prod['id']) ? 'background:rgba(124,58,237,0.06);' : '' ?>">
                                         <td>
-                                            <?php if (!empty($prod['img_url'])): ?>
-                                                <img src="<?= htmlspecialchars($prod['img_url'], ENT_QUOTES, 'UTF-8') ?>" alt="" style="width:42px; height:42px; object-fit:cover; border-radius:6px; border:1px solid var(--border, #ddd)">
-                                            <?php else: ?>
-                                                <div style="width:42px; height:42px; border-radius:6px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:1.2rem">
-                                                    📦
-                                                </div>
-                                            <?php endif; ?>
+                                            <div style="position:relative; width:46px; height:46px">
+                                                <?php if (!empty($prod['img_url'])): ?>
+                                                    <img src="<?= htmlspecialchars($prod['img_url'], ENT_QUOTES, 'UTF-8') ?>" alt="" style="width:46px; height:46px; object-fit:cover; border-radius:6px; border:1px solid var(--border, #ddd)">
+                                                <?php else: ?>
+                                                    <div style="width:46px; height:46px; border-radius:6px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:1.2rem">
+                                                        📦
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($prod['img_count'] > 1): ?>
+                                                    <span style="position:absolute; bottom:-3px; right:-3px; background:#7c3aed; color:#fff; font-size:0.65rem; font-weight:700; border-radius:10px; padding:1px 5px; border:1px solid #fff">
+                                                        <?= $prod['img_count'] ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                         <td>
                                             <strong><?= htmlspecialchars($prod['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
@@ -590,5 +757,52 @@ require __DIR__ . '/partials/header.php';
     </div>
 
 </div>
+
+<script>
+function previewFoto(input, slot) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.getElementById('preview-img-' + slot);
+            var empty = document.getElementById('preview-empty-' + slot);
+            var quitar = document.getElementById('img-quitar-' + slot);
+            if (img) {
+                img.src = e.target.result;
+                img.style.display = 'block';
+            }
+            if (empty) empty.style.display = 'none';
+            if (quitar) quitar.value = '';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function quitarFoto(slot) {
+    var img = document.getElementById('preview-img-' + slot);
+    var empty = document.getElementById('preview-empty-' + slot);
+    var actual = document.getElementById('img-actual-' + slot);
+    var quitar = document.getElementById('img-quitar-' + slot);
+    if (img) {
+        img.src = '';
+        img.style.display = 'none';
+    }
+    if (empty) empty.style.display = 'block';
+    if (actual) actual.value = '';
+    if (quitar) quitar.value = '1';
+}
+
+function actualizarPortadaUI(selectedSlot) {
+    for (var i = 0; i < 4; i++) {
+        var card = document.getElementById('slot-container-' + i);
+        if (card) {
+            if (i === selectedSlot) {
+                card.style.borderColor = '#7c3aed';
+            } else {
+                card.style.borderColor = 'var(--border, #333)';
+            }
+        }
+    }
+}
+</script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
