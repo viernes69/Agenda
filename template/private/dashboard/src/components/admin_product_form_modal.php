@@ -1,18 +1,49 @@
 <?php
 ob_start();
-$tipos = [
-  'Cosmetica',
-  'Shampoo',
-  'Acondicionador',
-  'Cremas de tratamiento',
-  'Cuidado de barba',
-  'Cuidado facial',
-  'Estilizado',
-  'Coloracion',
-  'Bano de crema',
-  'Accesorios',
-  'Otros',
-];
+$tipos = [];
+
+// 1. Cargar desde la base de datos local del comercio
+try {
+  if (class_exists('AutoloadDB')) {
+    $rawDb = @include \AutoloadDB::dbPath();
+    if (isset($rawDb['categorias']) && is_array($rawDb['categorias'])) {
+      foreach ($rawDb['categorias'] as $c) {
+        $cClean = mb_convert_case(trim((string)$c), MB_CASE_TITLE, 'UTF-8');
+        if ($cClean !== '' && !in_array($cClean, $tipos, true)) {
+          $tipos[] = $cClean;
+        }
+      }
+    }
+    // Extraer también de productos existentes
+    $existingProds = \AutoloadDB::all('productos');
+    if (is_array($existingProds)) {
+      foreach ($existingProds as $ep) {
+        $t = trim((string)($ep['Tipo'] ?? ''));
+        if ($t !== '') {
+          $tClean = mb_convert_case($t, MB_CASE_TITLE, 'UTF-8');
+          if (!in_array($tClean, $tipos, true)) {
+            $tipos[] = $tClean;
+          }
+        }
+      }
+    }
+  }
+} catch (\Throwable $e) {}
+
+// 2. Cargar desde $db global si existe
+if (empty($tipos) && isset($db['categorias']) && is_array($db['categorias'])) {
+  foreach ($db['categorias'] as $c) {
+    $cClean = mb_convert_case(trim((string)$c), MB_CASE_TITLE, 'UTF-8');
+    if ($cClean !== '' && !in_array($cClean, $tipos, true)) {
+      $tipos[] = $cClean;
+    }
+  }
+}
+
+// 3. Opción de Otros
+if (!in_array('Otros', $tipos, true)) {
+  $tipos[] = 'Otros';
+}
 $tipos = array_values(array_unique(array_map('trim', $tipos)));
 ?>
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-product-form-title" data-admin-modal="product-form" hidden>
@@ -34,7 +65,7 @@ $tipos = array_values(array_unique(array_map('trim', $tipos)));
           <input id="admin-product-name" name="Nombre" type="text" required maxlength="140" placeholder="Ej: Cera en polvo">
         </label>
         <label class="admin-form__field" for="admin-product-type">
-          <span class="admin-form__label">Tipo</span>
+          <span class="admin-form__label">Tipo / Categoría</span>
           <select id="admin-product-type" name="Tipo" required data-admin-product-field="tipo-select">
             <option value="" disabled selected>Selecciona un tipo</option>
             <?php foreach ($tipos as $tipo): ?>
@@ -82,7 +113,7 @@ $tipos = array_values(array_unique(array_map('trim', $tipos)));
             <input type="hidden" name="Imagenes_Actuales[<?php echo $i; ?>]" value="" data-admin-product-image-current="<?php echo $i; ?>">
             <input type="hidden" name="Imagenes_Quitar[<?php echo $i; ?>]" value="" data-admin-product-image-remove-value="<?php echo $i; ?>">
             <label class="admin-product-image-slot__preview" for="admin-product-image-<?php echo $i; ?>" tabindex="0">
-              <img src="" alt="Vista previa <?php echo $i + 1; ?>" data-admin-product-image-preview="<?php echo $i; ?>" hidden>
+              <img src="" alt="" data-admin-product-image-preview="<?php echo $i; ?>" style="display:none;" hidden>
               <span data-admin-product-image-empty="<?php echo $i; ?>"><i class="bx bx-image-add"></i></span>
             </label>
             <input id="admin-product-image-<?php echo $i; ?>" class="admin-product-image-slot__file" name="Imagenes_Nuevas[<?php echo $i; ?>]" type="file" accept="image/*" data-admin-product-image-input="<?php echo $i; ?>">

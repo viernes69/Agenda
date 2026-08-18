@@ -1659,6 +1659,21 @@ $summaryCards = [
         <?php
           $productCountTotal = 0;
           $productTypeOptions = [];
+
+          // Incluir categorías asignadas al comercio
+          if (isset($db['categorias']) && is_array($db['categorias'])) {
+            foreach ($db['categorias'] as $cTmp) {
+              $tipoLabel = mb_convert_case(trim((string)$cTmp), MB_CASE_TITLE, 'UTF-8');
+              if ($tipoLabel === '') continue;
+              $tipoKeyRaw = function_exists('mb_strtolower') ? mb_strtolower($tipoLabel, 'UTF-8') : strtolower($tipoLabel);
+              $tipoKeyRaw = preg_replace('/\s+/', ' ', $tipoKeyRaw);
+              $tipoKey = trim((string)$tipoKeyRaw);
+              if ($tipoKey !== '') {
+                $productTypeOptions[$tipoKey] = $tipoLabel;
+              }
+            }
+          }
+
           foreach ($productos as $prodTmp) {
             $pidTmp = $prodTmp['ID_Product'] ?? null;
             if ($pidTmp === null || $pidTmp === '' || !is_numeric($pidTmp)) { continue; }

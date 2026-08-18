@@ -148,6 +148,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $idProduct = (int)($_POST['id_product'] ?? 0);
         $nombre = trim((string)($_POST['nombre'] ?? ''));
         $tipoRaw = trim((string)($_POST['tipo'] ?? ''));
+        if ($tipoRaw === '__custom__' || $tipoRaw === '') {
+            $tipoRaw = trim((string)($_POST['tipo_custom'] ?? ''));
+        }
+        if ($tipoRaw === '' && !empty($localDb['categorias'])) {
+            $tipoRaw = (string)$localDb['categorias'][0];
+        }
         $tipo = $tipoRaw !== '' ? mb_convert_case($tipoRaw, MB_CASE_TITLE, 'UTF-8') : 'General';
         $precio = max(0.0, (float)($_POST['precio'] ?? 0));
         $descuento = max(0.0, min(100.0, (float)($_POST['descuento_porcentaje'] ?? 0)));
@@ -745,13 +751,30 @@ require __DIR__ . '/partials/header.php';
                     </div>
 
                     <div class="field">
-                        <label style="font-weight:600">Tipo / Categoría</label>
-                        <input type="text" name="tipo" list="tipos-list" placeholder="Ej: Cuidado Personal, Accesorios..." value="<?= htmlspecialchars((string)($editProduct['tipo'] ?? 'General'), ENT_QUOTES, 'UTF-8') ?>">
-                        <datalist id="tipos-list">
-                            <?php foreach ($tipos as $t): ?>
-                                <option value="<?= htmlspecialchars($t, ENT_QUOTES, 'UTF-8') ?>">
-                            <?php endforeach; ?>
-                        </datalist>
+                        <label style="font-weight:600; display:flex; justify-content:space-between; align-items:center">
+                            <span>Tipo / Categoría</span>
+                            <?php if (!empty($assignedCategories)): ?>
+                                <span class="muted" style="font-size:0.75rem; font-weight:normal"><?= count($assignedCategories) ?> en este comercio</span>
+                            <?php endif; ?>
+                        </label>
+                        <select name="tipo" id="product-tipo-select" onchange="toggleTipoCustom(this.value)" style="width:100%; padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--border, #d1d5db); background:var(--surface-2, #f9fafb); font-weight:600; font-size:0.95rem">
+                            <?php if (empty($assignedCategories)): ?>
+                                <option value="General" <?= ($editProduct && $editProduct['tipo'] === 'General') ? 'selected' : '' ?>>General</option>
+                            <?php else: ?>
+                                <?php foreach ($assignedCategories as $cOpt): ?>
+                                    <option value="<?= htmlspecialchars($cOpt, ENT_QUOTES, 'UTF-8') ?>" <?= ($editProduct && mb_strtolower($editProduct['tipo'], 'UTF-8') === mb_strtolower($cOpt, 'UTF-8')) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cOpt, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                                <?php if ($editProduct && !in_array($editProduct['tipo'], $assignedCategories, true) && $editProduct['tipo'] !== ''): ?>
+                                    <option value="<?= htmlspecialchars($editProduct['tipo'], ENT_QUOTES, 'UTF-8') ?>" selected>
+                                        <?= htmlspecialchars($editProduct['tipo'], ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            <option value="__custom__">➕ Otra / Escribir nueva categoría...</option>
+                        </select>
+                        <input type="text" name="tipo_custom" id="product-tipo-custom" placeholder="Escribir nueva categoría..." style="display:none; margin-top:0.45rem; width:100%; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--border, #d1d5db); background:var(--surface-2, #f9fafb); font-size:0.9rem">
                     </div>
 
                     <div class="field">
@@ -987,6 +1010,21 @@ function abrirRenombrarCategoria(oldName) {
 function cerrarRenombrarCategoria() {
     var modal = document.getElementById('modal-renombrar-cat');
     if (modal) modal.style.display = 'none';
+}
+
+function toggleTipoCustom(val) {
+    var customInput = document.getElementById('product-tipo-custom');
+    if (customInput) {
+        if (val === '__custom__') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+    }
 }
 
 function previewFoto(input, slot) {
