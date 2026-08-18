@@ -2,11 +2,25 @@
 ob_start();
 $tipos = [];
 
-// 1. Cargar desde la base de datos local del comercio
+// 1. Cargar desde CommerceSettings si existe comercio activo
+$tenantCommIdForCats = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+if ($tenantCommIdForCats > 0 && class_exists('\Agenduy\Core\CommerceSettings')) {
+  $savedCats = \Agenduy\Core\CommerceSettings::get($tenantCommIdForCats, 'categorias', []);
+  if (is_array($savedCats)) {
+    foreach ($savedCats as $c) {
+      $cClean = mb_convert_case(trim((string)$c), MB_CASE_TITLE, 'UTF-8');
+      if ($cClean !== '' && !in_array($cClean, $tipos, true)) {
+        $tipos[] = $cClean;
+      }
+    }
+  }
+}
+
+// 2. Cargar desde la base de datos local del comercio
 try {
   if (class_exists('AutoloadDB')) {
     $rawDb = @include \AutoloadDB::dbPath();
-    if (isset($rawDb['categorias']) && is_array($rawDb['categorias'])) {
+    if (is_array($rawDb) && isset($rawDb['categorias']) && is_array($rawDb['categorias'])) {
       foreach ($rawDb['categorias'] as $c) {
         $cClean = mb_convert_case(trim((string)$c), MB_CASE_TITLE, 'UTF-8');
         if ($cClean !== '' && !in_array($cClean, $tipos, true)) {
@@ -29,16 +43,6 @@ try {
     }
   }
 } catch (\Throwable $e) {}
-
-// 2. Cargar desde $db global si existe
-if (empty($tipos) && isset($db['categorias']) && is_array($db['categorias'])) {
-  foreach ($db['categorias'] as $c) {
-    $cClean = mb_convert_case(trim((string)$c), MB_CASE_TITLE, 'UTF-8');
-    if ($cClean !== '' && !in_array($cClean, $tipos, true)) {
-      $tipos[] = $cClean;
-    }
-  }
-}
 
 // 3. Opción de Otros
 if (!in_array('Otros', $tipos, true)) {

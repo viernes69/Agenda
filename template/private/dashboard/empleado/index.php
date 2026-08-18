@@ -1661,17 +1661,38 @@ $summaryCards = [
           $productTypeOptions = [];
 
           // Incluir categorías asignadas al comercio
-          if (isset($db['categorias']) && is_array($db['categorias'])) {
-            foreach ($db['categorias'] as $cTmp) {
-              $tipoLabel = mb_convert_case(trim((string)$cTmp), MB_CASE_TITLE, 'UTF-8');
-              if ($tipoLabel === '') continue;
-              $tipoKeyRaw = function_exists('mb_strtolower') ? mb_strtolower($tipoLabel, 'UTF-8') : strtolower($tipoLabel);
-              $tipoKeyRaw = preg_replace('/\s+/', ' ', $tipoKeyRaw);
-              $tipoKey = trim((string)$tipoKeyRaw);
-              if ($tipoKey !== '') {
-                $productTypeOptions[$tipoKey] = $tipoLabel;
+          $tenantCommIdForCats = (int)(\Agenduy\Core\Auth::commerceId() ?? 0);
+          if ($tenantCommIdForCats > 0 && class_exists('\Agenduy\Core\CommerceSettings')) {
+            $savedCats = \Agenduy\Core\CommerceSettings::get($tenantCommIdForCats, 'categorias', []);
+            if (is_array($savedCats)) {
+              foreach ($savedCats as $cTmp) {
+                $tipoLabel = mb_convert_case(trim((string)$cTmp), MB_CASE_TITLE, 'UTF-8');
+                if ($tipoLabel === '') continue;
+                $tipoKeyRaw = function_exists('mb_strtolower') ? mb_strtolower($tipoLabel, 'UTF-8') : strtolower($tipoLabel);
+                $tipoKeyRaw = preg_replace('/\s+/', ' ', $tipoKeyRaw);
+                $tipoKey = trim((string)$tipoKeyRaw);
+                if ($tipoKey !== '') {
+                  $productTypeOptions[$tipoKey] = $tipoLabel;
+                }
               }
             }
+          }
+          if (class_exists('AutoloadDB')) {
+            try {
+              $rawDb = @include \AutoloadDB::dbPath();
+              if (is_array($rawDb) && isset($rawDb['categorias']) && is_array($rawDb['categorias'])) {
+                foreach ($rawDb['categorias'] as $cTmp) {
+                  $tipoLabel = mb_convert_case(trim((string)$cTmp), MB_CASE_TITLE, 'UTF-8');
+                  if ($tipoLabel === '') continue;
+                  $tipoKeyRaw = function_exists('mb_strtolower') ? mb_strtolower($tipoLabel, 'UTF-8') : strtolower($tipoLabel);
+                  $tipoKeyRaw = preg_replace('/\s+/', ' ', $tipoKeyRaw);
+                  $tipoKey = trim((string)$tipoKeyRaw);
+                  if ($tipoKey !== '') {
+                    $productTypeOptions[$tipoKey] = $tipoLabel;
+                  }
+                }
+              }
+            } catch (\Throwable $e) {}
           }
 
           foreach ($productos as $prodTmp) {
