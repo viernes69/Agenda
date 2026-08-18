@@ -988,6 +988,27 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php else: ?>
                 <?php
                 $productCategories = [];
+
+                // 1. Categorías asignadas al comercio en ajustes/localDb
+                $commConfigCats = CommerceSettings::get($commerceIdEarly, 'categorias', []);
+                if (is_array($commConfigCats)) {
+                    foreach ($commConfigCats as $cItem) {
+                        $cTitle = mb_convert_case(trim((string)$cItem), MB_CASE_TITLE, 'UTF-8');
+                        if ($cTitle !== '' && !in_array($cTitle, $productCategories, true)) {
+                            $productCategories[] = $cTitle;
+                        }
+                    }
+                }
+                if (isset($localDb['categorias']) && is_array($localDb['categorias'])) {
+                    foreach ($localDb['categorias'] as $cItem) {
+                        $cTitle = mb_convert_case(trim((string)$cItem), MB_CASE_TITLE, 'UTF-8');
+                        if ($cTitle !== '' && !in_array($cTitle, $productCategories, true)) {
+                            $productCategories[] = $cTitle;
+                        }
+                    }
+                }
+
+                // 2. Categorías presentes en los productos
                 foreach ($localProducts as $pItem) {
                     $tRaw = trim((string)($pItem['Tipo'] ?? ''));
                     if ($tRaw !== '') {
@@ -997,6 +1018,8 @@ if (!function_exists('agenduy_render_commerce')) {
                         }
                     }
                 }
+
+                // 3. Categorías añadidas como elementos personalizados
                 if (!empty($publicCustomOverrides['productos'])) {
                     foreach ($publicCustomOverrides['productos'] as $cust) {
                         if (is_array($cust) && ($cust['type'] ?? '') === 'filter' && trim((string)($cust['content'] ?? '')) !== '') {

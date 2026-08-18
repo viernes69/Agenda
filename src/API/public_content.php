@@ -140,6 +140,32 @@ try {
             $content['custom'][$section] = [];
         }
 
+        if ($type === 'filter') {
+            $contentVal = mb_convert_case($contentVal, MB_CASE_TITLE, 'UTF-8');
+            try {
+                if (CommercePanel::localDatabaseExists($commerceId)) {
+                    $localDb = @include CommercePanel::localDatabasePath($commerceId);
+                    if (is_array($localDb)) {
+                        if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+                            $localDb['categorias'] = [];
+                        }
+                        if (!in_array($contentVal, $localDb['categorias'], true)) {
+                            $localDb['categorias'][] = $contentVal;
+                            sort($localDb['categorias'], SORT_NATURAL | SORT_FLAG_CASE);
+                            CentralCommerceData::writeDatabase($commerceId, $localDb);
+                        }
+                    }
+                }
+                $savedCats = CommerceSettings::get($commerceId, 'categorias', []);
+                if (!is_array($savedCats)) $savedCats = [];
+                if (!in_array($contentVal, $savedCats, true)) {
+                    $savedCats[] = $contentVal;
+                    sort($savedCats, SORT_NATURAL | SORT_FLAG_CASE);
+                    CommerceSettings::set($commerceId, 'categorias', $savedCats);
+                }
+            } catch (\Throwable $e) {}
+        }
+
         $elementId = 'elem_' . substr(str_replace('.', '', (string)microtime(true)), -6);
         $newElement = [
             'id' => $elementId,

@@ -313,6 +313,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $localDb['info_barberia']['features']['productos'] = true;
         $localDb['info_barberia']['features']['carrito'] = true;
 
+        // Asegurar que la categoría quede en la lista del comercio si es nueva
+        if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+            $localDb['categorias'] = [];
+        }
+        if ($tipo !== '' && $tipo !== 'General' && !in_array($tipo, $localDb['categorias'], true)) {
+            $localDb['categorias'][] = $tipo;
+            sort($localDb['categorias'], SORT_NATURAL | SORT_FLAG_CASE);
+            CommerceSettings::set($selectedId, 'categorias', $localDb['categorias']);
+        }
+
         // Guardar base de datos
         CentralCommerceData::writeDatabase($selectedId, $localDb);
 
@@ -343,6 +353,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             products_flash_redirect($selectedId, ['type' => 'ok', 'msg' => 'Producto eliminado correctamente.']);
         }
     }
+
+    if ($action === 'add_category') {
+        $catNameRaw = trim((string)($_POST['category_name'] ?? ''));
+        if ($catNameRaw === '') {
+            products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'El nombre de la categoría es obligatorio.']);
+        }
+        $catName = mb_convert_case($catNameRaw, MB_CASE_TITLE, 'UTF-8');
+
+        if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+            $localDb['categorias'] = [];
+        }
+        if (!in_array($catName, $localDb['categorias'], true)) {
+            $localDb['categorias'][] = $catName;
+            sort($localDb['categorias'], SORT_NATURAL | SORT_FLAG_CASE);
+            CentralCommerceData::writeDatabase($selectedId, $localDb);
+            CommerceSettings::set($selectedId, 'categorias', $localDb['categorias']);
+            products_flash_redirect($selectedId, ['type' => 'ok', 'msg' => 'Categoría "' . $catName . '" asignada exitosamente al comercio.']);
+        } else {
+            products_flash_redirect($selectedId, ['type' => 'info', 'msg' => 'La categoría "' . $catName . '" ya existe en este comercio.']);
+        }
+    }
+
+    if ($action === 'rename_category') {
+        $oldName = trim((string)($_POST['old_name'] ?? ''));
+        $newNameRaw = trim((string)($_POST['new_name'] ?? ''));
+        if ($oldName === '' || $newNameRaw === '') {
+            products_flash_redirect($selectedId, ['type' => 'error', 'msg' => 'Los nombres de categoría son obligatorios.']);
+        }
+        $newName = mb_convert_case($newNameRaw, MB_CASE_TITLE, 'UTF-8');
+
+        if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+            $localDb['categorias'] = [];
+        }
+
+        // Actualizar en lista de categorías
+        $updatedCats = [];
+        foreach ($localDb['categorias'] as $c) {
+            if (mb_strtolower(trim((string)$c), 'UTF-8') === mb_strtolower($oldName, 'UTF-8')) {
+                $updatedCats[] = $newName;
+            } else {
+                $updatedCats[] = $c;
+            }
+        }
+        if (!in_array($newName, $updatedCats, true)) {
+            $updatedCats[] = $newName;
+        }
+        sort($updatedCats, SORT_NATURAL | SORT_FLAG_CASE);
+        $localDb['categorias'] = array_values(array_unique($updatedCats));
+
+        // Actualizar en productos existentes
+        $affectedCount = 0;
+        if (isset($localDb['productos']) && is_array($localDb['productos'])) {
+            foreach ($localDb['productos'] as $idx => &$pRow) {
+                if ($idx === 0 || !is_array($pRow)) continue;
+                $currentTipo = trim((string)($pRow['Tipo'] ?? ''));
+                if (mb_strtolower($currentTipo, 'UTF-8') === mb_strtolower($oldName, 'UTF-8')) {
+                    $pRow['Tipo'] = $newName;
+                    $affectedCount++;
+                }
+            }
+            unset($pRow);
+        }
+
+        CentralCommerceData::writeDatabase($selectedId, $localDb);
+        CommerceSettings::set($selectedId, 'categorias', $localDb['categorias']);
+
+        $msg = 'Categoría renombrada a "' . $newName . '" con éxito.';
+        if ($affectedCount > 0) {
+            $msg .= ' Se actualizaron ' . $affectedCount . ' producto(s) asignado(s).';
+        }
+        products_flash_redirect($selectedId, ['type' => 'ok', 'msg' => $msg]);
+    }
+
+    if ($action === 'delete_category') {
+        $catName = trim((string)($_POST['category_name'] ?? ''));
+        if ($catName !== '') {
+            if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+                $localDb['categorias'] = [];
+            }
+            $localDb['categorias'] = array_values(array_filter(
+                $localDb['categorias'],
+                static fn($c): bool => mb_strtolower(trim((string)$c), 'UTF-8') !== mb_strtolower($catName, 'UTF-8')
+            ));
+            CentralCommerceData::writeDatabase($selectedId, $localDb);
+            CommerceSettings::set($selectedId, 'categorias', $localDb['categorias']);
+            products_flash_redirect($selectedId, ['type' => 'ok', 'msg' => 'Categoría "' . $catName . '" eliminada de la lista del comercio.']);
+        }
+    }
+}
+
+// Extraer lista de categorías asignadas al comercio
+if (!isset($localDb['categorias']) || !is_array($localDb['categorias'])) {
+    $localDb['categorias'] = [];
+}
+$savedSettingsCats = CommerceSettings::get($selectedId, 'categorias', []);
+if (is_array($savedSettingsCats)) {
+    foreach ($savedSettingsCats as $sc) {
+        $scTitle = mb_convert_case(trim((string)$sc), MB_CASE_TITLE, 'UTF-8');
+        if ($scTitle !== '' && !in_array($scTitle, $localDb['categorias'], true)) {
+            $localDb['categorias'][] = $scTitle;
+        }
+    }
 }
 
 // Extraer lista de productos limpios
@@ -362,6 +474,9 @@ foreach ($rawProducts as $idx => $prodRow) {
     $tipo = mb_convert_case(trim((string)($prodRow['Tipo'] ?? 'General')), MB_CASE_TITLE, 'UTF-8');
     if ($tipo !== '' && !in_array($tipo, $tipos, true)) {
         $tipos[] = $tipo;
+    }
+    if ($tipo !== '' && !in_array($tipo, $localDb['categorias'], true)) {
+        $localDb['categorias'][] = $tipo;
     }
 
     $precio = ProductCatalog::basePrice($prodRow);
@@ -521,7 +636,7 @@ require __DIR__ . '/partials/header.php';
         </div>
         <div class="card" style="padding:1.1rem; text-align:center">
             <span class="muted" style="font-size:0.85rem; font-weight:600; text-transform:uppercase">Categorías / Tipos</span>
-            <div style="font-size:2rem; font-weight:800; color:#2563eb; margin-top:0.25rem"><?= count($tipos) ?></div>
+            <div style="font-size:2rem; font-weight:800; color:#2563eb; margin-top:0.25rem"><?= count($localDb['categorias']) ?></div>
         </div>
         <div class="card" style="padding:1.1rem; text-align:center">
             <span class="muted" style="font-size:0.85rem; font-weight:600; text-transform:uppercase">Con Descuento</span>
@@ -532,6 +647,77 @@ require __DIR__ . '/partials/header.php';
             <div style="font-size:2rem; font-weight:800; color:#ea580c; margin-top:0.25rem"><?= $conImagen ?></div>
         </div>
     </div>
+
+    <!-- SECCIÓN: GESTIÓN DE CATEGORÍAS DEL COMERCIO -->
+    <article class="card" style="margin-bottom:1.5rem; background:var(--surface, #fff); border:1px solid var(--border, #e5e7eb); border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border, #e5e7eb)">
+            <div>
+                <h2 style="margin:0 0 0.25rem; font-size:1.25rem; display:flex; align-items:center; gap:0.5rem">
+                    <span>🏷️ Categorías Asignadas al Comercio</span>
+                    <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:0.8rem; font-weight:700"><?= count($localDb['categorias']) ?></span>
+                </h2>
+                <p class="muted" style="margin:0; font-size:0.85rem">
+                    Gestiona la lista de categorías de <strong><?= htmlspecialchars((string)$selectedCommerce['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>. Se muestran en mayúscula/minúscula y se utilizan como filtros en la web.
+                </p>
+            </div>
+
+            <!-- Formulario de Agregar Categoría Rápida -->
+            <form method="post" action="commerce_products.php?id_commerce=<?= $selectedId ?>" style="display:flex; gap:0.5rem; flex:1; max-width:440px; min-width:280px">
+                <?= CSRF::field('admin_products') ?>
+                <input type="hidden" name="action" value="add_category">
+                <input type="text" name="category_name" required placeholder="Nueva categoría (ej: Cuidado Personal)..." style="flex:1; padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border, #d1d5db); background:var(--surface-2, #f9fafb); font-size:0.9rem">
+                <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap; display:inline-flex; align-items:center; gap:0.35rem">
+                    <i class="bx bx-plus"></i> Añadir
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista Visual de Categorías Asignadas -->
+        <?php
+        $assignedCategories = is_array($localDb['categorias']) ? array_values(array_unique($localDb['categorias'])) : [];
+        sort($assignedCategories, SORT_NATURAL | SORT_FLAG_CASE);
+        ?>
+        <?php if (empty($assignedCategories)): ?>
+            <div style="text-align:center; padding:1.5rem; color:var(--muted, #6b7280); background:var(--surface-2, #f9fafb); border-radius:8px; border:1px dashed var(--border, #d1d5db)">
+                <div style="font-size:1.8rem; margin-bottom:0.25rem">🏷️</div>
+                <div style="font-weight:600; font-size:0.95rem">No hay categorías asignadas aún a este comercio.</div>
+                <div style="font-size:0.85rem; margin-top:0.25rem">Escribe un nombre arriba y haz clic en <strong>Añadir</strong> para crear la primera.</div>
+            </div>
+        <?php else: ?>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:0.75rem">
+                <?php foreach ($assignedCategories as $cName): ?>
+                    <?php
+                    $prodCount = count(array_filter($products, static function($p) use ($cName) {
+                        return mb_strtolower(trim((string)$p['tipo']), 'UTF-8') === mb_strtolower($cName, 'UTF-8');
+                    }));
+                    ?>
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:0.65rem 0.85rem; background:var(--surface-2, #f8fafc); border:1px solid var(--border, #e2e8f0); border-radius:8px; transition:border-color 0.2s">
+                        <div style="display:flex; flex-direction:column; gap:0.15rem; min-width:0; flex:1">
+                            <strong style="font-size:0.92rem; color:var(--text, #0f172a); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                                <?= htmlspecialchars($cName, ENT_QUOTES, 'UTF-8') ?>
+                            </strong>
+                            <span class="muted" style="font-size:0.78rem">
+                                <?= $prodCount ?> producto<?= $prodCount === 1 ? '' : 's' ?>
+                            </span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.35rem">
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="abrirRenombrarCategoria('<?= htmlspecialchars(addslashes($cName), ENT_QUOTES, 'UTF-8') ?>')" title="Renombrar categoría" style="padding:0.25rem 0.5rem; font-size:0.8rem">
+                                ✏️
+                            </button>
+                            <form method="post" action="commerce_products.php?id_commerce=<?= $selectedId ?>" style="display:inline" onsubmit="return confirm('¿Eliminar la categoría \'<?= htmlspecialchars(addslashes($cName), ENT_QUOTES, 'UTF-8') ?>\' de este comercio?');">
+                                <?= CSRF::field('admin_products') ?>
+                                <input type="hidden" name="action" value="delete_category">
+                                <input type="hidden" name="category_name" value="<?= htmlspecialchars($cName, ENT_QUOTES, 'UTF-8') ?>">
+                                <button type="submit" class="btn btn-ghost btn-sm" title="Eliminar categoría" style="padding:0.25rem 0.5rem; font-size:0.8rem; color:#dc2626">
+                                    🗑️
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </article>
 
     <!-- Layout Formulario + Listado -->
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; align-items:start">
@@ -759,7 +945,50 @@ require __DIR__ . '/partials/header.php';
 
 </div>
 
+<!-- Modal para Renombrar Categoría -->
+<div id="modal-renombrar-cat" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px)">
+    <div style="background:var(--surface, #fff); width:92%; max-width:440px; border-radius:12px; padding:1.5rem; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); border:1px solid var(--border, #e5e7eb)">
+        <h3 style="margin:0 0 0.5rem; font-size:1.2rem; color:var(--text, #111827)">✏️ Renombrar Categoría</h3>
+        <p class="muted" style="margin:0 0 1rem; font-size:0.85rem">
+            Se actualizará el nombre en la lista del comercio y en todos los productos que tengan asignada esta categoría.
+        </p>
+
+        <form method="post" action="commerce_products.php?id_commerce=<?= $selectedId ?>">
+            <?= CSRF::field('admin_products') ?>
+            <input type="hidden" name="action" value="rename_category">
+            <input type="hidden" name="old_name" id="rename-old-name" value="">
+
+            <div class="field" style="margin-bottom:1.25rem">
+                <label style="font-weight:600; font-size:0.9rem; margin-bottom:0.35rem; display:block">Nuevo nombre de categoría *</label>
+                <input type="text" name="new_name" id="rename-new-name" required placeholder="Ej: Cuidado Capilar..." style="width:100%; padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--border, #d1d5db); background:var(--surface-2, #f9fafb); font-size:0.95rem">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem">
+                <button type="button" class="btn btn-ghost" onclick="cerrarRenombrarCategoria()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Nombre</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function abrirRenombrarCategoria(oldName) {
+    var modal = document.getElementById('modal-renombrar-cat');
+    var oldInput = document.getElementById('rename-old-name');
+    var newInput = document.getElementById('rename-new-name');
+    if (modal && oldInput && newInput) {
+        oldInput.value = oldName;
+        newInput.value = oldName;
+        modal.style.display = 'flex';
+        setTimeout(function() { newInput.focus(); newInput.select(); }, 50);
+    }
+}
+
+function cerrarRenombrarCategoria() {
+    var modal = document.getElementById('modal-renombrar-cat');
+    if (modal) modal.style.display = 'none';
+}
+
 function previewFoto(input, slot) {
     if (input.files && input.files[0]) {
         var reader = new FileReader();
