@@ -343,7 +343,18 @@ if (!function_exists('agenduy_render_commerce')) {
         $initial = mb_substr($titulo, 0, 1, 'UTF-8');
 
         $tenantAssetUrl = static function (string $relative) use ($commerceId, $slug): string {
-            return CommerceStorage::publicUrl($commerceId, $slug, $relative);
+            $relative = trim($relative);
+            if ($relative === '') {
+                return '';
+            }
+            if (preg_match('#^https?://#i', $relative) === 1 || str_starts_with($relative, 'data:image/')) {
+                return $relative;
+            }
+            $resolved = CommerceStorage::publicUrl($commerceId, $slug, $relative);
+            if ($resolved !== '') {
+                return $resolved;
+            }
+            return url($relative);
         };
 
         $publicTextValue = static function (string $key, string $default) use ($publicTextOverrides): string {
@@ -1147,7 +1158,22 @@ if (!function_exists('agenduy_render_commerce')) {
                         $pMedia = ProductCatalog::mediaForRow($p);
                         $pPrice = ProductCatalog::effectivePrice($pBasePrice, $pDiscount);
                         $hasMultiple = count($pMedia) > 1;
-                        $mediaJson = json_encode($pMedia, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+
+                        $resolvedMedia = [];
+                        foreach ($pMedia as $mIdx => $mItem) {
+                            $srcRaw = (string)($mItem['src'] ?? '');
+                            $resolvedUrl = $srcRaw !== '' ? $tenantAssetUrl($srcRaw) : '';
+                            $resolvedMedia[] = [
+                                'index' => $mIdx,
+                                'src' => $resolvedUrl,
+                                'raw_src' => $srcRaw,
+                                'label' => (string)($mItem['label'] ?? ''),
+                                'price' => isset($mItem['price']) && $mItem['price'] !== null ? (float)$mItem['price'] : null,
+                                'cover' => !empty($mItem['cover']),
+                            ];
+                        }
+                        $mediaJson = json_encode($resolvedMedia, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+                        $firstImgUrl = !empty($resolvedMedia[0]['src']) ? $resolvedMedia[0]['src'] : '';
                     ?>
                     <article class="prod-card"
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
@@ -1163,15 +1189,15 @@ if (!function_exists('agenduy_render_commerce')) {
                         data-product-points="<?= htmlspecialchars((string)($p['Puntos'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                         data-product-media="<?= htmlspecialchars($mediaJson, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-variant="0"
-                        data-product-variant-label="<?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                        data-product-image="<?= htmlspecialchars(!empty($pMedia[0]['src']) ? $tenantAssetUrl((string)$pMedia[0]['src']) : '', ENT_QUOTES, 'UTF-8') ?>">
+                        data-product-variant-label="<?= htmlspecialchars((string)($resolvedMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-image="<?= htmlspecialchars($firstImgUrl, ENT_QUOTES, 'UTF-8') ?>">
                         <?= $dashboardEditLink('productos', 'Modificar producto') ?>
                         <div class="prod-card__media" data-open-product-modal="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>" title="Ver detalles de <?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>">
-                            <?php if (!empty($pMedia)): ?>
+                            <?php if (!empty($resolvedMedia) && $firstImgUrl !== ''): ?>
                                 <div class="prod-gallery" data-gallery>
                                     <div class="prod-gallery__track" data-track>
-                                        <?php foreach ($pMedia as $gi => $mediaItem):
-                                            $gUrl = $tenantAssetUrl((string)$mediaItem['src']);
+                                        <?php foreach ($resolvedMedia as $gi => $mediaItem):
+                                            $gUrl = $mediaItem['src'];
                                             $rawPrice = ($mediaItem['price'] ?? null) !== null ? (float)$mediaItem['price'] : $pBasePrice;
                                             $variantPrice = ProductCatalog::effectivePrice($rawPrice, $pDiscount);
                                         ?>
@@ -1189,7 +1215,7 @@ if (!function_exists('agenduy_render_commerce')) {
                                     <button type="button" class="prod-gallery__arrow prod-gallery__arrow--prev" data-dir="-1" aria-label="Anterior"><i class="bx bx-chevron-left"></i></button>
                                     <button type="button" class="prod-gallery__arrow prod-gallery__arrow--next" data-dir="1" aria-label="Siguiente"><i class="bx bx-chevron-right"></i></button>
                                     <div class="prod-gallery__dots" data-dots>
-                                        <?php foreach ($pMedia as $di => $dotMedia): ?>
+                                        <?php foreach ($resolvedMedia as $di => $dotMedia): ?>
                                         <button type="button" class="prod-gallery__dot<?= $di === 0 ? ' is-active' : '' ?>" data-slide="<?= $di ?>" aria-label="<?= htmlspecialchars((string)($dotMedia['label'] ?? ('Imagen ' . ($di + 1))), ENT_QUOTES, 'UTF-8') ?>"></button>
                                         <?php endforeach; ?>
                                     </div>
@@ -4530,20 +4556,16 @@ if (!function_exists('agenduy_render_commerce')) {
                     var vPrice = price;
                     var vOrigPrice = origPrice;
 
-                    if (mediaItem) {
-                        var imgSrc = mediaItem.src ? (window.location.origin + '/' + String(mediaItem.src).replace(/^\/+/, '')) : (card.getAttribute('data-product-image') || '');
-                        if (modalMainImg) {
-                            modalMainImg.src = imgSrc;
-                            modalMainImg.alt = name + (mediaItem.label ? (' - ' + mediaItem.label) : '');
-                        }
-                        if (mediaItem.price !== null && mediaItem.price !== undefined && Number(mediaItem.price) > 0) {
-                            var raw = Number(mediaItem.price);
-                            vOrigPrice = raw;
-                            vPrice = discount > 0 ? (raw * (1 - (discount / 100))) : raw;
-                        }
-                    } else if (modalMainImg) {
-                        modalMainImg.src = card.getAttribute('data-product-image') || '';
-                        modalMainImg.alt = name;
+                    var imgSrc = (mediaItem && mediaItem.src) ? mediaItem.src : (card.getAttribute('data-product-image') || '');
+                    if (modalMainImg) {
+                        modalMainImg.src = imgSrc;
+                        modalMainImg.alt = name + (mediaItem && mediaItem.label ? (' - ' + mediaItem.label) : '');
+                    }
+
+                    if (mediaItem && mediaItem.price !== null && mediaItem.price !== undefined && Number(mediaItem.price) > 0) {
+                        var raw = Number(mediaItem.price);
+                        vOrigPrice = raw;
+                        vPrice = discount > 0 ? (raw * (1 - (discount / 100))) : raw;
                     }
 
                     if (modalPrice) modalPrice.textContent = moneyLabel(vPrice);
@@ -4572,7 +4594,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             var th = document.createElement('div');
                             th.className = 'product-modal__thumb' + (i === 0 ? ' is-active' : '');
                             var img = document.createElement('img');
-                            img.src = m.src ? (window.location.origin + '/' + String(m.src).replace(/^\/+/, '')) : '';
+                            img.src = m.src || '';
                             img.alt = m.label || ('Foto ' + (i + 1));
                             th.appendChild(img);
                             th.addEventListener('click', function() { updateModalVariant(i); });
