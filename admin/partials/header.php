@@ -43,15 +43,16 @@ $active = $activeSection ?? '';
         </a>
     </div>
     <nav class="topbar__nav" aria-label="Secciones">
-        <a href="index.php"        class="<?= $active === 'overview' ? 'is-active' : '' ?>">Resumen</a>
-        <a href="commerces.php"    class="<?= $active === 'commerces' ? 'is-active' : '' ?>">Comercios</a>
-        <a href="rubros.php"       class="<?= $active === 'rubros' ? 'is-active' : '' ?>">Rubros</a>
-        <a href="memberships.php"  class="<?= $active === 'memberships' ? 'is-active' : '' ?>">Membresías</a>
-        <a href="subscriptions.php"class="<?= $active === 'subscriptions' ? 'is-active' : '' ?>">Suscripciones</a>
-        <a href="keys.php"         class="<?= $active === 'keys' ? 'is-active' : '' ?>">API Keys</a>
-        <a href="payments.php"     class="<?= $active === 'payments' ? 'is-active' : '' ?>">Pagos</a>
-        <a href="plantillas.php"   class="<?= $active === 'plantillas' ? 'is-active' : '' ?>">Plantillas</a>
-        <a href="config.php"       class="<?= $active === 'config' ? 'is-active' : '' ?>">Config</a>
+        <a href="index.php"             class="<?= $active === 'overview' ? 'is-active' : '' ?>">Resumen</a>
+        <a href="commerces.php"         class="<?= $active === 'commerces' ? 'is-active' : '' ?>">Comercios</a>
+        <a href="commerce_products.php" class="<?= $active === 'products' ? 'is-active' : '' ?>">Productos</a>
+        <a href="rubros.php"            class="<?= $active === 'rubros' ? 'is-active' : '' ?>">Rubros</a>
+        <a href="memberships.php"       class="<?= $active === 'memberships' ? 'is-active' : '' ?>">Membresías</a>
+        <a href="subscriptions.php"     class="<?= $active === 'subscriptions' ? 'is-active' : '' ?>">Suscripciones</a>
+        <a href="keys.php"              class="<?= $active === 'keys' ? 'is-active' : '' ?>">API Keys</a>
+        <a href="payments.php"          class="<?= $active === 'payments' ? 'is-active' : '' ?>">Pagos</a>
+        <a href="plantillas.php"        class="<?= $active === 'plantillas' ? 'is-active' : '' ?>">Plantillas</a>
+        <a href="config.php"            class="<?= $active === 'config' ? 'is-active' : '' ?>">Config</a>
     </nav>
     <div class="topbar__user">
         <span class="topbar__hello">Hola, <?= htmlspecialchars($user['nombre'] ?? 'Admin', ENT_QUOTES, 'UTF-8') ?></span>

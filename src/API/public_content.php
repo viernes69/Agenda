@@ -24,7 +24,7 @@ try {
     }
 
     Auth::start();
-    if (!Auth::check() || Auth::role() !== Auth::ROLE_LOCAL) {
+    if (!Auth::check() || (Auth::role() !== Auth::ROLE_LOCAL && Auth::role() !== 'super_admin')) {
         respond(['ok' => false, 'error' => 'Sesion de administrador requerida.'], 401);
     }
 
@@ -120,6 +120,14 @@ function jsonPayload(): array
  */
 function commerceForOwner(string $slug): array
 {
+    $isSuperAdmin = Auth::check() && Auth::role() === 'super_admin';
+    if ($isSuperAdmin) {
+        if ($slug === '') {
+            throw new InvalidArgumentException('Falta el slug del comercio.');
+        }
+        return commerceByPublicSlug($slug);
+    }
+
     $commerceId = (int)Auth::commerceId();
     if ($commerceId <= 0) {
         throw new RuntimeException('Cuenta sin comercio asignado.');

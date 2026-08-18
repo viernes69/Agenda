@@ -59,12 +59,14 @@ if (!function_exists('agenduy_render_commerce')) {
 
         Auth::start();
         $commerceIdEarly = (int)$commerce['id_commerce'];
+        $isSuperAdmin = Auth::check() && Auth::role() === 'super_admin';
         $isCommerceOwner = Auth::check()
             && Auth::role() === Auth::ROLE_LOCAL
             && (int)Auth::commerceId() === $commerceIdEarly;
+        $canEditSite = $isCommerceOwner || $isSuperAdmin;
         $ownerDashboardUrl = $isCommerceOwner
             ? CommercePanel::urlForSlug($slug)
-            : null;
+            : ($isSuperAdmin ? url('admin/commerce_products.php?id_commerce=' . $commerceIdEarly) : null);
 
         $services = $db->fetchAll(
             'SELECT * FROM services WHERE id_commerce = :c AND estado = :a ORDER BY nombre',
@@ -344,20 +346,20 @@ if (!function_exists('agenduy_render_commerce')) {
             }
             return $default;
         };
-        $editableText = static function (string $key, string $default, string $label) use ($publicTextValue, $isCommerceOwner): string {
+        $editableText = static function (string $key, string $default, string $label) use ($publicTextValue, $canEditSite): string {
             $value = $publicTextValue($key, $default);
             $html = '<span class="public-editable" data-public-edit-field data-public-edit-type="text" data-public-edit-key="'
                 . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" data-public-edit-label="'
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><span data-public-edit-value>'
                 . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</span>';
-            if ($isCommerceOwner) {
+            if ($canEditSite) {
                 $html .= '<button type="button" class="public-edit-btn" data-public-edit-trigger aria-label="Editar '
                     . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></button>';
             }
             return $html . '</span>';
         };
-        $imageEditButton = static function (string $key, string $label) use ($isCommerceOwner): string {
-            if (!$isCommerceOwner) {
+        $imageEditButton = static function (string $key, string $label) use ($canEditSite): string {
+            if (!$canEditSite) {
                 return '';
             }
             return '<button type="button" class="public-edit-btn public-edit-btn--floating" data-public-edit-image="'
@@ -365,12 +367,15 @@ if (!function_exists('agenduy_render_commerce')) {
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" aria-label="Editar '
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></button>';
         };
-        $dashboardEditLink = static function (string $section, string $label) use ($isCommerceOwner, $slug): string {
-            if (!$isCommerceOwner) {
+        $dashboardEditLink = static function (string $section, string $label) use ($canEditSite, $isSuperAdmin, $commerceIdEarly, $slug): string {
+            if (!$canEditSite) {
                 return '';
             }
+            $targetUrl = $isSuperAdmin
+                ? ($section === 'productos' ? url('admin/commerce_products.php?id_commerce=' . $commerceIdEarly) : url('admin/commerces.php?id=' . $commerceIdEarly))
+                : CommercePanel::dashboardUrlForSlug($slug, $section);
             return '<a class="public-edit-btn public-edit-btn--floating public-edit-btn--link" href="'
-                . htmlspecialchars(CommercePanel::dashboardUrlForSlug($slug, $section), ENT_QUOTES, 'UTF-8')
+                . htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8')
                 . '" aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="'
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></a>';
         };
@@ -496,7 +501,7 @@ if (!function_exists('agenduy_render_commerce')) {
         $contactDefaultSubtitle = $ciudad !== ''
             ? 'Estamos en ' . $ciudad . '. Pasá, escribinos o reservá online.'
             : 'Pasá, escribinos o reservá online.';
-        $siteEditCsrf = $isCommerceOwner ? CSRF::generate('public_site_edit') : '';
+        $siteEditCsrf = $canEditSite ? CSRF::generate('public_site_edit') : '';
 
         $csrf = CSRF::generate('public_booking');
         $googleClientId = GoogleAuth::isEnabled() ? GoogleAuth::clientId() : '';
@@ -626,6 +631,13 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>">
                         <i class="bx bx-grid-alt"></i> <span>Panel</span>
                     </a>
+                    <?php elseif ($isSuperAdmin): ?>
+                    <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars(url('admin/commerce_products.php?id_commerce=' . $commerceIdEarly), ENT_QUOTES, 'UTF-8') ?>" title="Gestionar productos de este comercio">
+                        <i class="bx bx-package"></i> <span>Productos</span>
+                    </a>
+                    <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars(url('admin/commerces.php'), ENT_QUOTES, 'UTF-8') ?>" title="Panel Super Admin">
+                        <i class="bx bx-shield-quarter"></i> <span>Admin</span>
+                    </a>
                     <?php endif; ?>
                     <?php if ($showBooking): ?>
                     <a href="#servicios" class="btn btn--primary topbar-cta">Reservar</a>
@@ -658,6 +670,13 @@ if (!function_exists('agenduy_render_commerce')) {
                 <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
                 <a href="<?= htmlspecialchars($ownerDashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
                     <i class="bx bx-grid-alt"></i> Panel de administración
+                </a>
+                <?php elseif ($isSuperAdmin): ?>
+                <a href="<?= htmlspecialchars(url('admin/commerce_products.php?id_commerce=' . $commerceIdEarly), ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
+                    <i class="bx bx-package"></i> Gestionar Productos
+                </a>
+                <a href="<?= htmlspecialchars(url('admin/commerces.php'), ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
+                    <i class="bx bx-shield-quarter"></i> Panel Super Admin
                 </a>
                 <?php endif; ?>
                 <?php if ($showBooking): ?>
@@ -1393,7 +1412,7 @@ if (!function_exists('agenduy_render_commerce')) {
         </div>
         <?php endif; ?>
 
-        <?php if ($isCommerceOwner): ?>
+        <?php if ($canEditSite): ?>
         <div class="public-edit-modal" id="public-edit-modal" role="dialog" aria-modal="true" aria-labelledby="public-edit-title" hidden>
             <div class="public-edit-modal__backdrop" data-public-edit-close></div>
             <form class="public-edit-modal__dialog" id="public-edit-form">
@@ -1431,6 +1450,21 @@ if (!function_exists('agenduy_render_commerce')) {
             'version' => $publicContentVersion,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         </script>
+        <?php if ($isSuperAdmin): ?>
+        <div style="position:fixed; bottom:1.25rem; left:1.25rem; z-index:9999; background:rgba(17,24,39,0.94); color:#f3f4f6; padding:0.65rem 1.15rem; border-radius:9999px; font-size:0.875rem; font-family:system-ui,-apple-system,sans-serif; display:flex; align-items:center; gap:0.75rem; box-shadow:0 10px 25px -5px rgba(0,0,0,0.5),0 8px 10px -6px rgba(0,0,0,0.3); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.18)">
+            <span style="display:inline-flex; align-items:center; gap:0.35rem; color:#a78bfa; font-weight:700">
+                <i class="bx bx-pencil" style="font-size:1.1rem"></i> Super Admin · Edición activa
+            </span>
+            <span style="color:#6b7280">|</span>
+            <a href="<?= htmlspecialchars(url('admin/commerce_products.php?id_commerce=' . $commerceIdEarly), ENT_QUOTES, 'UTF-8') ?>" style="color:#38bdf8; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:0.25rem">
+                <i class="bx bx-package"></i> Agregar Productos
+            </a>
+            <span style="color:#6b7280">|</span>
+            <a href="<?= htmlspecialchars(url('admin/commerces.php'), ENT_QUOTES, 'UTF-8') ?>" style="color:#d1d5db; text-decoration:none">
+                Panel Admin
+            </a>
+        </div>
+        <?php endif; ?>
         <?php endif; ?>
 
         <?php if ($hasDlocalPlans): ?>

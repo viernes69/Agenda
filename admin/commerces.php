@@ -469,11 +469,13 @@ require __DIR__ . '/partials/header.php';
                 <td><?= htmlspecialchars($c['trial_expires_at'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= (int)$c['admins_count'] ?></td>
                 <td><?= (int)$c['appt_count'] ?></td>
-                <td>
+                <td style="white-space:nowrap; text-align:right">
+                    <a class="btn btn-sm btn-primary" href="commerce_products.php?id_commerce=<?= (int)$c['id_commerce'] ?>" title="Gestionar catálogo de productos">📦 Productos</a>
+                    <a class="btn btn-sm" href="<?= htmlspecialchars(url($c['slug']), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" title="Ver web y editar con lápiz">🌐 Web ✏️</a>
                     <a class="btn btn-sm" href="commerces.php?id=<?= (int)$c['id_commerce'] ?>">editar</a>
-                    <details style="display:inline-block">
+                    <details style="display:inline-block; text-align:left">
                         <summary class="btn btn-sm btn-ghost" style="display:inline-block; cursor:pointer">⋯</summary>
-                        <div style="position:absolute; background:var(--surface); border:1px solid var(--border); padding:.5rem; border-radius:8px; margin-top:.25rem">
+                        <div style="position:absolute; right:1rem; background:var(--surface); border:1px solid var(--border); padding:.5rem; border-radius:8px; margin-top:.25rem; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,0.15)">
                             <form method="post" style="display:inline">
                                 <?= CSRF::field('commerces_admin') ?>
                                 <input type="hidden" name="action" value="extend_trial">
