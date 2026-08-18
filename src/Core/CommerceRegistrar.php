@@ -122,6 +122,11 @@ final class CommerceRegistrar
         }
         $targetDir = $rootPath . DIRECTORY_SEPARATOR . $slug;
 
+        $billingPeriod = strtolower(trim((string)($payload['billing_period'] ?? $payload['period'] ?? 'monthly')));
+        if ($billingPeriod !== 'yearly') {
+            $billingPeriod = 'monthly';
+        }
+
         $idCommerce = 0;
         $idUser = 0;
         $createdDir = null;
@@ -130,7 +135,7 @@ final class CommerceRegistrar
             $db->transaction(function () use (
                 &$idCommerce, &$idUser, $db, $slug, $rubroId, $planId, $bizName, $rut, $email, $tel,
                 $pais, $ciudad, $calle, $tz, $trialEnd, $trialDays, $name, $last, $cedula, $pass,
-                $services, $schedule, $membership, $googleProfile, $businessType
+                $services, $schedule, $membership, $googleProfile, $businessType, $billingPeriod
             ) {
                 $idCommerce = (int)$db->insert('commerces', [
                     'slug'             => $slug,
@@ -171,11 +176,12 @@ final class CommerceRegistrar
                     'id_membership'        => $planId,
                     'status'               => 'trial',
                     'gateway'              => (float)$membership['precio'] > 0 ? null : 'manual',
+                    'billing_period'       => $billingPeriod,
                     'started_at'           => date('Y-m-d'),
                     'trial_expires_at'     => $trialEnd,
                     'current_period_start' => date('Y-m-d'),
                     'current_period_end'   => $trialEnd,
-                    'notes'                => 'Registro público',
+                    'notes'                => 'Registro público' . ($billingPeriod === 'yearly' ? ' (Anual)' : ''),
                 ]);
 
                 foreach ($services as $svc) {
@@ -242,12 +248,22 @@ final class CommerceRegistrar
                 'negocio' => $bizName,
                 'trial_end' => $trialEnd,
                 'slug' => $slug,
+                'plan_nombre' => (string)($membership['nombre'] ?? 'Free'),
+                'billing_period' => $billingPeriod === 'yearly' ? 'anual' : 'mensual',
             ]);
+
+            $baseRedirect = self::buildRedirectUrl($slug);
+            if ((float)($membership['precio'] ?? 0) > 0) {
+                $separator = str_contains($baseRedirect, '?') ? '&' : '?';
+                $redirectUrl = $baseRedirect . $separator . 'membership_modal=1&plan_id=' . $planId . '&period=' . $billingPeriod;
+            } else {
+                $redirectUrl = $baseRedirect;
+            }
 
             return [
                 'ok'          => true,
                 'slug'        => $slug,
-                'redirect'    => self::buildRedirectUrl($slug),
+                'redirect'    => $redirectUrl,
                 'id_commerce' => $idCommerce,
                 'trial_expires_at' => $trialEnd,
             ];

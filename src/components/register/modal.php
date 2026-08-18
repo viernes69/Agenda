@@ -44,6 +44,7 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
         <input type="hidden" name="rubro_id" />
         <input type="hidden" name="plan_id" value="<?= (int)($planDestacado['id_membership'] ?? 0) ?>" />
         <input type="hidden" name="plan_nombre" value="<?= htmlspecialchars($planDestacado['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+        <input type="hidden" name="billing_period" value="monthly" />
 
         <section class="reg-step" data-step-panel="0" aria-labelledby="reg-step-1-title">
           <h4 id="reg-step-1-title">Datos del Due&ntilde;o del Negocio</h4>

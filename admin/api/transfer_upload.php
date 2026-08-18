@@ -244,16 +244,20 @@ try {
         'status'              => 'pending',
     ]);
 
-    $admin = $db->fetchOne("SELECT email FROM users WHERE role='super_admin' LIMIT 1");
-    if ($admin && !empty($admin['email'])) {
-        $subject = '[Agenduy] Nueva transferencia pendiente de aprobación';
-        $body = '<p>Hay un comprobante de transferencia esperando aprobación.</p>'
-              . '<ul><li>Comercio: <strong>' . htmlspecialchars((string)$commerce['nombre']) . '</strong></li>'
-              . '<li>Monto: <strong>' . htmlspecialchars($moneda) . ' ' . number_format($monto, 2) . '</strong></li>'
-              . '<li>Referencia: ' . htmlspecialchars($ref) . '</li></ul>'
-              . '<p><a href="' . htmlspecialchars($cfg['app']['url_base'] . '/admin/payments.php', ENT_QUOTES) . '">Revisar ahora</a></p>';
-        Mail::send($admin['email'], $subject, $body, null, $idCommerce);
-    }
+    $bizName = (string)($commerce['nombre'] ?? 'Comercio');
+    $adminMsg = "💳 Nuevo comprobante de pago de membresía recibido:\n• Comercio: {$bizName}\n• Monto: {$moneda} " . number_format($monto, 2) . "\n• Referencia: {$ref}\n• Banco: {$banco}\n• Revisar pagos: " . url('admin/payments.php');
+    \Agenduy\Core\NotificationOutbox::notifySystemAdmin(
+        'new_transfer_receipt',
+        "Comprobante de pago recibido: {$bizName}",
+        $adminMsg,
+        [
+            'id_transfer' => $id,
+            'id_commerce' => $idCommerce,
+            'monto' => $monto,
+            'moneda' => $moneda,
+            'referencia' => $ref,
+        ]
+    );
 
     echo json_encode([
         'ok' => true,

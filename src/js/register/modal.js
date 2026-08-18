@@ -495,11 +495,15 @@
     const telefono = formatPhoneValue(phoneCountry, phoneLocal);
     const tipoComercio = selectedBusinessType();
 
+    const billingPeriod = (formData.get('billing_period') || 'monthly').toString().trim() || 'monthly';
+
     return {
       _csrf: csrfToken,
       tipoComercio,
       planId: plan && plan.id ? String(plan.id) : String(planId || ''),
       planNombre: plan && plan.nombre ? plan.nombre : (hiddenPlanNombre ? hiddenPlanNombre.value : ''),
+      billing_period: billingPeriod,
+      billingPeriod: billingPeriod,
       rubroId: rubroId ? String(rubroId) : '',
       owner: {
         nombre: (formData.get('owner_name') || '').toString().trim(),
@@ -668,23 +672,32 @@
     }
   }
 
-  function syncPlanInfo(planId, rubroName) {
+  function syncPlanInfo(planId, rubroName, billingPeriod = 'monthly') {
     const plan = getPlan(planId);
     const planNombre = plan && plan.nombre ? plan.nombre : (hiddenPlanNombre ? hiddenPlanNombre.value : '');
+    const isYearly = billingPeriod === 'yearly';
+    const hiddenPeriod = form.querySelector('input[name="billing_period"]');
+    if (hiddenPeriod) hiddenPeriod.value = isYearly ? 'yearly' : 'monthly';
     if (hiddenPlanId) hiddenPlanId.value = planId ? String(planId) : '';
     if (hiddenPlanNombre) hiddenPlanNombre.value = planNombre || '';
     if (businessPlanSelect && getPlan(planId)) businessPlanSelect.value = String(planId);
+
+    const price = plan ? Number(plan.precio || 0) : 0;
+    const isFree = price <= 0;
+    const discount = plan ? Number(plan.descuento_anual_pct || 20) : 20;
+    const yearlyPrice = plan && plan.precio_anual ? Number(plan.precio_anual) : Math.round(price * 12 * (1 - discount / 100));
+
     if (planLabelEl) {
-      if (planNombre) {
-        planLabelEl.textContent = `${planNombre}${rubroName ? ` - ${rubroName}` : ''}`;
-      } else if (rubroName) {
-        planLabelEl.textContent = `Plan asignado para ${rubroName}`;
+      if (isFree) {
+        planLabelEl.textContent = `Plan ${planNombre || 'Gratis'} - Gratis para siempre`;
+      } else if (isYearly) {
+        planLabelEl.textContent = `Plan ${planNombre} - ${plan.moneda || 'UYU'} ${yearlyPrice.toLocaleString('es-UY')}/año (${discount}% OFF)`;
       } else {
-        planLabelEl.textContent = 'Selecciona un rubro para ver el plan disponible.';
+        planLabelEl.textContent = `Plan ${planNombre} - ${plan.moneda || 'UYU'} ${price.toLocaleString('es-UY')}/mes`;
       }
     }
     if (badgeEl) {
-      badgeEl.textContent = 'Gratis Ilimitado';
+      badgeEl.textContent = isFree ? 'Gratis Ilimitado' : (isYearly ? `Plan Anual · ${discount}% OFF` : 'Plan Mensual');
     }
   }
 
@@ -1046,6 +1059,7 @@
     const rubroId = payload.rubroId || payload.rubro_id || '';
     const rubroName = payload.rubroNombre || payload.rubro_nombre || '';
     const incomingPlanId = payload.planId || payload.plan_id || '';
+    const billingPeriod = payload.billingPeriod || payload.billing_period || 'monthly';
 
     resetForm();
     const draft = loadRegisterDraft();
@@ -1059,7 +1073,7 @@
     }
     if (hiddenPlanNombre && payload.planNombre) hiddenPlanNombre.value = payload.planNombre;
     currentRubroName = rubroName || currentRubroName || '';
-    syncPlanInfo(targetPlanId, currentRubroName);
+    syncPlanInfo(targetPlanId, currentRubroName, billingPeriod);
     showError('');
     clearStatus();
     setStep(restoredStep !== null ? restoredStep : 0);
@@ -1113,12 +1127,13 @@
     const trigger = event.target.closest('.plan-btn');
     if (!trigger) return;
     event.preventDefault();
-    const card = trigger.closest('.hc-card');
+    const card = trigger.closest('.hc-card') || trigger.closest('.plan-card');
     const rubroId = trigger.dataset.rubroId || (card ? card.dataset.rubroId : '');
     const planId = trigger.dataset.planId || (card ? card.dataset.planId : '');
     const rubroNombre = trigger.dataset.rubroNombre || (card ? card.querySelector('figcaption')?.textContent?.trim() : '');
     const planNombre = trigger.dataset.planNombre || (planConfig[planId]?.nombre || '');
-    openModal({ rubroId, planId, rubroNombre, planNombre });
+    const billingPeriod = trigger.dataset.billingPeriod || (card ? card.dataset.billingPeriod : '') || 'monthly';
+    openModal({ rubroId, planId, rubroNombre, planNombre, billingPeriod });
   }
 
   function onNext() {

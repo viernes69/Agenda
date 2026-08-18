@@ -35,8 +35,8 @@ foreach ($planes as $ap) {
     <?php else: ?>
       <?php if ($anyAnnual): ?>
         <div class="plan-billing-toggle" data-landing-billing-toggle>
-          <button type="button" class="is-active" data-billing="monthly">Mensual</button>
-          <button type="button" data-billing="yearly">Anual</button>
+          <button type="button" class="is-active" data-billing="monthly">Facturación Mensual</button>
+          <button type="button" data-billing="yearly">Facturación Anual <span class="plan-badge-discount">-20% OFF</span></button>
         </div>
       <?php endif; ?>
       <div class="plan-grid" role="list">
@@ -62,9 +62,13 @@ foreach ($planes as $ap) {
           <article class="plan-card<?= $isFeatured ? ' plan-card--featured' : '' ?>"
                    role="listitem"
                    data-landing-plan
+                   data-plan-id="<?= (int)$p['id_membership'] ?>"
+                   data-plan-nombre="<?= h((string)$p['nombre']) ?>"
                    data-monthly="<?= $precio ?>"
                    data-yearly="<?= $yearly !== null ? $yearly : '' ?>"
-                   data-has-annual="<?= $hasAnnual ? '1' : '0' ?>">
+                   data-has-annual="<?= $hasAnnual ? '1' : '0' ?>"
+                   data-discount-pct="<?= (int)$discount ?>"
+                   data-currency="<?= h((string)$p['moneda']) ?>">
             <?php if ($isFeatured): ?>
               <span class="plan-card__badge">Recomendado</span>
             <?php endif; ?>
@@ -134,7 +138,10 @@ foreach ($planes as $ap) {
             <?php endif; ?>
             <button type="button" class="plan-btn plan-card__cta"
               data-plan-id="<?= (int)$p['id_membership'] ?>"
-              data-plan-nombre="<?= h((string)$p['nombre']) ?>"><?= h($ctaLabel) ?></button>
+              data-plan-nombre="<?= h((string)$p['nombre']) ?>"
+              data-billing-period="monthly"
+              data-monthly-price="<?= $precio ?>"
+              data-yearly-price="<?= $yearly !== null ? $yearly : '' ?>"><?= h($ctaLabel) ?></button>
           </article>
         <?php endforeach; ?>
       </div>

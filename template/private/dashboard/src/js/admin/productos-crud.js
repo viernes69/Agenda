@@ -189,11 +189,22 @@
     return '/' + parts.slice(0, idx).join('/');
   };
   const detectedAppBase = () => {
+    const metaApp = document.querySelector('meta[name="app-base"]');
+    const rawApp = String(metaApp?.content || '').trim();
+    if (rawApp) {
+      try {
+        return new URL(rawApp, window.location.origin).pathname.replace(/\/+$/, '');
+      } catch (_) {
+        return rawApp.replace(/\/+$/, '');
+      }
+    }
     const parts = String(window.location.pathname || '').split('/').filter(Boolean);
     const templateIdx = parts.indexOf('template');
-    if (templateIdx > 0) return '/' + parts.slice(0, templateIdx).join('/');
+    if (templateIdx >= 0) return templateIdx > 0 ? ('/' + parts.slice(0, templateIdx).join('/')) : '';
+    const privateIdx = parts.indexOf('private');
+    if (privateIdx >= 0) return privateIdx > 0 ? ('/' + parts.slice(0, privateIdx).join('/')) : '';
     const adminIdx = parts.indexOf('admin');
-    if (adminIdx > 0) return '/' + parts.slice(0, adminIdx).join('/');
+    if (adminIdx >= 0) return adminIdx > 0 ? ('/' + parts.slice(0, adminIdx).join('/')) : '';
     return '';
   };
   const appPublicBase = () => {
@@ -219,6 +230,10 @@
     const ref = String(value || '').trim();
     if (!ref) return '';
     if (/^(https?:|blob:|data:)/i.test(ref)) return ref;
+    if (typeof window.admin_tenant_asset_url === 'function') {
+      const resolved = window.admin_tenant_asset_url(ref);
+      if (resolved) return resolved;
+    }
     if (ref.startsWith('/')) return ref;
     const rel = ref.replace(/^\/+/, '');
     const appBase = appPublicBase();
@@ -260,10 +275,11 @@
       parsed = paths.map((src, index) => ({ src, cover: index === 0, price: '', label: '' }));
     }
     const clean = parsed
-      .filter((item) => item && String(item.src || item.path || '').trim())
+      .filter((item) => item && String(item.src || item.path || item.url || '').trim())
       .slice(0, 4)
       .map((item, index) => ({
         src: String(item.src || item.path || '').trim(),
+        url: String(item.url || '').trim(),
         price: item.price ?? item.precio ?? '',
         cover: Boolean(item.cover || item.portada),
         label: String(item.label || ''),
@@ -286,7 +302,7 @@
   };
   const primaryImage = (data) => {
     const images = parseImages(data);
-    return images[0]?.src || data?.Img_src || data?.img_src || '';
+    return images[0]?.url || images[0]?.src || data?.Img_src || data?.img_src || '';
   };
   const syncCoverField = () => {
     const checked = coverRadios.find((radio) => radio.checked);
@@ -307,11 +323,13 @@
     if (img) {
       if (url) {
         img.hidden = false;
+        img.removeAttribute('hidden');
         img.style.display = 'block';
         img.src = url;
         img.alt = alt || 'Vista previa';
       } else {
         img.hidden = true;
+        img.setAttribute('hidden', '');
         img.style.display = 'none';
         img.removeAttribute('src');
         img.alt = '';
@@ -320,9 +338,11 @@
     if (empty) {
       if (url) {
         empty.hidden = true;
+        empty.setAttribute('hidden', '');
         empty.style.display = 'none';
       } else {
         empty.hidden = false;
+        empty.removeAttribute('hidden');
         empty.style.display = '';
       }
     }
@@ -367,7 +387,7 @@
       if (price) price.value = item.price === null || item.price === undefined ? '' : String(item.price);
       if (label) label.value = item.label === null || item.label === undefined ? '' : String(item.label);
       if (radio) radio.checked = Boolean(item.cover);
-      setSlotPreview(slot, item.src || '', data?.Nombre || 'Producto');
+      setSlotPreview(slot, item.url || item.src || '', data?.Nombre || 'Producto');
     });
     if (images.length && !coverRadios.some((radio) => radio.checked)) {
       coverRadios[0].checked = true;

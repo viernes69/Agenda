@@ -1767,10 +1767,28 @@ body.modal-open{
   font-size:.85rem;
   cursor:pointer;
   color: var(--text-muted);
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  transition: all .2s ease;
 }
 .plan-billing-toggle button.is-active{
   background: var(--primary);
   color:#fff;
+}
+.plan-badge-discount{
+  background: #10b981;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  display: inline-block;
+  line-height: 1.2;
+}
+.plan-billing-toggle button.is-active .plan-badge-discount{
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
 .plan-card__annual-note{
   margin:0;

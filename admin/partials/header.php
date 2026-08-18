@@ -43,7 +43,7 @@ $active = $activeSection ?? '';
             <span class="topbar__brand-text"><strong>Agendarte</strong> <span class="brand-uy">UY</span> Admin</span>
         </a>
     </div>
-    <nav class="topbar__nav" aria-label="Secciones">
+    <nav class="topbar__nav" id="admin-topbar-nav" aria-label="Secciones">
         <a href="index.php"             class="<?= $active === 'overview' ? 'is-active' : '' ?>"><i class="bx bx-grid-alt"></i> Resumen</a>
         <a href="commerces.php"         class="<?= $active === 'commerces' ? 'is-active' : '' ?>"><i class="bx bx-store-alt"></i> Comercios</a>
         <a href="commerce_products.php" class="<?= $active === 'products' ? 'is-active' : '' ?>"><i class="bx bx-package"></i> Productos</a>
@@ -58,7 +58,34 @@ $active = $activeSection ?? '';
     <div class="topbar__user">
         <span class="topbar__hello">Hola, <?= htmlspecialchars($user['nombre'] ?? 'Admin', ENT_QUOTES, 'UTF-8') ?></span>
         <a href="logout.php" class="btn btn-ghost btn-sm">Salir</a>
-        <button type="button" class="topbar__toggle" aria-label="Abrir menú" onclick="document.querySelector('.topbar__nav').classList.toggle('is-open')">☰</button>
+        <button type="button" class="topbar__toggle" id="admin-topbar-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="admin-topbar-nav"><i class="bx bx-menu"></i></button>
     </div>
 </header>
+<script>
+(function() {
+    var toggle = document.getElementById('admin-topbar-toggle');
+    var nav = document.getElementById('admin-topbar-nav');
+    if (!toggle || !nav) return;
+    function setNavOpen(open) {
+        nav.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var icon = toggle.querySelector('i');
+        if (icon) {
+            icon.className = open ? 'bx bx-x' : 'bx bx-menu';
+        }
+    }
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        setNavOpen(!nav.classList.contains('is-open'));
+    });
+    document.addEventListener('click', function(e) {
+        if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+            setNavOpen(false);
+        }
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') setNavOpen(false);
+    });
+})();
+</script>
 <main class="admin-main">

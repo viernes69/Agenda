@@ -1771,20 +1771,18 @@ $summaryCards = [
               $descripcion = trim((string)($prod['Descripcion'] ?? ''));
               $puntos = $prod['Puntos'] ?? '';
               $productImages = \Agenduy\Core\ProductCatalog::mediaForRow($prod);
+              foreach ($productImages as &$pImgItem) {
+                  $rawSrc = (string)($pImgItem['src'] ?? '');
+                  $pImgItem['url'] = $rawSrc !== '' ? admin_tenant_asset_url($rawSrc) : '';
+              }
+              unset($pImgItem);
               $productImagesJson = json_encode($productImages, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
               if ($productImagesJson === false) { $productImagesJson = '[]'; }
               $discount = \Agenduy\Core\ProductCatalog::discountPercent($prod);
               $discountLabel = $discount > 0 ? rtrim(rtrim(number_format($discount, 2, '.', ''), '0'), '.') : '';
               $saleLabel = \Agenduy\Core\ProductCatalog::saleLabel($prod);
               $imgRel = trim((string)($productImages[0]['src'] ?? ($prod['Img_src'] ?? '')));
-              $imgUrl = '';
-              if ($imgRel !== '') {
-                if (preg_match('/^https?:\\/\\//i', $imgRel)) {
-                  $imgUrl = $imgRel;
-                } else {
-                  $imgUrl = '../../../' . ltrim($imgRel, '/');
-                }
-              }
+              $imgUrl = $imgRel !== '' ? admin_tenant_asset_url($imgRel) : '';
               $precioFmt = is_numeric($precio) ? number_format((float)$precio, 0, ',', '.') : trim((string)$precio);
               $puntosFmt = ($puntos === null || $puntos === '' || !is_numeric($puntos))
                 ? 'Sin puntos'

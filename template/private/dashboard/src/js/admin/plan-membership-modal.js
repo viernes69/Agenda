@@ -504,5 +504,31 @@
   } else if (payFlag === 'paypal_cancel') {
     openModal();
     setFeedback('Cancelaste el pago en PayPal. Podés reintentar cuando quieras.', 'error');
+  } else {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const membershipModalFlag = params.get('membership_modal') === '1' || params.get('action') === 'upgrade' || params.get('pay_plan') === '1';
+      const targetPlanId = parseInt(params.get('plan_id') || '0', 10);
+      const targetPeriod = (params.get('period') === 'yearly') ? 'yearly' : 'monthly';
+
+      if (membershipModalFlag) {
+        openModal();
+        if (targetPlanId > 0) {
+          const planForm = modal.querySelector(`form[data-plan-membership-form][data-plan-id="${targetPlanId}"]`);
+          if (planForm) {
+            const billingInput = planForm.querySelector('[data-plan-membership-billing-input]');
+            if (billingInput) billingInput.value = targetPeriod;
+            const billingToggle = planForm.closest('[data-plan-membership-card]')?.querySelector('[data-plan-membership-billing-toggle]');
+            if (billingToggle) {
+              billingToggle.querySelectorAll('button').forEach((b) => {
+                b.classList.toggle('is-active', b.getAttribute('data-billing') === targetPeriod);
+              });
+            }
+            const info = resolveAmount(planForm);
+            showPayStep(info);
+          }
+        }
+      }
+    } catch (_) {}
   }
 })();

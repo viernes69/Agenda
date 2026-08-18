@@ -210,6 +210,68 @@ final class NotificationOutbox
         self::enqueueAppointmentStatusFromContext($ctx, $event);
     }
 
+    public static function notifySystemAdmin(string $event, string $subject, string $message, array $extra = []): void
+    {
+        try {
+            $db = Database::getInstance();
+            $adminUsers = $db->fetchAll("SELECT email, telefono, whatsapp FROM users WHERE role = 'super_admin' AND activo = 1");
+            $platformContact = PlatformSettings::contact();
+            $adminPhone = trim((string)($platformContact['whatsapp'] ?: ($platformContact['whatsapp_digits'] ?? '')));
+
+            $emails = [];
+            $phones = [];
+            foreach ($adminUsers as $admin) {
+                $e = strtolower(trim((string)($admin['email'] ?? '')));
+                if ($e !== '' && filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                    $emails[$e] = $e;
+                }
+                $p = trim((string)($admin['whatsapp'] ?? ($admin['telefono'] ?? '')));
+                if ($p !== '') {
+                    $phones[$p] = $p;
+                }
+            }
+            if ($adminPhone !== '') {
+                $phones[$adminPhone] = $adminPhone;
+            }
+
+            $payload = array_merge([
+                'event' => $event,
+                'is_admin_alert' => true,
+            ], $extra);
+
+            $idempotencySeed = md5($event . ':' . $subject . ':' . json_encode($extra) . ':' . date('Y-m-d H:i'));
+
+            foreach ($emails as $email) {
+                self::enqueueEmail(
+                    null,
+                    $email,
+                    'admin_alert',
+                    ['mensaje' => $message, 'asunto' => $subject],
+                    $subject,
+                    $message,
+                    $payload,
+                    date('Y-m-d H:i:s'),
+                    "admin:alert:email:{$idempotencySeed}:" . md5($email)
+                );
+            }
+
+            foreach ($phones as $phone) {
+                self::enqueueWhatsApp(
+                    null,
+                    $phone,
+                    'admin_alert',
+                    ['mensaje' => $message, 'asunto' => $subject],
+                    $message,
+                    $payload,
+                    date('Y-m-d H:i:s'),
+                    "admin:alert:wa:{$idempotencySeed}:" . md5($phone)
+                );
+            }
+        } catch (\Throwable $e) {
+            error_log('NotificationOutbox::notifySystemAdmin error: ' . $e->getMessage());
+        }
+    }
+
     public static function enqueueRegistrationNotifications(int $idCommerce, string $email, string $phone, array $vars = []): void
     {
         if ($idCommerce <= 0) {
@@ -228,6 +290,8 @@ final class NotificationOutbox
             'panel_url' => $slug !== '' ? CommercePanel::dashboardUrlForSlug($slug) : url('admin/login.php'),
             'email' => $email,
             'telefono' => $phone,
+            'plan_nombre' => (string)($vars['plan_nombre'] ?? 'Free'),
+            'billing_period' => (string)($vars['billing_period'] ?? 'mensual'),
         ];
         $tplVars = self::stringVars(array_replace($defaults, $vars));
         $payload = [
@@ -258,6 +322,26 @@ final class NotificationOutbox
             $payload,
             date('Y-m-d H:i:s'),
             "commerce:{$idCommerce}:registration:wa"
+        );
+
+        $bizTitle = (string)($commerce['nombre'] ?? $vars['negocio'] ?? 'Nuevo comercio');
+        $ownerName = (string)($vars['nombre'] ?? 'Nuevo usuario');
+        $planTitle = (string)($vars['plan_nombre'] ?? 'Free');
+        $periodTitle = (string)($vars['billing_period'] ?? 'mensual');
+        $adminMsg = "🔔 Nuevo comercio registrado en Agendarte UY:\n• Negocio: {$bizTitle}\n• Titular: {$ownerName}\n• Email: {$email}\n• Teléfono: {$phone}\n• Plan: {$planTitle} ({$periodTitle})\n• Slug: {$slug}\n• Panel de Comercios: " . url('admin/commerces.php');
+
+        self::notifySystemAdmin(
+            'new_registration',
+            "Nuevo comercio registrado: {$bizTitle}",
+            $adminMsg,
+            [
+                'id_commerce' => $idCommerce,
+                'slug' => $slug,
+                'email' => $email,
+                'phone' => $phone,
+                'plan_nombre' => $planTitle,
+                'billing_period' => $periodTitle,
+            ]
         );
     }
 
@@ -736,7 +820,7 @@ final class NotificationOutbox
     }
 
     private static function enqueueEmail(
-        int $idCommerce,
+        ?int $idCommerce,
         string $recipient,
         string $templateKey,
         array $vars,
@@ -750,17 +834,28 @@ final class NotificationOutbox
         if ($recipient === '' || !filter_var($recipient, FILTER_VALIDATE_EMAIL) || !self::channelEnabled($idCommerce, 'email')) {
             return null;
         }
-        $subject = EmailTemplates::render($idCommerce, $templateKey, $vars, 'subject', $fallbackSubject);
-        $bodyText = EmailTemplates::render($idCommerce, $templateKey, $vars, 'body', $fallbackBody);
-        $bodyText = self::appendStorePaymentLink($bodyText, $vars, $templateKey);
-        $bodyText = self::appendAppointmentCalendarLink($bodyText, $vars, $templateKey);
+        if ($idCommerce !== null && $idCommerce > 0) {
+            $subject = EmailTemplates::render($idCommerce, $templateKey, $vars, 'subject', $fallbackSubject);
+            $bodyText = EmailTemplates::render($idCommerce, $templateKey, $vars, 'body', $fallbackBody);
+            $bodyText = self::appendStorePaymentLink($bodyText, $vars, $templateKey);
+            $bodyText = self::appendAppointmentCalendarLink($bodyText, $vars, $templateKey);
+            $htmlBody = EmailTemplates::renderHtmlFromText($bodyText, $vars);
+        } else {
+            $renderPairs = [];
+            foreach ($vars as $k => $v) {
+                $renderPairs['{' . $k . '}'] = (string)$v;
+            }
+            $subject = $renderPairs !== [] ? strtr($fallbackSubject, $renderPairs) : $fallbackSubject;
+            $bodyText = $renderPairs !== [] ? strtr($fallbackBody, $renderPairs) : $fallbackBody;
+            $htmlBody = nl2br(htmlspecialchars($bodyText, ENT_QUOTES, 'UTF-8'));
+        }
         return self::enqueue(
             $idCommerce,
             'email',
             $recipient,
             $templateKey,
             $subject,
-            EmailTemplates::renderHtmlFromText($bodyText, $vars),
+            $htmlBody,
             $payload,
             $scheduledAt,
             $idempotencyKey
@@ -768,7 +863,7 @@ final class NotificationOutbox
     }
 
     private static function enqueueWhatsApp(
-        int $idCommerce,
+        ?int $idCommerce,
         string $recipient,
         string $templateKey,
         array $vars,
@@ -781,8 +876,16 @@ final class NotificationOutbox
         if (self::phoneDigits($recipient) === '' || !self::channelEnabled($idCommerce, 'whatsapp')) {
             return null;
         }
-        $body = PlatformTemplates::render('ultramsg', $templateKey, $vars, 'body', $fallbackBody);
-        $body = self::appendStorePaymentLink($body, $vars, $templateKey);
+        if ($idCommerce !== null && $idCommerce > 0) {
+            $body = PlatformTemplates::render('ultramsg', $templateKey, $vars, 'body', $fallbackBody);
+            $body = self::appendStorePaymentLink($body, $vars, $templateKey);
+        } else {
+            $renderPairs = [];
+            foreach ($vars as $k => $v) {
+                $renderPairs['{' . $k . '}'] = (string)$v;
+            }
+            $body = $renderPairs !== [] ? strtr($fallbackBody, $renderPairs) : $fallbackBody;
+        }
         if ($templateKey === 'registration_welcome') {
             $logoUrl = PlatformTemplates::logoUrl();
             if ($logoUrl !== '') {
@@ -1366,8 +1469,12 @@ final class NotificationOutbox
         return 0;
     }
 
-    private static function channelEnabled(int $idCommerce, string $channel): bool
+    private static function channelEnabled(?int $idCommerce, string $channel): bool
     {
+        if ($idCommerce === null || $idCommerce <= 0) {
+            return true;
+        }
+
         $settings = CommerceSettings::get(
             $idCommerce,
             'notificaciones',

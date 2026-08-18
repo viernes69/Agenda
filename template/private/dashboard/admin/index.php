@@ -1381,8 +1381,21 @@ if ($commerceLogoRaw !== '') {
   <meta name="theme-color" content="#7c3aed">
   <meta name="csrf-token" content="<?php echo e($_SESSION['admin_config_csrf']); ?>">
   <meta name="url-base" content="<?php echo e($publicUrl); ?>">
+  <meta name="app-base" content="<?php echo e(url('')); ?>">
   <meta name="tenant-slug" content="<?php echo e($tenantSlug); ?>">
   <title>Panel · Agendarte UY</title>
+  <script>
+    window.admin_tenant_asset_url = function(path) {
+      if (!path) return '';
+      if (/^(https?:|blob:|data:)/i.test(path)) return path;
+      var rel = String(path).replace(/^\/+/, '');
+      var appRoot = <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>.replace(/\/+$/, '');
+      if (rel.startsWith('commerce-assets/')) {
+        return appRoot + '/src/API/commerce_asset.php?p=' + encodeURIComponent(rel);
+      }
+      return appRoot + '/' + rel;
+    };
+  </script>
   <script>
     (function () {
       try {
@@ -2341,6 +2354,11 @@ if ($commerceLogoRaw !== '') {
               $descripcion = trim((string)($prod['Descripcion'] ?? ''));
               $puntos = $prod['Puntos'] ?? '';
               $productImages = \Agenduy\Core\ProductCatalog::mediaForRow($prod);
+              foreach ($productImages as &$pImgItem) {
+                  $rawSrc = (string)($pImgItem['src'] ?? '');
+                  $pImgItem['url'] = $rawSrc !== '' ? admin_tenant_asset_url($rawSrc) : '';
+              }
+              unset($pImgItem);
               $productImagesJson = json_encode($productImages, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
               if ($productImagesJson === false) { $productImagesJson = '[]'; }
               $discount = \Agenduy\Core\ProductCatalog::discountPercent($prod);
