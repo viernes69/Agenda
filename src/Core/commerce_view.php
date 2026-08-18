@@ -155,11 +155,15 @@ if (!function_exists('agenduy_render_commerce')) {
         $publicContent = CommerceSettings::get($commerceId, 'public_content', CommerceSettings::defaultsForSection('public_content'));
         $publicTextOverrides = is_array($publicContent['text'] ?? null) ? $publicContent['text'] : [];
         $publicImageOverrides = is_array($publicContent['images'] ?? null) ? $publicContent['images'] : [];
+        $publicHiddenOverrides = is_array($publicContent['hidden'] ?? null) ? $publicContent['hidden'] : [];
+        $publicCustomOverrides = is_array($publicContent['custom'] ?? null) ? $publicContent['custom'] : [];
         $publicContentVersion = trim((string)($publicContent['version'] ?? ''));
         if ($publicContentVersion === '') {
             $publicContentVersion = sha1(json_encode([
                 'text' => $publicTextOverrides,
                 'images' => $publicImageOverrides,
+                'hidden' => $publicHiddenOverrides,
+                'custom' => $publicCustomOverrides,
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
         }
         $defaultTheme = (($tema['publico'] ?? 'claro') === 'oscuro') ? 'dark' : 'light';
@@ -346,18 +350,80 @@ if (!function_exists('agenduy_render_commerce')) {
             }
             return $default;
         };
-        $editableText = static function (string $key, string $default, string $label) use ($publicTextValue, $canEditSite): string {
+        $editableText = static function (string $key, string $default, string $label, string $section = 'general') use ($publicTextValue, $publicHiddenOverrides, $canEditSite): string {
             $value = $publicTextValue($key, $default);
-            $html = '<span class="public-editable" data-public-edit-field data-public-edit-type="text" data-public-edit-key="'
-                . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" data-public-edit-label="'
+            $isHidden = !empty($publicHiddenOverrides[$key]);
+
+            if (!$canEditSite && $isHidden) {
+                return '<span class="public-hidden-element" style="display:none !important;"></span>';
+            }
+
+            $hiddenClass = ($canEditSite && $isHidden) ? ' public-element--hidden' : '';
+            $hiddenBadge = ($canEditSite && $isHidden) ? '<span class="public-hidden-badge" title="Oculto para los visitantes de la web"><i class="bx bx-hide"></i> Oculto</span>' : '';
+
+            $html = '<span class="public-editable' . $hiddenClass . '" data-public-edit-field data-public-edit-type="text" data-public-edit-key="'
+                . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" data-public-edit-section="'
+                . htmlspecialchars($section, ENT_QUOTES, 'UTF-8') . '" data-public-edit-label="'
                 . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><span data-public-edit-value>'
-                . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</span>';
+                . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</span>' . $hiddenBadge;
+
             if ($canEditSite) {
-                $html .= '<button type="button" class="public-edit-btn" data-public-edit-trigger aria-label="Editar '
-                    . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"><i class="bx bx-pencil" aria-hidden="true"></i></button>';
+                $eyeIcon = $isHidden ? 'bx-hide' : 'bx-show';
+                $eyeTitle = $isHidden ? 'Mostrar en la web' : 'Ocultar en la web';
+                $eyeHiddenClass = $isHidden ? ' is-hidden' : '';
+
+                $html .= '<span class="public-edit-group">'
+                    . '<button type="button" class="public-edit-btn public-edit-btn--pencil" data-public-edit-trigger aria-label="Editar '
+                    . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="Editar contenido"><i class="bx bx-pencil" aria-hidden="true"></i></button>'
+                    . '<button type="button" class="public-edit-btn public-edit-btn--plus" data-public-add-trigger data-section="'
+                    . htmlspecialchars($section, ENT_QUOTES, 'UTF-8') . '" aria-label="Añadir elemento a '
+                    . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="Añadir (Título, Subtítulo, Filtro, Botón, etc.)"><i class="bx bx-plus" aria-hidden="true"></i></button>'
+                    . '<button type="button" class="public-edit-btn public-edit-btn--eye' . $eyeHiddenClass . '" data-public-toggle-visibility data-key="'
+                    . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '" aria-label="'
+                    . htmlspecialchars($eyeTitle, ENT_QUOTES, 'UTF-8') . '" title="'
+                    . htmlspecialchars($eyeTitle, ENT_QUOTES, 'UTF-8') . '"><i class="bx ' . $eyeIcon . '" aria-hidden="true"></i></button>'
+                    . '</span>';
             }
             return $html . '</span>';
         };
+
+        $renderCustomElements = static function (string $section) use ($publicCustomOverrides, $canEditSite): string {
+            $list = $publicCustomOverrides[$section] ?? [];
+            if (!is_array($list) || empty($list)) {
+                return '';
+            }
+            $out = '<div class="public-custom-elements-wrap" data-section="' . htmlspecialchars($section, ENT_QUOTES, 'UTF-8') . '">';
+            foreach ($list as $elem) {
+                if (!is_array($elem)) continue;
+                $eId = (string)($elem['id'] ?? '');
+                $eType = (string)($elem['type'] ?? 'text');
+                $eContent = (string)($elem['content'] ?? '');
+                $eMeta = (string)($elem['meta'] ?? '');
+
+                $deleteBtn = $canEditSite
+                    ? '<button type="button" class="public-custom-elem-del" data-public-delete-elem data-section="' . htmlspecialchars($section, ENT_QUOTES, 'UTF-8') . '" data-id="' . htmlspecialchars($eId, ENT_QUOTES, 'UTF-8') . '" title="Eliminar elemento"><i class="bx bx-trash"></i></button>'
+                    : '';
+
+                $out .= '<div class="public-custom-elem public-custom-elem--' . htmlspecialchars($eType, ENT_QUOTES, 'UTF-8') . '" data-id="' . htmlspecialchars($eId, ENT_QUOTES, 'UTF-8') . '">';
+                if ($eType === 'filter') {
+                    $filterVal = mb_convert_case($eContent, MB_CASE_TITLE, 'UTF-8');
+                    $out .= '<button type="button" class="prod-filter-btn" data-filter-category="' . htmlspecialchars(mb_strtolower($filterVal, 'UTF-8'), ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($filterVal, ENT_QUOTES, 'UTF-8') . '</button>' . $deleteBtn;
+                } elseif ($eType === 'title') {
+                    $out .= '<h3 class="custom-elem-title" style="margin:0.5rem 0; font-size:1.35rem; font-weight:700">' . htmlspecialchars($eContent, ENT_QUOTES, 'UTF-8') . '</h3>' . $deleteBtn;
+                } elseif ($eType === 'subtitle') {
+                    $out .= '<p class="custom-elem-subtitle" style="margin:0.25rem 0; color:var(--text-soft); font-size:0.95rem">' . htmlspecialchars($eContent, ENT_QUOTES, 'UTF-8') . '</p>' . $deleteBtn;
+                } elseif ($eType === 'button') {
+                    $linkUrl = $eMeta !== '' ? $eMeta : '#';
+                    $out .= '<a href="' . htmlspecialchars($linkUrl, ENT_QUOTES, 'UTF-8') . '" class="btn btn--primary custom-elem-btn">' . htmlspecialchars($eContent, ENT_QUOTES, 'UTF-8') . '</a>' . $deleteBtn;
+                } elseif ($eType === 'stat') {
+                    $out .= '<div class="custom-elem-stat" style="display:inline-flex; flex-direction:column; padding:0.4rem 0.8rem; background:var(--surface-2); border-radius:8px; border:1px solid var(--border)"><strong class="custom-elem-stat__val" style="font-size:1.15rem; color:var(--primary)">' . htmlspecialchars($eContent, ENT_QUOTES, 'UTF-8') . '</strong>' . ($eMeta !== '' ? '<span class="custom-elem-stat__lbl" style="font-size:0.78rem; color:var(--muted)">' . htmlspecialchars($eMeta, ENT_QUOTES, 'UTF-8') . '</span>' : '') . '</div>' . $deleteBtn;
+                }
+                $out .= '</div>';
+            }
+            $out .= '</div>';
+            return $out;
+        };
+
         $imageEditButton = static function (string $key, string $label) use ($canEditSite): string {
             if (!$canEditSite) {
                 return '';
@@ -584,7 +650,7 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="topbar__inner">
                 <a href="<?= htmlspecialchars(url($slug), ENT_QUOTES, 'UTF-8') ?>" class="brand">
                     <?php if ($hasLogo): ?>
-                        <span class="brand__logo"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt=""></span>
+                        <span class="brand__logo brand__logo--image"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?>"></span>
                     <?php else: ?>
                         <span class="brand__logo"><?= htmlspecialchars(mb_strtoupper($initial, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
                     <?php endif; ?>
@@ -692,9 +758,10 @@ if (!function_exists('agenduy_render_commerce')) {
             <div class="wrap hero__inner">
                 <div>
                     <?php if ($isStoreMode): ?>
-                    <span class="hero__eyebrow"><i class="bx bx-store"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal') ?></span>
-                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal') ?></h1>
-                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal') ?></p>
+                    <span class="hero__eyebrow"><i class="bx bx-store"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal', 'hero') ?></span>
+                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal', 'hero') ?></h1>
+                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal', 'hero') ?></p>
+                    <?= $renderCustomElements('hero') ?>
                     <div class="hero__actions">
                         <a href="#productos" class="btn btn--primary btn--lg"><i class="bx bx-package"></i> Ver catalogo</a>
                         <?php if ($whatsappDigits !== ''): ?>
@@ -702,22 +769,23 @@ if (!function_exists('agenduy_render_commerce')) {
                         <?php endif; ?>
                     </div>
                     <div class="hero__stats">
-                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '+' . count($localProducts), 'dato destacado 1') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Productos', 'descripcion destacada 1') ?></div></div>
-                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', 'WA', 'dato destacado 2') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Pedidos directos', 'descripcion destacada 2') ?></div></div>
-                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '24/7', 'dato destacado 3') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Catalogo visible', 'descripcion destacada 3') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '+' . count($localProducts), 'dato destacado 1', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Productos', 'descripcion destacada 1', 'hero') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', 'WA', 'dato destacado 2', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Pedidos directos', 'descripcion destacada 2', 'hero') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '24/7', 'dato destacado 3', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Catalogo visible', 'descripcion destacada 3', 'hero') ?></div></div>
                     </div>
                     <?php else: ?>
-                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal') ?></span>
-                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal') ?></h1>
-                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal') ?></p>
+                    <span class="hero__eyebrow"><i class="bx bx-calendar-check"></i> <?= $editableText('hero.eyebrow', $heroDefaultEyebrow, 'etiqueta principal', 'hero') ?></span>
+                    <h1><?= $editableText('hero.title', $heroDefaultTitle, 'titulo principal', 'hero') ?></h1>
+                    <p class="lead"><?= $editableText('hero.lead', $heroDefaultLead, 'texto principal', 'hero') ?></p>
+                    <?= $renderCustomElements('hero') ?>
                     <div class="hero__actions">
                         <a href="#servicios" class="btn btn--primary btn--lg"><i class="bx bx-calendar-plus"></i> Reservar ahora</a>
                         <a href="#servicios" class="btn btn--ghost btn--lg">Ver servicios</a>
                     </div>
                     <div class="hero__stats">
-                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '24/7', 'dato destacado 1') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Reservas online', 'descripcion destacada 1') ?></div></div>
-                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', '+' . count($services), 'dato destacado 2') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Servicios', 'descripcion destacada 2') ?></div></div>
-                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '4.9', 'dato destacado 3') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Calificación', 'descripcion destacada 3') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_1.value', '24/7', 'dato destacado 1', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_1.label', 'Reservas online', 'descripcion destacada 1', 'hero') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_2.value', '+' . count($services), 'dato destacado 2', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_2.label', 'Servicios', 'descripcion destacada 2', 'hero') ?></div></div>
+                        <div><div class="stat__num"><?= $editableText('hero.stat_3.value', '4.9', 'dato destacado 3', 'hero') ?></div><div class="stat__lbl"><?= $editableText('hero.stat_3.label', 'Calificación', 'descripcion destacada 3', 'hero') ?></div></div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -738,45 +806,47 @@ if (!function_exists('agenduy_render_commerce')) {
         <section class="steps alt" aria-label="Cómo reservar">
             <div class="wrap">
                 <?php if ($isStoreMode): ?>
-                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y directo', 'etiqueta de pasos') ?></span>
-                <h2 class="section-title"><?= $editableText('steps.title', 'Compra en 3 pasos', 'titulo de pasos') ?></h2>
-                <p class="section-sub"><?= $editableText('steps.subtitle', 'Explora el catalogo, arma tu pedido y coordina los detalles por WhatsApp.', 'texto de pasos') ?></p>
+                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y directo', 'etiqueta de pasos', 'steps') ?></span>
+                <h2 class="section-title"><?= $editableText('steps.title', 'Compra en 3 pasos', 'titulo de pasos', 'steps') ?></h2>
+                <p class="section-sub"><?= $editableText('steps.subtitle', 'Explora el catalogo, arma tu pedido y coordina los detalles por WhatsApp.', 'texto de pasos', 'steps') ?></p>
+                <?= $renderCustomElements('steps') ?>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-card__num">1</span>
-                        <h3><?= $editableText('steps.1.title', 'Elegi productos', 'titulo paso 1') ?></h3>
-                        <p><?= $editableText('steps.1.text', 'Revisa precios, tipos y detalles del catalogo disponible.', 'texto paso 1') ?></p>
+                        <h3><?= $editableText('steps.1.title', 'Elegi productos', 'titulo paso 1', 'steps') ?></h3>
+                        <p><?= $editableText('steps.1.text', 'Revisa precios, tipos y detalles del catalogo disponible.', 'texto paso 1', 'steps') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">2</span>
-                        <h3><?= $editableText('steps.2.title', 'Arma tu pedido', 'titulo paso 2') ?></h3>
-                        <p><?= $editableText('steps.2.text', 'Agrega al carrito lo que quieras consultar o comprar.', 'texto paso 2') ?></p>
+                        <h3><?= $editableText('steps.2.title', 'Arma tu pedido', 'titulo paso 2', 'steps') ?></h3>
+                        <p><?= $editableText('steps.2.text', 'Agrega al carrito lo que quieras consultar o comprar.', 'texto paso 2', 'steps') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">3</span>
-                        <h3><?= $editableText('steps.3.title', 'Coordina entrega', 'titulo paso 3') ?></h3>
-                        <p><?= $editableText('steps.3.text', 'Envia el pedido por WhatsApp y acuerda retiro, envio o pago.', 'texto paso 3') ?></p>
+                        <h3><?= $editableText('steps.3.title', 'Coordina entrega', 'titulo paso 3', 'steps') ?></h3>
+                        <p><?= $editableText('steps.3.text', 'Envia el pedido por WhatsApp y acuerda retiro, envio o pago.', 'texto paso 3', 'steps') ?></p>
                     </article>
                 </div>
                 <?php else: ?>
-                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y rápido', 'etiqueta de pasos') ?></span>
-                <h2 class="section-title"><?= $editableText('steps.title', 'Reservá en 3 pasos', 'titulo de pasos') ?></h2>
-                <p class="section-sub"><?= $editableText('steps.subtitle', 'Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.', 'texto de pasos') ?></p>
+                <span class="eyebrow"><?= $editableText('steps.eyebrow', 'Simple y rápido', 'etiqueta de pasos', 'steps') ?></span>
+                <h2 class="section-title"><?= $editableText('steps.title', 'Reservá en 3 pasos', 'titulo de pasos', 'steps') ?></h2>
+                <p class="section-sub"><?= $editableText('steps.subtitle', 'Sin llamadas ni mensajes de ida y vuelta. Tu turno queda confirmado al instante.', 'texto de pasos', 'steps') ?></p>
+                <?= $renderCustomElements('steps') ?>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-card__num">1</span>
-                        <h3><?= $editableText('steps.1.title', 'Elegí el servicio', 'titulo paso 1') ?></h3>
-                        <p><?= $editableText('steps.1.text', 'Explorá nuestra carta y seleccioná lo que necesitás.', 'texto paso 1') ?></p>
+                        <h3><?= $editableText('steps.1.title', 'Elegí el servicio', 'titulo paso 1', 'steps') ?></h3>
+                        <p><?= $editableText('steps.1.text', 'Explorá nuestra carta y seleccioná lo que necesitás.', 'texto paso 1', 'steps') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">2</span>
-                        <h3><?= $editableText('steps.2.title', 'Seleccioná día y hora', 'titulo paso 2') ?></h3>
-                        <p><?= $editableText('steps.2.text', 'Disponibilidad en tiempo real según nuestros horarios.', 'texto paso 2') ?></p>
+                        <h3><?= $editableText('steps.2.title', 'Seleccioná día y hora', 'titulo paso 2', 'steps') ?></h3>
+                        <p><?= $editableText('steps.2.text', 'Disponibilidad en tiempo real según nuestros horarios.', 'texto paso 2', 'steps') ?></p>
                     </article>
                     <article class="step-card">
                         <span class="step-card__num">3</span>
-                        <h3><?= $editableText('steps.3.title', 'Confirmá tu reserva', 'titulo paso 3') ?></h3>
-                        <p><?= $editableText('steps.3.text', 'Recibís confirmación por email. También avisamos al negocio.', 'texto paso 3') ?></p>
+                        <h3><?= $editableText('steps.3.title', 'Confirmá tu reserva', 'titulo paso 3', 'steps') ?></h3>
+                        <p><?= $editableText('steps.3.text', 'Recibís confirmación por email. También avisamos al negocio.', 'texto paso 3', 'steps') ?></p>
                     </article>
                 </div>
                 <?php endif; ?>
@@ -830,9 +900,10 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($showServices): ?>
         <section id="servicios" class="alt">
             <div class="wrap">
-                <span class="eyebrow"><?= $editableText('services.eyebrow', 'Servicios', 'etiqueta de servicios') ?></span>
-                <h2 class="section-title"><?= $editableText('services.title', 'Lo que ofrecemos', 'titulo de servicios') ?></h2>
-                <p class="section-sub"><?= $editableText('services.subtitle', 'Servicios profesionales con la mejor calidad. Reservá el que más te guste.', 'texto de servicios') ?></p>
+                <span class="eyebrow"><?= $editableText('services.eyebrow', 'Servicios', 'etiqueta de servicios', 'servicios') ?></span>
+                <h2 class="section-title"><?= $editableText('services.title', 'Lo que ofrecemos', 'titulo de servicios', 'servicios') ?></h2>
+                <p class="section-sub"><?= $editableText('services.subtitle', 'Servicios profesionales con la mejor calidad. Reservá el que más te guste.', 'texto de servicios', 'servicios') ?></p>
+                <?= $renderCustomElements('servicios') ?>
                 <?php if ($showProfessionals): ?>
                 <div class="svc-filter-status" data-professional-service-filter hidden>
                     <span data-professional-service-filter-text></span>
@@ -901,9 +972,10 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($showCatalogSection): ?>
         <section id="productos">
             <div class="wrap">
-                <span class="eyebrow"><?= $editableText('products.eyebrow', 'Productos', 'etiqueta de productos') ?></span>
-                <h2 class="section-title"><?= $editableText('products.title', 'Nuestra tienda', 'titulo de productos') ?></h2>
-                <p class="section-sub"><?= $editableText('products.subtitle', $cartEnabled ? 'Agrega al carrito y coordina tu pedido en minutos.' : 'Explora los productos disponibles y consulta al comercio para comprar.', 'texto de productos') ?></p>
+                <span class="eyebrow"><?= $editableText('products.eyebrow', 'Productos', 'etiqueta de productos', 'productos') ?></span>
+                <h2 class="section-title"><?= $editableText('products.title', 'Nuestra tienda', 'titulo de productos', 'productos') ?></h2>
+                <p class="section-sub"><?= $editableText('products.subtitle', $cartEnabled ? 'Agrega al carrito y coordina tu pedido en minutos.' : 'Explora los productos disponibles y consulta al comercio para comprar.', 'texto de productos', 'productos') ?></p>
+                <?= $renderCustomElements('productos') ?>
                 <?php if (!$showProducts): ?>
                     <p class="section-sub">El catalogo esta en preparacion. Volve pronto o contacta al comercio para consultar productos.</p>
                     <?php if ($isCommerceOwner && $ownerDashboardUrl): ?>
@@ -914,11 +986,56 @@ if (!function_exists('agenduy_render_commerce')) {
                     </div>
                     <?php endif; ?>
                 <?php else: ?>
+                <?php
+                $productCategories = [];
+                foreach ($localProducts as $pItem) {
+                    $tRaw = trim((string)($pItem['Tipo'] ?? ''));
+                    if ($tRaw !== '') {
+                        $tTitle = mb_convert_case($tRaw, MB_CASE_TITLE, 'UTF-8');
+                        if (!in_array($tTitle, $productCategories, true)) {
+                            $productCategories[] = $tTitle;
+                        }
+                    }
+                }
+                if (!empty($publicCustomOverrides['productos'])) {
+                    foreach ($publicCustomOverrides['productos'] as $cust) {
+                        if (is_array($cust) && ($cust['type'] ?? '') === 'filter' && trim((string)($cust['content'] ?? '')) !== '') {
+                            $cFilter = mb_convert_case(trim((string)$cust['content']), MB_CASE_TITLE, 'UTF-8');
+                            if (!in_array($cFilter, $productCategories, true)) {
+                                $productCategories[] = $cFilter;
+                            }
+                        }
+                    }
+                }
+                ?>
+                <?php if (!empty($productCategories)): ?>
+                <div class="prod-filters" data-prod-filters>
+                    <button type="button" class="prod-filter-btn is-active" data-filter-category="all">
+                        Todos (<?= count($localProducts) ?>)
+                    </button>
+                    <?php foreach ($productCategories as $cat): ?>
+                        <?php
+                        $catCount = count(array_filter($localProducts, static function($p) use ($cat) {
+                            return mb_convert_case(trim((string)($p['Tipo'] ?? '')), MB_CASE_TITLE, 'UTF-8') === $cat;
+                        }));
+                        ?>
+                        <button type="button" class="prod-filter-btn" data-filter-category="<?= htmlspecialchars(mb_strtolower($cat, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?><?= $catCount > 0 ? ' (' . $catCount . ')' : '' ?>
+                        </button>
+                    <?php endforeach; ?>
+                    <?php if ($canEditSite): ?>
+                    <button type="button" class="prod-filter-btn prod-filter-btn--add" data-public-add-trigger data-section="productos" data-default-type="filter" title="Añadir nueva categoría / filtro">
+                        <i class="bx bx-plus"></i> Añadir Filtro
+                    </button>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <div class="prod-grid">
                     <?php foreach ($localProducts as $p):
                         $pId = (string)($p['ID_Product'] ?? '');
                         $pName = trim((string)($p['Nombre'] ?? 'Producto'));
                         $pTipo = trim((string)($p['Tipo'] ?? ''));
+                        $pTipoTitle = $pTipo !== '' ? mb_convert_case($pTipo, MB_CASE_TITLE, 'UTF-8') : 'General';
                         $pDesc = trim((string)($p['Descripcion'] ?? ''));
                         $pBasePrice = ProductCatalog::basePrice($p);
                         $pDiscount = ProductCatalog::discountPercent($p);
@@ -930,6 +1047,7 @@ if (!function_exists('agenduy_render_commerce')) {
                     <article class="prod-card"
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-name="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-category="<?= htmlspecialchars(mb_strtolower($pTipoTitle, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>"
                         data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-original-price="<?= htmlspecialchars((string)$pBasePrice, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-variant="0"
@@ -1010,12 +1128,13 @@ if (!function_exists('agenduy_render_commerce')) {
         <section id="nosotros">
             <div class="wrap about">
                 <div class="about__text">
-                    <span class="eyebrow"><?= $editableText('about.eyebrow', 'Nosotros', 'etiqueta sobre nosotros') ?></span>
-                    <h2 class="section-title"><?= $editableText('about.title', 'Sobre ' . $titulo, 'titulo sobre nosotros') ?></h2>
-                    <p><?= $editableText('about.description', $aboutDescription, 'texto sobre nosotros') ?></p>
+                    <span class="eyebrow"><?= $editableText('about.eyebrow', 'Nosotros', 'etiqueta sobre nosotros', 'nosotros') ?></span>
+                    <h2 class="section-title"><?= $editableText('about.title', 'Sobre ' . $titulo, 'titulo sobre nosotros', 'nosotros') ?></h2>
+                    <p><?= $editableText('about.description', $aboutDescription, 'texto sobre nosotros', 'nosotros') ?></p>
+                    <?= $renderCustomElements('nosotros') ?>
                     <ul class="about-highlights">
                         <?php foreach ($aboutHighlights as $idx => $highlight): ?>
-                        <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= $editableText('about.highlight_' . ($idx + 1), (string)$highlight, 'destacado ' . ($idx + 1)) ?></span></li>
+                        <li><i class="bx bx-check-circle" aria-hidden="true"></i> <span><?= $editableText('about.highlight_' . ($idx + 1), (string)$highlight, 'destacado ' . ($idx + 1), 'nosotros') ?></span></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
@@ -1030,9 +1149,10 @@ if (!function_exists('agenduy_render_commerce')) {
         <section id="horarios" class="alt">
             <div class="wrap">
                 <?= $dashboardEditLink('config', 'Modificar horarios') ?>
-                <span class="eyebrow"><?= $editableText('schedule.eyebrow', 'Horarios', 'etiqueta de horarios') ?></span>
-                <h2 class="section-title"><?= $editableText('schedule.title', 'Cuándo podés venir', 'titulo de horarios') ?></h2>
-                <p class="section-sub"><?= $editableText('schedule.subtitle', $scheduleSummary, 'texto de horarios') ?></p>
+                <span class="eyebrow"><?= $editableText('schedule.eyebrow', 'Horarios', 'etiqueta de horarios', 'horarios') ?></span>
+                <h2 class="section-title"><?= $editableText('schedule.title', 'Cuándo podés venir', 'titulo de horarios', 'horarios') ?></h2>
+                <p class="section-sub"><?= $editableText('schedule.subtitle', $scheduleSummary, 'texto de horarios', 'horarios') ?></p>
+                <?= $renderCustomElements('horarios') ?>
                 <div class="schedule">
                     <?php foreach ($horarios as $key => $label):
                         $d = $scheduleRaw[$key] ?? ['abierto' => false, 'inicio' => '', 'fin' => ''];
@@ -1056,9 +1176,10 @@ if (!function_exists('agenduy_render_commerce')) {
         <section id="contacto">
             <div class="wrap">
                 <?= $dashboardEditLink('config', 'Modificar datos de contacto') ?>
-                <span class="eyebrow"><?= $editableText('contact.eyebrow', 'Contacto', 'etiqueta de contacto') ?></span>
-                <h2 class="section-title"><?= $editableText('contact.title', 'Cómo encontrarnos', 'titulo de contacto') ?></h2>
-                <p class="section-sub"><?= $editableText('contact.subtitle', $contactDefaultSubtitle, 'texto de contacto') ?></p>
+                <span class="eyebrow"><?= $editableText('contact.eyebrow', 'Contacto', 'etiqueta de contacto', 'contacto') ?></span>
+                <h2 class="section-title"><?= $editableText('contact.title', 'Cómo encontrarnos', 'titulo de contacto', 'contacto') ?></h2>
+                <p class="section-sub"><?= $editableText('contact.subtitle', $contactDefaultSubtitle, 'texto de contacto', 'contacto') ?></p>
+                <?= $renderCustomElements('contacto') ?>
                 <div class="contact-grid">
                     <?php if ($calle !== ''): ?>
                     <div class="contact-card">
@@ -1418,7 +1539,7 @@ if (!function_exists('agenduy_render_commerce')) {
             <form class="public-edit-modal__dialog" id="public-edit-form">
                 <div class="public-edit-modal__head">
                     <div>
-                        <span class="public-edit-modal__eyebrow">Editar página</span>
+                        <span class="public-edit-modal__eyebrow">Editar contenido</span>
                         <h3 id="public-edit-title">Modificar contenido</h3>
                     </div>
                     <button type="button" class="public-edit-modal__close" data-public-edit-close aria-label="Cerrar">×</button>
@@ -1438,6 +1559,50 @@ if (!function_exists('agenduy_render_commerce')) {
                 <div class="public-edit-modal__foot">
                     <button type="button" class="btn btn--ghost" data-public-edit-close>Cancelar</button>
                     <button type="submit" class="btn btn--primary" id="public-edit-submit">Guardar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal para Añadir Elementos (Filtros, Títulos, Subtítulos, Botones, etc.) -->
+        <div class="public-edit-modal" id="public-add-modal" role="dialog" aria-modal="true" aria-labelledby="public-add-title" hidden>
+            <div class="public-edit-modal__backdrop" data-public-add-close></div>
+            <form class="public-edit-modal__dialog" id="public-add-form">
+                <div class="public-edit-modal__head">
+                    <div>
+                        <span class="public-edit-modal__eyebrow">Añadir a la página</span>
+                        <h3 id="public-add-title">➕ Añadir elemento</h3>
+                    </div>
+                    <button type="button" class="public-edit-modal__close" data-public-add-close aria-label="Cerrar">×</button>
+                </div>
+                <div class="public-edit-modal__body">
+                    <input type="hidden" id="public-add-section" value="general">
+
+                    <label class="public-edit-modal__field">
+                        <span>Tipo de elemento</span>
+                        <select id="public-add-type" style="width:100%; padding:0.65rem 0.85rem; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:0.95rem">
+                            <option value="filter">🏷️ Filtro / Categoría de Productos</option>
+                            <option value="title">📝 Título / Encabezado</option>
+                            <option value="subtitle">📄 Subtítulo / Párrafo</option>
+                            <option value="button">🔘 Botón CTA / Enlace</option>
+                            <option value="stat">💡 Dato Destacado / Estadística</option>
+                        </select>
+                    </label>
+
+                    <label class="public-edit-modal__field" id="public-add-content-wrap">
+                        <span id="public-add-content-label">Texto / Contenido *</span>
+                        <textarea id="public-add-content" rows="3" maxlength="500" required placeholder="Ej: Ofertas Especiales"></textarea>
+                    </label>
+
+                    <label class="public-edit-modal__field" id="public-add-meta-wrap">
+                        <span id="public-add-meta-label">Enlace URL / Etiqueta secundaria (opcional)</span>
+                        <input type="text" id="public-add-meta" placeholder="Ej: #productos o https://...">
+                    </label>
+
+                    <p class="public-edit-modal__error" id="public-add-error" hidden></p>
+                </div>
+                <div class="public-edit-modal__foot">
+                    <button type="button" class="btn btn--ghost" data-public-add-close>Cancelar</button>
+                    <button type="submit" class="btn btn--primary" id="public-add-submit">Añadir Elemento</button>
                 </div>
             </form>
         </div>
@@ -1638,7 +1803,6 @@ if (!function_exists('agenduy_render_commerce')) {
 
             (function publicSiteEditor() {
                 const cfg = window.__PUBLIC_SITE_EDITOR__ || {};
-                if (!cfg.enabled) return;
                 const modal = document.getElementById('public-edit-modal');
                 const form = document.getElementById('public-edit-form');
                 const title = document.getElementById('public-edit-title');
@@ -1648,24 +1812,60 @@ if (!function_exists('agenduy_render_commerce')) {
                 const imageInput = document.getElementById('public-edit-image');
                 const submit = document.getElementById('public-edit-submit');
                 const error = document.getElementById('public-edit-error');
+
+                const modalAdd = document.getElementById('public-add-modal');
+                const formAdd = document.getElementById('public-add-form');
+                const addSectionInput = document.getElementById('public-add-section');
+                const addTypeSelect = document.getElementById('public-add-type');
+                const addContentText = document.getElementById('public-add-content');
+                const addMetaInput = document.getElementById('public-add-meta');
+                const addSubmit = document.getElementById('public-add-submit');
+                const addError = document.getElementById('public-add-error');
+
                 const cssEscape = window.CSS && typeof window.CSS.escape === 'function'
                     ? window.CSS.escape.bind(window.CSS)
                     : (value) => String(value).replace(/["\\]/g, '\\$&');
                 let active = null;
-                if (!modal || !form || !textarea || !imageInput) return;
 
-                const close = () => {
-                    modal.hidden = true;
-                    modal.classList.remove('is-visible');
-                    active = null;
-                    if (error) {
-                        error.hidden = true;
-                        error.textContent = '';
+                // --- Lógica de Filtros de Productos (Disponible para todos los visitantes) ---
+                document.querySelectorAll('.prod-filter-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        if (this.classList.contains('prod-filter-btn--add')) return;
+                        e.preventDefault();
+                        const filterCat = (this.getAttribute('data-filter-category') || 'all').toLowerCase().trim();
+                        document.querySelectorAll('.prod-filter-btn').forEach(b => {
+                            if (!b.classList.contains('prod-filter-btn--add')) b.classList.remove('is-active');
+                        });
+                        this.classList.add('is-active');
+
+                        document.querySelectorAll('.prod-card').forEach(card => {
+                            const cardCat = (card.getAttribute('data-product-category') || '').toLowerCase().trim();
+                            if (filterCat === 'all' || cardCat === filterCat) {
+                                card.style.display = '';
+                                card.style.opacity = '1';
+                            } else {
+                                card.style.display = 'none';
+                                card.style.opacity = '0';
+                            }
+                        });
+                    });
+                });
+
+                if (!cfg.enabled) return;
+
+                // --- Modal Editar (Lápiz) ---
+                const closeEdit = () => {
+                    if (modal) {
+                        modal.hidden = true;
+                        modal.classList.remove('is-visible');
                     }
+                    active = null;
+                    if (error) { error.hidden = true; error.textContent = ''; }
                     if (submit) submit.disabled = false;
-                    imageInput.value = '';
+                    if (imageInput) imageInput.value = '';
                 };
-                const open = (nextActive) => {
+
+                const openEdit = (nextActive) => {
                     active = nextActive;
                     if (title) title.textContent = nextActive.label || 'Modificar contenido';
                     if (textWrap) textWrap.hidden = nextActive.type !== 'text';
@@ -1674,23 +1874,49 @@ if (!function_exists('agenduy_render_commerce')) {
                         textarea.value = nextActive.field?.querySelector('[data-public-edit-value]')?.textContent?.trim() || '';
                         requestAnimationFrame(() => textarea.focus());
                     }
-                    modal.hidden = false;
-                    requestAnimationFrame(() => modal.classList.add('is-visible'));
-                };
-                const showError = (message) => {
-                    if (!error) return;
-                    error.textContent = message || 'No se pudo guardar.';
-                    error.hidden = false;
+                    if (modal) {
+                        modal.hidden = false;
+                        requestAnimationFrame(() => modal.classList.add('is-visible'));
+                    }
                 };
 
-                document.addEventListener('click', (event) => {
+                // --- Modal Añadir (+) ---
+                const closeAdd = () => {
+                    if (modalAdd) {
+                        modalAdd.hidden = true;
+                        modalAdd.classList.remove('is-visible');
+                    }
+                    if (addError) { addError.hidden = true; addError.textContent = ''; }
+                    if (addSubmit) addSubmit.disabled = false;
+                    if (addContentText) addContentText.value = '';
+                    if (addMetaInput) addMetaInput.value = '';
+                };
+
+                const openAdd = (section, defaultType) => {
+                    if (addSectionInput) addSectionInput.value = section || 'general';
+                    if (addTypeSelect) {
+                        addTypeSelect.value = defaultType || (section === 'productos' ? 'filter' : 'title');
+                    }
+                    if (addContentText) {
+                        addContentText.value = '';
+                        requestAnimationFrame(() => addContentText.focus());
+                    }
+                    if (modalAdd) {
+                        modalAdd.hidden = false;
+                        requestAnimationFrame(() => modalAdd.classList.add('is-visible'));
+                    }
+                };
+
+                // --- Eventos Globales de Clic ---
+                document.addEventListener('click', async (event) => {
+                    // 1. Abrir Modal de Edición de Texto (Lápiz)
                     const textBtn = event.target.closest('[data-public-edit-trigger]');
                     if (textBtn) {
                         event.preventDefault();
                         event.stopPropagation();
                         const field = textBtn.closest('[data-public-edit-field]');
                         if (!field) return;
-                        open({
+                        openEdit({
                             type: 'text',
                             key: field.dataset.publicEditKey || '',
                             label: field.dataset.publicEditLabel || 'Modificar texto',
@@ -1698,39 +1924,29 @@ if (!function_exists('agenduy_render_commerce')) {
                         });
                         return;
                     }
-                    const imageBtn = event.target.closest('[data-public-edit-image]');
-                    if (imageBtn) {
+
+                    // 2. Abrir Modal de Añadir Elemento (+)
+                    const addBtn = event.target.closest('[data-public-add-trigger]');
+                    if (addBtn) {
                         event.preventDefault();
                         event.stopPropagation();
-                        open({
-                            type: 'image',
-                            key: imageBtn.dataset.publicEditImage || '',
-                            label: imageBtn.dataset.publicEditLabel || 'Modificar imagen'
-                        });
+                        const section = addBtn.getAttribute('data-section') || 'general';
+                        const defaultType = addBtn.getAttribute('data-default-type') || '';
+                        openAdd(section, defaultType);
+                        return;
                     }
-                });
-                modal.querySelectorAll('[data-public-edit-close]').forEach(btn => btn.addEventListener('click', close));
-                modal.addEventListener('click', event => {
-                    if (event.target === modal || event.target.classList.contains('public-edit-modal__backdrop')) {
-                        close();
-                    }
-                });
-                document.addEventListener('keydown', event => {
-                    if (event.key === 'Escape' && !modal.hidden) close();
-                });
 
-                form.addEventListener('submit', async (event) => {
-                    event.preventDefault();
-                    if (!active || !active.key) return;
-                    if (submit) submit.disabled = true;
-                    if (error) {
-                        error.hidden = true;
-                        error.textContent = '';
-                    }
-                    try {
-                        let response;
-                        if (active.type === 'text') {
-                            response = await fetch(cfg.endpoint, {
+                    // 3. Toggle Visibilidad (Ojito)
+                    const eyeBtn = event.target.closest('[data-public-toggle-visibility]');
+                    if (eyeBtn) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const key = eyeBtn.getAttribute('data-key') || '';
+                        if (!key) return;
+
+                        eyeBtn.disabled = true;
+                        try {
+                            const res = await fetch(cfg.endpoint, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -1738,56 +1954,240 @@ if (!function_exists('agenduy_render_commerce')) {
                                     'Accept': 'application/json'
                                 },
                                 body: JSON.stringify({
-                                    action: 'save_text',
+                                    action: 'toggle_visibility',
                                     slug: cfg.slug || commerceSlug,
-                                    key: active.key,
-                                    value: textarea.value.trim()
+                                    key: key
                                 })
                             });
-                        } else {
-                            const file = imageInput.files && imageInput.files[0];
-                            if (!file) {
-                                showError('Elegí una imagen.');
-                                if (submit) submit.disabled = false;
+                            const data = await res.json().catch(() => null);
+                            eyeBtn.disabled = false;
+                            if (!res.ok || !data || !data.ok) {
+                                showPublicToast(data && data.error ? data.error : 'Error al cambiar visibilidad.', 'error');
                                 return;
                             }
-                            const data = new FormData();
-                            data.append('action', 'save_image');
-                            data.append('slug', cfg.slug || commerceSlug);
-                            data.append('key', active.key);
-                            data.append('image', file);
-                            response = await fetch(cfg.endpoint, {
-                                method: 'POST',
-                                headers: { 'X-CSRF-Token': cfg.csrf || '', 'Accept': 'application/json' },
-                                body: data
-                            });
-                        }
-                        const json = await response.json().catch(() => null);
-                        if (!response.ok || !json || !json.ok) {
-                            throw new Error(json && json.error ? json.error : 'No se pudo guardar.');
-                        }
-                        if (json.version) {
-                            setPublicContentVersion(json.version);
-                        }
-                        if (active.type === 'text') {
-                            const target = active.field?.querySelector('[data-public-edit-value]');
-                            if (target) target.textContent = json.value || '';
-                        } else {
-                            const img = document.querySelector('img[data-public-edit-image-preview="' + cssEscape(active.key) + '"]');
-                            if (img && json.url) {
-                                img.src = json.url;
+                            if (data.version) setPublicContentVersion(data.version);
+
+                            const isHiddenNow = data.hidden === true;
+                            const field = eyeBtn.closest('[data-public-edit-field]');
+                            const icon = eyeBtn.querySelector('i');
+
+                            if (isHiddenNow) {
+                                eyeBtn.classList.add('is-hidden');
+                                if (icon) icon.className = 'bx bx-hide';
+                                eyeBtn.title = 'Mostrar en la web';
+                                if (field) {
+                                    field.classList.add('public-element--hidden');
+                                    if (!field.querySelector('.public-hidden-badge')) {
+                                        const badge = document.createElement('span');
+                                        badge.className = 'public-hidden-badge';
+                                        badge.title = 'Oculto para los visitantes de la web';
+                                        badge.innerHTML = '<i class="bx bx-hide"></i> Oculto';
+                                        field.appendChild(badge);
+                                    }
+                                }
+                                showPublicToast('Elemento ocultado para visitantes.', 'info');
                             } else {
-                                window.location.reload();
+                                eyeBtn.classList.remove('is-hidden');
+                                if (icon) icon.className = 'bx bx-show';
+                                eyeBtn.title = 'Ocultar en la web';
+                                if (field) {
+                                    field.classList.remove('public-element--hidden');
+                                    const badge = field.querySelector('.public-hidden-badge');
+                                    if (badge) badge.remove();
+                                }
+                                showPublicToast('Elemento visible en la web.', 'success');
+                            }
+                        } catch (err) {
+                            eyeBtn.disabled = false;
+                            showPublicToast('Error de conexión.', 'error');
+                        }
+                        return;
+                    }
+
+                    // 4. Eliminar Elemento Personalizado
+                    const delBtn = event.target.closest('[data-public-delete-elem]');
+                    if (delBtn) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!confirm('¿Seguro que deseas eliminar este elemento?')) return;
+                        const section = delBtn.getAttribute('data-section') || '';
+                        const id = delBtn.getAttribute('data-id') || '';
+                        if (!id) return;
+                        try {
+                            const res = await fetch(cfg.endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': cfg.csrf || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    action: 'delete_element',
+                                    slug: cfg.slug || commerceSlug,
+                                    section: section,
+                                    id: id
+                                })
+                            });
+                            const data = await res.json().catch(() => null);
+                            if (!res.ok || !data || !data.ok) {
+                                showPublicToast(data && data.error ? data.error : 'No se pudo eliminar.', 'error');
                                 return;
                             }
+                            if (data.version) setPublicContentVersion(data.version);
+                            const elemBox = delBtn.closest('.public-custom-elem');
+                            if (elemBox) elemBox.remove();
+                            showPublicToast('Elemento eliminado.', 'info');
+                        } catch (_) {
+                            showPublicToast('Error de conexión.', 'error');
                         }
-                        showPublicToast('Contenido actualizado.', 'success');
-                        close();
-                    } catch (err) {
-                        showError(err && err.message ? err.message : 'No se pudo guardar.');
-                        if (submit) submit.disabled = false;
+                        return;
+                    }
+
+                    // 5. Imagen Flotante
+                    const imageBtn = event.target.closest('[data-public-edit-image]');
+                    if (imageBtn) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openEdit({
+                            type: 'image',
+                            key: imageBtn.dataset.publicEditImage || '',
+                            label: imageBtn.dataset.publicEditLabel || 'Modificar imagen'
+                        });
                     }
                 });
+
+                // Cierres de Modales
+                if (modal) {
+                    modal.querySelectorAll('[data-public-edit-close]').forEach(b => b.addEventListener('click', closeEdit));
+                    modal.addEventListener('click', e => { if (e.target === modal || e.target.classList.contains('public-edit-modal__backdrop')) closeEdit(); });
+                }
+                if (modalAdd) {
+                    modalAdd.querySelectorAll('[data-public-add-close]').forEach(b => b.addEventListener('click', closeAdd));
+                    modalAdd.addEventListener('click', e => { if (e.target === modalAdd || e.target.classList.contains('public-edit-modal__backdrop')) closeAdd(); });
+                }
+                document.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') { closeEdit(); closeAdd(); }
+                });
+
+                // Enviar Formulario de Edición (Lápiz)
+                if (form) {
+                    form.addEventListener('submit', async (event) => {
+                        event.preventDefault();
+                        if (!active || !active.key) return;
+                        if (submit) submit.disabled = true;
+                        if (error) { error.hidden = true; error.textContent = ''; }
+                        try {
+                            let response;
+                            if (active.type === 'text') {
+                                response = await fetch(cfg.endpoint, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-Token': cfg.csrf || '',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        action: 'save_text',
+                                        slug: cfg.slug || commerceSlug,
+                                        key: active.key,
+                                        value: textarea.value.trim()
+                                    })
+                                });
+                            } else {
+                                const file = imageInput.files && imageInput.files[0];
+                                if (!file) {
+                                    if (error) { error.textContent = 'Elegí una imagen.'; error.hidden = false; }
+                                    if (submit) submit.disabled = false;
+                                    return;
+                                }
+                                const data = new FormData();
+                                data.append('action', 'save_image');
+                                data.append('slug', cfg.slug || commerceSlug);
+                                data.append('key', active.key);
+                                data.append('image', file);
+                                response = await fetch(cfg.endpoint, {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-Token': cfg.csrf || '', 'Accept': 'application/json' },
+                                    body: data
+                                });
+                            }
+                            const json = await response.json().catch(() => null);
+                            if (!response.ok || !json || !json.ok) {
+                                throw new Error(json && json.error ? json.error : 'No se pudo guardar.');
+                            }
+                            if (json.version) setPublicContentVersion(json.version);
+                            if (active.type === 'text') {
+                                const target = active.field?.querySelector('[data-public-edit-value]');
+                                if (target) target.textContent = json.value || '';
+                            } else {
+                                const img = document.querySelector('img[data-public-edit-image-preview="' + cssEscape(active.key) + '"]');
+                                if (img && json.url) {
+                                    img.src = json.url;
+                                } else {
+                                    window.location.reload();
+                                    return;
+                                }
+                            }
+                            showPublicToast('Contenido actualizado.', 'success');
+                            closeEdit();
+                        } catch (err) {
+                            if (error) { error.textContent = err && err.message ? err.message : 'No se pudo guardar.'; error.hidden = false; }
+                            if (submit) submit.disabled = false;
+                        }
+                    });
+                }
+
+                // Enviar Formulario de Añadir Elemento (+)
+                if (formAdd) {
+                    formAdd.addEventListener('submit', async (event) => {
+                        event.preventDefault();
+                        const section = addSectionInput ? addSectionInput.value.trim() : 'general';
+                        const type = addTypeSelect ? addTypeSelect.value.trim() : 'filter';
+                        let content = addContentText ? addContentText.value.trim() : '';
+                        const meta = addMetaInput ? addMetaInput.value.trim() : '';
+
+                        if (!content) return;
+
+                        // Si es filtro, formatear siempre en Mayúscula inicial (Title Case)
+                        if (type === 'filter') {
+                            content = content.replace(/\w\S*/g, (w) => (w.charAt(0).toUpperCase() + w.substr(1).toLowerCase()));
+                        }
+
+                        if (addSubmit) addSubmit.disabled = true;
+                        if (addError) { addError.hidden = true; addError.textContent = ''; }
+
+                        try {
+                            const res = await fetch(cfg.endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': cfg.csrf || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    action: 'add_element',
+                                    slug: cfg.slug || commerceSlug,
+                                    section: section,
+                                    type: type,
+                                    content: content,
+                                    meta: meta
+                                })
+                            });
+                            const json = await res.json().catch(() => null);
+                            if (!res.ok || !json || !json.ok) {
+                                throw new Error(json && json.error ? json.error : 'No se pudo añadir el elemento.');
+                            }
+                            if (json.version) setPublicContentVersion(json.version);
+                            showPublicToast('Elemento añadido correctamente.', 'success');
+                            closeAdd();
+                            // Recargar para renderizar el nuevo elemento en su ubicación exacta
+                            setTimeout(() => window.location.reload(), 300);
+                        } catch (err) {
+                            if (addError) { addError.textContent = err && err.message ? err.message : 'Error al añadir.'; addError.hidden = false; }
+                            if (addSubmit) addSubmit.disabled = false;
+                        }
+                    });
+                }
             })();
 
             (function showMercadoPagoReturn() {

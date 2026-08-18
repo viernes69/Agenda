@@ -52,6 +52,12 @@ try {
     if (!is_array($content['images'] ?? null)) {
         $content['images'] = [];
     }
+    if (!is_array($content['hidden'] ?? null)) {
+        $content['hidden'] = [];
+    }
+    if (!is_array($content['custom'] ?? null)) {
+        $content['custom'] = [];
+    }
 
     $action = strtolower(trim((string)($_POST['action'] ?? '')));
     if ($action === '') {
@@ -91,6 +97,87 @@ try {
             'key' => $key,
             'path' => $stored,
             'url' => appendRevision($url, (string)($content['version'] ?? '')),
+            'version' => (string)($content['version'] ?? ''),
+        ]);
+    }
+
+    if ($action === 'toggle_visibility') {
+        $json = jsonPayload();
+        $key = normalizeKey((string)($json['key'] ?? $_POST['key'] ?? ''));
+        if ($key === '') {
+            throw new InvalidArgumentException('Falta la clave del elemento.');
+        }
+        $currentHidden = !empty($content['hidden'][$key]);
+        $nextHidden = !$currentHidden;
+        if ($nextHidden) {
+            $content['hidden'][$key] = true;
+        } else {
+            unset($content['hidden'][$key]);
+        }
+        touchPublicContent($content, 'visibility');
+        CommerceSettings::set($commerceId, 'public_content', $content);
+        respond([
+            'ok' => true,
+            'type' => 'visibility',
+            'key' => $key,
+            'hidden' => $nextHidden,
+            'version' => (string)($content['version'] ?? ''),
+        ]);
+    }
+
+    if ($action === 'add_element') {
+        $json = jsonPayload();
+        $section = normalizeKey((string)($json['section'] ?? $_POST['section'] ?? 'general'));
+        $type = strtolower(trim((string)($json['type'] ?? $_POST['type'] ?? 'filter')));
+        $contentVal = trim((string)($json['content'] ?? $_POST['content'] ?? ''));
+        $metaVal = trim((string)($json['meta'] ?? $_POST['meta'] ?? ''));
+
+        if ($contentVal === '') {
+            throw new InvalidArgumentException('El contenido del elemento es obligatorio.');
+        }
+
+        if (!isset($content['custom'][$section]) || !is_array($content['custom'][$section])) {
+            $content['custom'][$section] = [];
+        }
+
+        $elementId = 'elem_' . substr(str_replace('.', '', (string)microtime(true)), -6);
+        $newElement = [
+            'id' => $elementId,
+            'type' => $type, // 'filter', 'title', 'subtitle', 'button', 'stat'
+            'content' => $contentVal,
+            'meta' => $metaVal,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+        $content['custom'][$section][] = $newElement;
+        touchPublicContent($content, 'custom');
+        CommerceSettings::set($commerceId, 'public_content', $content);
+        respond([
+            'ok' => true,
+            'type' => 'add_element',
+            'section' => $section,
+            'element' => $newElement,
+            'version' => (string)($content['version'] ?? ''),
+        ]);
+    }
+
+    if ($action === 'delete_element') {
+        $json = jsonPayload();
+        $section = normalizeKey((string)($json['section'] ?? $_POST['section'] ?? ''));
+        $elementId = trim((string)($json['id'] ?? $_POST['id'] ?? ''));
+
+        if (isset($content['custom'][$section]) && is_array($content['custom'][$section])) {
+            $content['custom'][$section] = array_values(array_filter(
+                $content['custom'][$section],
+                static fn($el): bool => is_array($el) && ($el['id'] ?? '') !== $elementId
+            ));
+            touchPublicContent($content, 'custom');
+            CommerceSettings::set($commerceId, 'public_content', $content);
+        }
+        respond([
+            'ok' => true,
+            'type' => 'delete_element',
+            'section' => $section,
+            'id' => $elementId,
             'version' => (string)($content['version'] ?? ''),
         ]);
     }

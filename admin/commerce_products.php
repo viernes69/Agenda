@@ -147,7 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'save_product') {
         $idProduct = (int)($_POST['id_product'] ?? 0);
         $nombre = trim((string)($_POST['nombre'] ?? ''));
-        $tipo = trim((string)($_POST['tipo'] ?? ''));
+        $tipoRaw = trim((string)($_POST['tipo'] ?? ''));
+        $tipo = $tipoRaw !== '' ? mb_convert_case($tipoRaw, MB_CASE_TITLE, 'UTF-8') : 'General';
         $precio = max(0.0, (float)($_POST['precio'] ?? 0));
         $descuento = max(0.0, min(100.0, (float)($_POST['descuento_porcentaje'] ?? 0)));
         $etiqueta = trim((string)($_POST['etiqueta_venta'] ?? ''));
@@ -358,7 +359,7 @@ foreach ($rawProducts as $idx => $prodRow) {
     $pName = trim((string)($prodRow['Nombre'] ?? ''));
     if ($pId === null || $pId === '' || $pName === '') continue;
 
-    $tipo = trim((string)($prodRow['Tipo'] ?? 'General'));
+    $tipo = mb_convert_case(trim((string)($prodRow['Tipo'] ?? 'General')), MB_CASE_TITLE, 'UTF-8');
     if ($tipo !== '' && !in_array($tipo, $tipos, true)) {
         $tipos[] = $tipo;
     }
