@@ -274,8 +274,33 @@ if (!function_exists('agenduy_render_commerce')) {
         $logo = (string)($commerce['logo'] ?? '');
         $currencySymbol = (string)($moneda['simbolo'] ?? '$');
         $currencyDecimals = max(0, min(4, (int)($moneda['decimales'] ?? 0)));
-        $seoTitle = trim((string)($seo['title'] ?? '')) ?: $titulo . ' · Reservas online';
-        $seoDescription = trim((string)($seo['description'] ?? '')) ?: mb_substr($descripcion, 0, 160, 'UTF-8');
+
+        $commerceId = (int)($commerce['id_commerce'] ?? 0);
+        $rawLogo = trim((string)($logo !== '' ? $logo : ($infoBarberia['logo'] ?? ($infoBarberia['imagen'] ?? ($infoBarberia['Logo'] ?? '')))));
+        $logoUrl = '';
+        if ($rawLogo !== '') {
+            if (preg_match('#^https?://#i', $rawLogo)) {
+                $logoUrl = $rawLogo;
+            } else {
+                $logoUrl = CommerceStorage::publicUrl($commerceId, $slug, $rawLogo);
+                if ($logoUrl === '') {
+                    $logoUrl = url($slug . '/' . ltrim($rawLogo, '/'));
+                }
+            }
+        }
+        $hasLogo = $logoUrl !== '';
+
+        $commerceTagline = $slogan !== '' ? $slogan : ($isStoreMode ? 'Tienda online' : 'Reservas online');
+        $rawSeoTitle = trim((string)($seo['title'] ?? ''));
+        $isGenericTitle = $rawSeoTitle === '' || $rawSeoTitle === 'Agenduy · Reservas online' || $rawSeoTitle === 'Tienda online' || $rawSeoTitle === 'Reservas online' || str_contains($rawSeoTitle, '· Reservas online');
+        $seoTitle = !$isGenericTitle ? $rawSeoTitle : ($titulo . ' | ' . $commerceTagline . ' - Agendarte');
+
+        $rawSeoDesc = trim((string)($seo['description'] ?? ''));
+        $isGenericDesc = $rawSeoDesc === '' || $rawSeoDesc === 'Reserva tu turno online.' || $rawSeoDesc === 'Explorá el catálogo y pedí por WhatsApp.' || $rawSeoDesc === 'Explora los productos disponibles y consulta al comercio para comprar.';
+        $seoDescription = !$isGenericDesc ? $rawSeoDesc : ($slogan !== '' ? ($slogan . ' · ' . $aboutDescription) : $aboutDescription);
+        $seoDescription = mb_substr($seoDescription, 0, 180, 'UTF-8');
+
+        $commerceCanonicalUrl = CommercePanel::publicUrlForSlug($slug);
 
         $productsForJs = [];
         if ($showProducts) {
@@ -316,21 +341,6 @@ if (!function_exists('agenduy_render_commerce')) {
         }
 
         $initial = mb_substr($titulo, 0, 1, 'UTF-8');
-
-        $commerceId = (int)($commerce['id_commerce'] ?? 0);
-        $rawLogo = trim((string)($logo !== '' ? $logo : ($infoBarberia['logo'] ?? ($infoBarberia['imagen'] ?? ($infoBarberia['Logo'] ?? '')))));
-        $logoUrl = '';
-        if ($rawLogo !== '') {
-            if (preg_match('#^https?://#i', $rawLogo)) {
-                $logoUrl = $rawLogo;
-            } else {
-                $logoUrl = CommerceStorage::publicUrl($commerceId, $slug, $rawLogo);
-                if ($logoUrl === '') {
-                    $logoUrl = url($slug . '/' . ltrim($rawLogo, '/'));
-                }
-            }
-        }
-        $hasLogo = $logoUrl !== '';
 
         $tenantAssetUrl = static function (string $relative) use ($commerceId, $slug): string {
             return CommerceStorage::publicUrl($commerceId, $slug, $relative);
@@ -608,6 +618,22 @@ if (!function_exists('agenduy_render_commerce')) {
         } catch (\Throwable $e) {
             error_log('[commerce_view.dlocal] ' . $e->getMessage());
         }
+
+        $customOgImage = trim((string)($seo['og_image'] ?? ''));
+        $hasCustomOgImage = $customOgImage !== '' && $customOgImage !== 'src/media/logo/og-image.png';
+
+        $ogImageUrl = '';
+        if ($hasCustomOgImage) {
+            $ogImageUrl = preg_match('#^https?://#i', $customOgImage) ? $customOgImage : url($customOgImage);
+        } elseif ($hasLogo && $logoUrl !== '') {
+            $ogImageUrl = preg_match('#^https?://#i', $logoUrl) ? $logoUrl : url($logoUrl);
+        } elseif (!empty($heroImageUrl)) {
+            $ogImageUrl = preg_match('#^https?://#i', $heroImageUrl) ? $heroImageUrl : url($heroImageUrl);
+        } elseif (!empty($coverImageUrl)) {
+            $ogImageUrl = preg_match('#^https?://#i', $coverImageUrl) ? $coverImageUrl : url($coverImageUrl);
+        } else {
+            $ogImageUrl = url('src/media/logo/logo-icon.png');
+        }
         ?>
         <!doctype html>
         <html lang="es">
@@ -620,12 +646,23 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if (!empty($seo['keywords'])): ?>
         <meta name="keywords" content="<?= htmlspecialchars(implode(', ', (array)$seo['keywords']), ENT_QUOTES, 'UTF-8') ?>">
         <?php endif; ?>
-        <?php if (!empty($seo['canonical'])): ?>
-        <link rel="canonical" href="<?= htmlspecialchars((string)$seo['canonical'], ENT_QUOTES, 'UTF-8') ?>">
-        <?php endif; ?>
-        <?php if (!empty($seo['og_image'])): ?>
-        <meta property="og:image" content="<?= htmlspecialchars(url((string)$seo['og_image']), ENT_QUOTES, 'UTF-8') ?>">
-        <?php endif; ?>
+        <link rel="canonical" href="<?= htmlspecialchars(!empty($seo['canonical']) ? (string)$seo['canonical'] : $commerceCanonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+
+        <!-- Open Graph / WhatsApp / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="<?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?>">
+        <meta property="og:title" content="<?= htmlspecialchars($seoTitle, ENT_QUOTES, 'UTF-8') ?>">
+        <meta property="og:description" content="<?= htmlspecialchars($seoDescription, ENT_QUOTES, 'UTF-8') ?>">
+        <meta property="og:url" content="<?= htmlspecialchars($commerceCanonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+        <meta property="og:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES, 'UTF-8') ?>">
+        <meta property="og:image:alt" content="<?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?>">
+
+        <!-- Twitter / X Cards -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="<?= htmlspecialchars($seoTitle, ENT_QUOTES, 'UTF-8') ?>">
+        <meta name="twitter:description" content="<?= htmlspecialchars($seoDescription, ENT_QUOTES, 'UTF-8') ?>">
+        <meta name="twitter:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES, 'UTF-8') ?>">
+
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -635,8 +672,8 @@ if (!function_exists('agenduy_render_commerce')) {
         <?php if ($hasDlocalPlans): ?>
         <link rel="stylesheet" href="<?= htmlspecialchars(url('public/assets/css/dlocal-plans.css'), ENT_QUOTES, 'UTF-8') ?>">
         <?php endif; ?>
-        <link rel="icon" type="image/png" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
-        <link rel="apple-touch-icon" href="<?= htmlspecialchars(AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="icon" type="image/png" href="<?= htmlspecialchars($hasLogo ? $logoUrl : AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
+        <link rel="apple-touch-icon" href="<?= htmlspecialchars($hasLogo ? $logoUrl : AdminBrand::faviconUrl(), ENT_QUOTES, 'UTF-8') ?>">
         <link rel="manifest" href="<?= htmlspecialchars(url('template/manifest.webmanifest?v=' . $manifestVer), ENT_QUOTES, 'UTF-8') ?>">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1041,6 +1078,9 @@ if (!function_exists('agenduy_render_commerce')) {
                         $catCount = count(array_filter($localProducts, static function($p) use ($cat) {
                             return mb_convert_case(trim((string)($p['Tipo'] ?? '')), MB_CASE_TITLE, 'UTF-8') === $cat;
                         }));
+                        if ($catCount === 0 && !$canEditSite) {
+                            continue;
+                        }
                         ?>
                         <button type="button" class="prod-filter-btn" data-filter-category="<?= htmlspecialchars(mb_strtolower($cat, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>">
                             <?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?><?= $catCount > 0 ? ' (' . $catCount . ')' : '' ?>
@@ -1053,8 +1093,49 @@ if (!function_exists('agenduy_render_commerce')) {
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
-                <div class="prod-grid">
-                    <?php foreach ($localProducts as $p):
+
+                <div class="prod-toolbar" data-prod-toolbar>
+                    <div class="prod-search-box">
+                        <i class="bx bx-search prod-search-icon" aria-hidden="true"></i>
+                        <input type="search" id="prod-live-search" class="prod-search-input" placeholder="Buscar productos por nombre, categoría o detalle..." autocomplete="off" aria-label="Buscar productos">
+                        <button type="button" id="prod-search-clear" class="prod-search-clear" style="display:none;" aria-label="Limpiar búsqueda">&times;</button>
+                    </div>
+
+                    <div class="prod-toolbar-controls">
+                        <div class="prod-sort-box">
+                            <label for="prod-sort-select" class="prod-sort-label">
+                                <i class="bx bx-sort-alt-2" aria-hidden="true"></i> Ordenar:
+                            </label>
+                            <select id="prod-sort-select" class="prod-sort-select" aria-label="Ordenar productos">
+                                <option value="featured">Destacados / Recomendados</option>
+                                <option value="price-asc">Menor a mayor precio</option>
+                                <option value="price-desc">Mayor a menor precio</option>
+                                <option value="discount-desc">Mayor descuento</option>
+                                <option value="name-asc">Nombre A - Z</option>
+                                <option value="name-desc">Nombre Z - A</option>
+                            </select>
+                        </div>
+
+                        <div class="prod-view-toggle" role="group" aria-label="Modo de vista">
+                            <button type="button" class="prod-view-btn is-active" data-view="grid" title="Vista en cuadrícula" aria-label="Vista cuadrícula">
+                                <i class="bx bx-grid-alt" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="prod-view-btn" data-view="list" title="Vista en lista" aria-label="Vista lista">
+                                <i class="bx bx-list-ul" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prod-empty-state" id="prod-no-results" style="display:none;">
+                    <div class="prod-empty-state__icon"><i class="bx bx-search-alt" aria-hidden="true"></i></div>
+                    <h3>No se encontraron productos</h3>
+                    <p class="muted">Probá con otra palabra o limpiá los filtros activos.</p>
+                    <button type="button" class="btn btn--outline btn--sm" id="prod-reset-filters-btn">Limpiar búsqueda y filtros</button>
+                </div>
+
+                <div class="prod-grid" id="prod-grid-container">
+                    <?php foreach ($localProducts as $idx => $p):
                         $pId = (string)($p['ID_Product'] ?? '');
                         $pName = trim((string)($p['Nombre'] ?? 'Producto'));
                         $pTipo = trim((string)($p['Tipo'] ?? ''));
@@ -1066,18 +1147,26 @@ if (!function_exists('agenduy_render_commerce')) {
                         $pMedia = ProductCatalog::mediaForRow($p);
                         $pPrice = ProductCatalog::effectivePrice($pBasePrice, $pDiscount);
                         $hasMultiple = count($pMedia) > 1;
+                        $mediaJson = json_encode($pMedia, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
                     ?>
                     <article class="prod-card"
                         data-product-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-index="<?= $idx ?>"
                         data-product-name="<?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-category="<?= htmlspecialchars(mb_strtolower($pTipoTitle, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-category-title="<?= htmlspecialchars($pTipoTitle, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-price="<?= htmlspecialchars((string)$pPrice, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-original-price="<?= htmlspecialchars((string)$pBasePrice, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-discount="<?= htmlspecialchars((string)$pDiscount, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-sale-label="<?= htmlspecialchars($pSaleLabel, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-full-desc="<?= htmlspecialchars($pDesc, ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-points="<?= htmlspecialchars((string)($p['Puntos'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                        data-product-media="<?= htmlspecialchars($mediaJson, ENT_QUOTES, 'UTF-8') ?>"
                         data-product-variant="0"
                         data-product-variant-label="<?= htmlspecialchars((string)($pMedia[0]['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                         data-product-image="<?= htmlspecialchars(!empty($pMedia[0]['src']) ? $tenantAssetUrl((string)$pMedia[0]['src']) : '', ENT_QUOTES, 'UTF-8') ?>">
                         <?= $dashboardEditLink('productos', 'Modificar producto') ?>
-                        <div class="prod-card__media">
+                        <div class="prod-card__media" data-open-product-modal="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>" title="Ver detalles de <?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?>">
                             <?php if (!empty($pMedia)): ?>
                                 <div class="prod-gallery" data-gallery>
                                     <div class="prod-gallery__track" data-track>
@@ -1117,7 +1206,7 @@ if (!function_exists('agenduy_render_commerce')) {
                             <?php if ($pTipo !== ''): ?>
                                 <span class="prod-card__type"><?= htmlspecialchars($pTipo, ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
-                            <h3 class="prod-card__name"><?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?></h3>
+                            <h3 class="prod-card__name" data-open-product-modal="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>" style="cursor:pointer" title="Ver detalles"><?= htmlspecialchars($pName, ENT_QUOTES, 'UTF-8') ?></h3>
                             <?php if ($pDesc !== '' && $pDesc !== $pName): ?>
                                 <p class="prod-card__desc"><?= htmlspecialchars(mb_substr($pDesc, 0, 110, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
@@ -1314,6 +1403,79 @@ if (!function_exists('agenduy_render_commerce')) {
                 </div>
             </div>
         </footer>
+
+        <!-- Modal Detalle de Producto & Compartir -->
+        <div class="product-modal" id="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="prod-modal-title" hidden>
+            <div class="product-modal__dialog">
+                <button type="button" class="product-modal__close" data-close-product-modal aria-label="Cerrar">&times;</button>
+                <div class="product-modal__content">
+                    <div class="product-modal__media-col">
+                        <div class="product-modal__main-image" id="prod-modal-main-img-wrap">
+                            <img src="" alt="" id="prod-modal-main-img">
+                        </div>
+                        <div class="product-modal__thumbs" id="prod-modal-thumbs" style="display:none;"></div>
+                    </div>
+                    <div class="product-modal__details-col">
+                        <div class="product-modal__badges">
+                            <span class="product-modal__type" id="prod-modal-type"></span>
+                            <span class="prod-card__offer" id="prod-modal-badge" style="display:none;"></span>
+                        </div>
+                        <h2 class="product-modal__title" id="prod-modal-title"></h2>
+                        <div class="product-modal__price-block">
+                            <span class="product-modal__price-old" id="prod-modal-old-price" style="display:none;"></span>
+                            <strong class="product-modal__price" id="prod-modal-price"></strong>
+                        </div>
+                        <p class="product-modal__desc" id="prod-modal-desc"></p>
+                        
+                        <div class="product-modal__variants" id="prod-modal-variants-wrap" style="display:none;">
+                            <span class="product-modal__variants-label">Opciones disponibles:</span>
+                            <div class="product-modal__variants-list" id="prod-modal-variants-list"></div>
+                        </div>
+
+                        <div class="product-modal__actions" id="prod-modal-actions">
+                            <?php if ($cartEnabled): ?>
+                            <button type="button" class="btn btn--primary btn--lg" id="prod-modal-add-cart">
+                                <i class="bx bx-cart-add" aria-hidden="true"></i> Agregar al carrito
+                            </button>
+                            <?php elseif ($whatsappDigits !== ''): ?>
+                            <a class="btn btn--primary btn--lg" id="prod-modal-wa-btn" href="#" target="_blank" rel="noopener">
+                                <i class="bx bxl-whatsapp" aria-hidden="true"></i> Consultar por WhatsApp
+                            </a>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Botonera de Compartir en Redes -->
+                        <div class="product-modal__share">
+                            <span class="product-modal__share-title">
+                                <i class="bx bx-share-alt" aria-hidden="true"></i> Compartir este producto:
+                            </span>
+                            <div class="product-modal__share-buttons">
+                                <a href="#" target="_blank" rel="noopener" class="prod-share-btn prod-share-btn--whatsapp" id="prod-share-wa" title="Compartir en WhatsApp">
+                                    <i class="bx bxl-whatsapp" aria-hidden="true"></i> WhatsApp
+                                </a>
+                                <a href="#" target="_blank" rel="noopener" class="prod-share-btn prod-share-btn--facebook" id="prod-share-fb" title="Compartir en Facebook">
+                                    <i class="bx bxl-facebook" aria-hidden="true"></i> Facebook
+                                </a>
+                                <a href="#" target="_blank" rel="noopener" class="prod-share-btn prod-share-btn--twitter" id="prod-share-tw" title="Compartir en X / Twitter">
+                                    <i class="bx bxl-twitter" aria-hidden="true"></i> X
+                                </a>
+                                <a href="#" target="_blank" rel="noopener" class="prod-share-btn prod-share-btn--telegram" id="prod-share-tg" title="Compartir en Telegram">
+                                    <i class="bx bxl-telegram" aria-hidden="true"></i> Telegram
+                                </a>
+                                <button type="button" class="prod-share-btn prod-share-btn--copy" id="prod-share-copy" title="Copiar enlace directo">
+                                    <i class="bx bx-link" aria-hidden="true"></i> Copiar enlace
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prod-copy-toast" id="prod-copy-toast" role="status" aria-live="polite">
+            <i class="bx bx-check-circle" style="color:#10b981; font-size:1.2rem;"></i>
+            <span>¡Enlace del producto copiado al portapapeles!</span>
+        </div>
 
         <!-- Modal de reserva -->
         <div class="modal-bg" id="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-title">
@@ -1849,30 +2011,6 @@ if (!function_exists('agenduy_render_commerce')) {
                     ? window.CSS.escape.bind(window.CSS)
                     : (value) => String(value).replace(/["\\]/g, '\\$&');
                 let active = null;
-
-                // --- Lógica de Filtros de Productos (Disponible para todos los visitantes) ---
-                document.querySelectorAll('.prod-filter-btn').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        if (this.classList.contains('prod-filter-btn--add')) return;
-                        e.preventDefault();
-                        const filterCat = (this.getAttribute('data-filter-category') || 'all').toLowerCase().trim();
-                        document.querySelectorAll('.prod-filter-btn').forEach(b => {
-                            if (!b.classList.contains('prod-filter-btn--add')) b.classList.remove('is-active');
-                        });
-                        this.classList.add('is-active');
-
-                        document.querySelectorAll('.prod-card').forEach(card => {
-                            const cardCat = (card.getAttribute('data-product-category') || '').toLowerCase().trim();
-                            if (filterCat === 'all' || cardCat === filterCat) {
-                                card.style.display = '';
-                                card.style.opacity = '1';
-                            } else {
-                                card.style.display = 'none';
-                                card.style.opacity = '0';
-                            }
-                        });
-                    });
-                });
 
                 if (!cfg.enabled) return;
 
@@ -4064,10 +4202,15 @@ if (!function_exists('agenduy_render_commerce')) {
         })();
         </script>
         <script>
-        // Product gallery carousel
+        // Product gallery carousel & Catalog controller
         (function(){
             var currencySymbol = <?= json_encode($currencySymbol, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             var currencyDecimals = <?= (int)$currencyDecimals ?>;
+            var commerceTitle = <?= json_encode($titulo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            var commerceCanonical = <?= json_encode($commerceCanonicalUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            var whatsappDigits = <?= json_encode($whatsappDigits, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            var cartEnabled = <?= json_encode($cartEnabled) ?>;
+
             function moneyLabel(value) {
                 var num = Number(value);
                 if (!Number.isFinite(num)) num = 0;
@@ -4080,6 +4223,8 @@ if (!function_exists('agenduy_render_commerce')) {
                     return currencySymbol + num.toFixed(currencyDecimals);
                 }
             }
+
+            // In-card gallery slider
             document.querySelectorAll('[data-gallery]').forEach(function(gallery) {
                 var track = gallery.querySelector('[data-track]');
                 var prev = gallery.querySelector('[data-dir="-1"]');
@@ -4135,12 +4280,13 @@ if (!function_exists('agenduy_render_commerce')) {
                 syncProductVariant();
                 if (slides.length < 2) return;
 
-                if (prev) prev.addEventListener('click', function() { goTo(current - 1); });
-                if (next) next.addEventListener('click', function() { goTo(current + 1); });
+                if (prev) prev.addEventListener('click', function(e) { e.stopPropagation(); goTo(current - 1); });
+                if (next) next.addEventListener('click', function(e) { e.stopPropagation(); goTo(current + 1); });
 
                 if (dots) {
                     dots.querySelectorAll('.prod-gallery__dot').forEach(function(dot) {
-                        dot.addEventListener('click', function() {
+                        dot.addEventListener('click', function(e) {
+                            e.stopPropagation();
                             var idx = parseInt(this.getAttribute('data-slide'), 10);
                             if (!isNaN(idx)) goTo(idx);
                         });
@@ -4149,8 +4295,430 @@ if (!function_exists('agenduy_render_commerce')) {
 
                 gallery.setAttribute('data-gallery-ready', '1');
             });
-        })();
 
+            // Live search, Category filters, Sorting and View mode
+            var searchInput = document.getElementById('prod-live-search');
+            var searchClear = document.getElementById('prod-search-clear');
+            var sortSelect = document.getElementById('prod-sort-select');
+            var gridContainer = document.getElementById('prod-grid-container');
+            var emptyState = document.getElementById('prod-no-results');
+            var resetFiltersBtn = document.getElementById('prod-reset-filters-btn');
+            var viewBtns = document.querySelectorAll('.prod-view-btn');
+            var filterBtns = document.querySelectorAll('.prod-filter-btn');
+
+            var currentCategory = 'all';
+            var currentQuery = '';
+            var currentSort = 'featured';
+
+            function getCards() {
+                return Array.from(document.querySelectorAll('.prod-card'));
+            }
+
+            function applyFilterAndSort() {
+                var cards = getCards();
+                if (!cards.length) return;
+
+                var visibleCount = 0;
+                var query = (currentQuery || '').toLowerCase().trim();
+
+                cards.forEach(function(card) {
+                    var cat = (card.getAttribute('data-product-category') || '').toLowerCase().trim();
+                    var name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                    var desc = (card.getAttribute('data-product-full-desc') || '').toLowerCase();
+                    var tag = (card.getAttribute('data-product-sale-label') || '').toLowerCase();
+                    var type = (card.getAttribute('data-product-category-title') || '').toLowerCase();
+
+                    var matchesCat = (currentCategory === 'all' || cat === currentCategory);
+                    var matchesQuery = !query || name.includes(query) || desc.includes(query) || tag.includes(query) || type.includes(query);
+
+                    if (matchesCat && matchesQuery) {
+                        card.style.display = '';
+                        card.style.opacity = '1';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                        card.style.opacity = '0';
+                    }
+                });
+
+                if (emptyState) {
+                    emptyState.style.display = (visibleCount === 0) ? 'block' : 'none';
+                }
+
+                // Apply sorting on visible cards
+                if (gridContainer && visibleCount > 1) {
+                    var sorted = cards.slice().sort(function(a, b) {
+                        var pA = Number(a.getAttribute('data-product-price') || 0);
+                        var pB = Number(b.getAttribute('data-product-price') || 0);
+                        var nA = (a.getAttribute('data-product-name') || '').toLowerCase();
+                        var nB = (b.getAttribute('data-product-name') || '').toLowerCase();
+                        var dA = Number(a.getAttribute('data-product-discount') || 0);
+                        var dB = Number(b.getAttribute('data-product-discount') || 0);
+                        var iA = Number(a.getAttribute('data-product-index') || 0);
+                        var iB = Number(b.getAttribute('data-product-index') || 0);
+
+                        switch (currentSort) {
+                            case 'price-asc': return pA - pB;
+                            case 'price-desc': return pB - pA;
+                            case 'discount-desc': return dB - dA;
+                            case 'name-asc': return nA.localeCompare(nB, 'es');
+                            case 'name-desc': return nB.localeCompare(nA, 'es');
+                            case 'featured':
+                            default: return iA - iB;
+                        }
+                    });
+                    sorted.forEach(function(card) {
+                        gridContainer.appendChild(card);
+                    });
+                }
+            }
+
+            // Search input handlers
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    currentQuery = this.value;
+                    if (searchClear) searchClear.style.display = currentQuery ? 'flex' : 'none';
+                    applyFilterAndSort();
+                });
+            }
+
+            if (searchClear) {
+                searchClear.addEventListener('click', function() {
+                    if (searchInput) {
+                        searchInput.value = '';
+                        searchInput.focus();
+                    }
+                    currentQuery = '';
+                    searchClear.style.display = 'none';
+                    applyFilterAndSort();
+                });
+            }
+
+            // Sort select handler
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    currentSort = this.value;
+                    applyFilterAndSort();
+                });
+            }
+
+            // Category pills handler
+            filterBtns.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    if (this.classList.contains('prod-filter-btn--add')) return;
+                    e.preventDefault();
+                    currentCategory = (this.getAttribute('data-filter-category') || 'all').toLowerCase().trim();
+                    filterBtns.forEach(function(b) {
+                        if (!b.classList.contains('prod-filter-btn--add')) b.classList.remove('is-active');
+                    });
+                    this.classList.add('is-active');
+                    applyFilterAndSort();
+                });
+            });
+
+            // Reset filters button
+            if (resetFiltersBtn) {
+                resetFiltersBtn.addEventListener('click', function() {
+                    currentCategory = 'all';
+                    currentQuery = '';
+                    if (searchInput) searchInput.value = '';
+                    if (searchClear) searchClear.style.display = 'none';
+                    filterBtns.forEach(function(b) {
+                        if (!b.classList.contains('prod-filter-btn--add')) {
+                            b.classList.toggle('is-active', b.getAttribute('data-filter-category') === 'all');
+                        }
+                    });
+                    applyFilterAndSort();
+                });
+            }
+
+            // View mode toggle (grid vs list)
+            viewBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var mode = this.getAttribute('data-view') || 'grid';
+                    viewBtns.forEach(function(b) { b.classList.remove('is-active'); });
+                    this.classList.add('is-active');
+                    if (gridContainer) {
+                        gridContainer.classList.toggle('is-list-view', mode === 'list');
+                    }
+                });
+            });
+
+            // --- Modal Detalle de Producto & Multishare ---
+            var modal = document.getElementById('product-detail-modal');
+            var modalMainImg = document.getElementById('prod-modal-main-img');
+            var modalThumbs = document.getElementById('prod-modal-thumbs');
+            var modalType = document.getElementById('prod-modal-type');
+            var modalBadge = document.getElementById('prod-modal-badge');
+            var modalTitle = document.getElementById('prod-modal-title');
+            var modalPrice = document.getElementById('prod-modal-price');
+            var modalOldPrice = document.getElementById('prod-modal-old-price');
+            var modalDesc = document.getElementById('prod-modal-desc');
+            var modalVariantsWrap = document.getElementById('prod-modal-variants-wrap');
+            var modalVariantsList = document.getElementById('prod-modal-variants-list');
+            var modalAddCart = document.getElementById('prod-modal-add-cart');
+            var modalWaBtn = document.getElementById('prod-modal-wa-btn');
+            var copyToast = document.getElementById('prod-copy-toast');
+
+            var shareWa = document.getElementById('prod-share-wa');
+            var shareFb = document.getElementById('prod-share-fb');
+            var shareTw = document.getElementById('prod-share-tw');
+            var shareTg = document.getElementById('prod-share-tg');
+            var shareCopy = document.getElementById('prod-share-copy');
+
+            var activeModalCard = null;
+            var activeModalVariant = 0;
+            var activeModalMedia = [];
+
+            function showToast(msg) {
+                if (!copyToast) return;
+                if (msg) {
+                    var span = copyToast.querySelector('span');
+                    if (span) span.textContent = msg;
+                }
+                copyToast.classList.add('is-visible');
+                clearTimeout(copyToast._timeout);
+                copyToast._timeout = setTimeout(function() {
+                    copyToast.classList.remove('is-visible');
+                }, 2800);
+            }
+
+            function openProductModal(card) {
+                if (!card || !modal) return;
+                activeModalCard = card;
+                activeModalVariant = 0;
+
+                var id = card.getAttribute('data-product-id') || '';
+                var name = card.getAttribute('data-product-name') || 'Producto';
+                var type = card.getAttribute('data-product-category-title') || card.getAttribute('data-product-category') || 'General';
+                var desc = card.getAttribute('data-product-full-desc') || '';
+                var price = Number(card.getAttribute('data-product-price') || 0);
+                var origPrice = Number(card.getAttribute('data-product-original-price') || price);
+                var discount = Number(card.getAttribute('data-product-discount') || 0);
+                var saleLabel = card.getAttribute('data-product-sale-label') || '';
+                var mediaRaw = card.getAttribute('data-product-media') || '[]';
+                
+                try {
+                    activeModalMedia = JSON.parse(mediaRaw);
+                } catch (_) {
+                    activeModalMedia = [];
+                }
+                if (!Array.isArray(activeModalMedia)) activeModalMedia = [];
+
+                if (modalTitle) modalTitle.textContent = name;
+                if (modalType) modalType.textContent = type;
+                if (modalDesc) {
+                    modalDesc.textContent = desc;
+                    modalDesc.hidden = !desc;
+                }
+
+                if (modalBadge) {
+                    var badgeTxt = saleLabel !== '' ? saleLabel : (discount > 0 ? ('Oferta ' + discount + '%') : '');
+                    modalBadge.textContent = badgeTxt;
+                    modalBadge.style.display = badgeTxt ? 'inline-flex' : 'none';
+                }
+
+                if (modalPrice) modalPrice.textContent = moneyLabel(price);
+                if (modalOldPrice) {
+                    modalOldPrice.textContent = moneyLabel(origPrice);
+                    modalOldPrice.style.display = (discount > 0 && origPrice > price) ? 'inline' : 'none';
+                }
+
+                function updateModalVariant(idx) {
+                    activeModalVariant = idx;
+                    var mediaItem = activeModalMedia[idx];
+                    var vPrice = price;
+                    var vOrigPrice = origPrice;
+
+                    if (mediaItem) {
+                        var imgSrc = mediaItem.src ? (window.location.origin + '/' + String(mediaItem.src).replace(/^\/+/, '')) : (card.getAttribute('data-product-image') || '');
+                        if (modalMainImg) {
+                            modalMainImg.src = imgSrc;
+                            modalMainImg.alt = name + (mediaItem.label ? (' - ' + mediaItem.label) : '');
+                        }
+                        if (mediaItem.price !== null && mediaItem.price !== undefined && Number(mediaItem.price) > 0) {
+                            var raw = Number(mediaItem.price);
+                            vOrigPrice = raw;
+                            vPrice = discount > 0 ? (raw * (1 - (discount / 100))) : raw;
+                        }
+                    } else if (modalMainImg) {
+                        modalMainImg.src = card.getAttribute('data-product-image') || '';
+                        modalMainImg.alt = name;
+                    }
+
+                    if (modalPrice) modalPrice.textContent = moneyLabel(vPrice);
+                    if (modalOldPrice) {
+                        modalOldPrice.textContent = moneyLabel(vOrigPrice);
+                        modalOldPrice.style.display = (discount > 0 && vOrigPrice > vPrice) ? 'inline' : 'none';
+                    }
+
+                    if (modalThumbs) {
+                        modalThumbs.querySelectorAll('.product-modal__thumb').forEach(function(th, i) {
+                            th.classList.toggle('is-active', i === idx);
+                        });
+                    }
+                    if (modalVariantsList) {
+                        modalVariantsList.querySelectorAll('.product-modal__variant-btn').forEach(function(vb, i) {
+                            vb.classList.toggle('is-active', i === idx);
+                        });
+                    }
+                }
+
+                if (modalThumbs) {
+                    modalThumbs.innerHTML = '';
+                    if (activeModalMedia.length > 1) {
+                        modalThumbs.style.display = 'flex';
+                        activeModalMedia.forEach(function(m, i) {
+                            var th = document.createElement('div');
+                            th.className = 'product-modal__thumb' + (i === 0 ? ' is-active' : '');
+                            var img = document.createElement('img');
+                            img.src = m.src ? (window.location.origin + '/' + String(m.src).replace(/^\/+/, '')) : '';
+                            img.alt = m.label || ('Foto ' + (i + 1));
+                            th.appendChild(img);
+                            th.addEventListener('click', function() { updateModalVariant(i); });
+                            modalThumbs.appendChild(th);
+                        });
+                    } else {
+                        modalThumbs.style.display = 'none';
+                    }
+                }
+
+                if (modalVariantsWrap && modalVariantsList) {
+                    modalVariantsList.innerHTML = '';
+                    var hasVariantLabels = activeModalMedia.some(function(m){ return Boolean(m && m.label); });
+                    if (activeModalMedia.length > 1 && hasVariantLabels) {
+                        modalVariantsWrap.style.display = 'flex';
+                        activeModalMedia.forEach(function(m, i) {
+                            var vBtn = document.createElement('button');
+                            vBtn.type = 'button';
+                            vBtn.className = 'product-modal__variant-btn' + (i === 0 ? ' is-active' : '');
+                            vBtn.textContent = m.label || ('Opción ' + (i + 1));
+                            vBtn.addEventListener('click', function() { updateModalVariant(i); });
+                            modalVariantsList.appendChild(vBtn);
+                        });
+                    } else {
+                        modalVariantsWrap.style.display = 'none';
+                    }
+                }
+
+                updateModalVariant(0);
+
+                var productUrl = commerceCanonical ? (commerceCanonical.replace(/\/+$/, '') + '/#prod-' + encodeURIComponent(id)) : (window.location.href.split('#')[0] + '#prod-' + encodeURIComponent(id));
+                var shareText = '¡Mirá ' + name + ' en ' + commerceTitle + ' por ' + moneyLabel(price) + '!';
+                var encodedText = encodeURIComponent(shareText);
+                var encodedUrl = encodeURIComponent(productUrl);
+
+                if (shareWa) shareWa.href = 'https://api.whatsapp.com/send?text=' + encodedText + '%20' + encodedUrl;
+                if (shareFb) shareFb.href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodedUrl;
+                if (shareTw) shareTw.href = 'https://twitter.com/intent/tweet?text=' + encodedText + '&url=' + encodedUrl;
+                if (shareTg) shareTg.href = 'https://t.me/share/url?url=' + encodedUrl + '&text=' + encodedText;
+
+                if (shareCopy) {
+                    shareCopy.onclick = function(e) {
+                        e.preventDefault();
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(productUrl).then(function() {
+                                showToast('¡Enlace del producto copiado al portapapeles!');
+                            }).catch(function() {
+                                prompt('Copia el enlace de este producto:', productUrl);
+                            });
+                        } else {
+                            prompt('Copia el enlace de este producto:', productUrl);
+                        }
+                    };
+                }
+
+                if (modalWaBtn) {
+                    var waMsg = 'Hola! Quiero consultar por ' + name + ' (' + moneyLabel(price) + ') en ' + commerceTitle + ' ' + productUrl;
+                    modalWaBtn.href = 'https://wa.me/' + (whatsappDigits || '') + '?text=' + encodeURIComponent(waMsg);
+                }
+
+                if (modalAddCart) {
+                    modalAddCart.onclick = function() {
+                        var cardAddBtn = card.querySelector('[data-add-to-cart]');
+                        if (cardAddBtn) {
+                            cardAddBtn.click();
+                            showToast('¡Producto agregado al carrito!');
+                        }
+                        closeProductModal();
+                    };
+                }
+
+                modal.hidden = false;
+                requestAnimationFrame(function() {
+                    modal.classList.add('is-open');
+                    document.body.style.overflow = 'hidden';
+                    history.replaceState(null, '', '#prod-' + encodeURIComponent(id));
+                });
+            }
+
+            function closeProductModal() {
+                if (!modal) return;
+                modal.classList.remove('is-open');
+                document.body.style.overflow = '';
+                setTimeout(function() {
+                    modal.hidden = true;
+                    if (window.location.hash.startsWith('#prod-')) {
+                        history.replaceState(null, '', window.location.pathname + window.location.search);
+                    }
+                }, 200);
+            }
+
+            document.querySelectorAll('[data-close-product-modal]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeProductModal();
+                });
+            });
+
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) closeProductModal();
+                });
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal && !modal.hidden) {
+                    closeProductModal();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                var trigger = e.target.closest('[data-open-product-modal]');
+                if (trigger) {
+                    var pid = trigger.getAttribute('data-open-product-modal');
+                    var card = document.querySelector('.prod-card[data-product-id="' + pid + '"]') || trigger.closest('.prod-card');
+                    if (card) {
+                        openProductModal(card);
+                    }
+                }
+            });
+
+            function checkDirectProductLink() {
+                var hash = window.location.hash || '';
+                var pid = '';
+                if (hash.startsWith('#prod-')) {
+                    pid = decodeURIComponent(hash.replace('#prod-', ''));
+                } else {
+                    var params = new URLSearchParams(window.location.search);
+                    pid = params.get('prod') || params.get('p') || '';
+                }
+                if (pid) {
+                    var targetCard = document.querySelector('.prod-card[data-product-id="' + pid + '"]');
+                    if (targetCard) {
+                        setTimeout(function() { openProductModal(targetCard); }, 350);
+                    }
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', checkDirectProductLink);
+            } else {
+                checkDirectProductLink();
+            }
+        })();
+        </script>
+        <script>
         // PWA install prompt
         (function(){
             var installBtn = document.getElementById('install-app');
