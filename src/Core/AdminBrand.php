@@ -136,7 +136,7 @@ final class AdminBrand
         }
 
         $icon = htmlspecialchars(self::iconUrl(), ENT_QUOTES, 'UTF-8');
-        $brandLink = '<a href="commerce_dashboard.php">'
+        $brandLink = '<a href="commerce_panel.php">'
             . '<img src="' . $icon . '" alt="" class="topbar__brand-logo" width="30" height="30">'
             . '<span class="topbar__brand-text"><strong>Agendarte</strong> <span class="brand-uy">UY</span></span>'
             . '</a>';

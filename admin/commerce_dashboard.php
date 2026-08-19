@@ -29,6 +29,13 @@ if ($idCommerce <= 0) {
 $db = Database::getInstance();
 $commerce = $db->fetchOne('SELECT * FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
 if (!$commerce) { echo 'Comercio no encontrado.'; exit; }
+
+$slug = trim((string)($commerce['slug'] ?? ''));
+if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'resumen'), true, 302);
+    exit;
+}
+
 $commercePublicUrl = CommercePanel::publicUrlForSlug((string)$commerce['slug']);
 
 $plan = $db->fetchOne('SELECT * FROM memberships WHERE id_membership = :id', [':id' => $commerce['id_membership']]);

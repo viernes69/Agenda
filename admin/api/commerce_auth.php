@@ -51,5 +51,5 @@ if (($result['user']['role'] ?? '') !== 'commerce_admin') {
 echo json_encode([
     'ok' => true,
     'user' => $result['user'],
-    'redirect' => '/admin/commerce_dashboard.php',
+    'redirect' => Auth::dashboardUrl($result['user']) ?? \url('admin/commerce_panel.php'),
 ], JSON_UNESCAPED_UNICODE);

@@ -13,6 +13,7 @@ final class CentralCommerceData
      * @param array<string,mixed> $business
      * @param array<string,mixed> $schedule
      * @param list<array<string,mixed>> $services
+     * @param list<array<string,mixed>> $products
      */
     public static function provision(
         int $idCommerce,
@@ -21,7 +22,8 @@ final class CentralCommerceData
         array $business,
         array $schedule,
         array $services,
-        int $rubroId
+        int $rubroId,
+        array $products = []
     ): void {
         if (TenantConfig::useLegacyFolders()) {
             return;
@@ -66,10 +68,12 @@ final class CentralCommerceData
                 'timezone' => (string)($schedule['timezone'] ?? $commerce['timezone'] ?? 'America/Montevideo'),
                 'id_negocio' => $idCommerce,
                 'telefono' => (string)($business['telefono'] ?? $commerce['telefono'] ?? ''),
+                'tipo_comercio' => (string)($business['tipo_comercio'] ?? 'servicios'),
             ],
             $schedule,
             $services,
-            $rubroId
+            $rubroId,
+            $products
         );
 
         self::writeDatabase($idCommerce, $database);
@@ -114,6 +118,7 @@ final class CentralCommerceData
      * @param array<string,mixed> $business
      * @param array<string,mixed> $schedule
      * @param list<array<string,mixed>> $services
+     * @param list<array<string,mixed>> $products
      * @return array<string,mixed>
      */
     private static function buildDatabaseSnapshot(
@@ -122,7 +127,8 @@ final class CentralCommerceData
         array $business,
         array $schedule,
         array $services,
-        int $rubroId
+        int $rubroId,
+        array $products = []
     ): array {
         $preset = self::rubroPreset($rubroId);
         $adminId = (int)($owner['id_admin'] ?? 1);
@@ -167,6 +173,12 @@ final class CentralCommerceData
         $database['info_barberia'] = $info;
         $isStore = CommerceRegistrar::normalizeBusinessType((string)($business['tipo_comercio'] ?? 'servicios')) === 'tienda';
         $database['servicios'] = self::buildServicesDataset($services, !$isStore)[0];
+        [$productsTable, $productCategories] = CommerceRegistrar::buildProductsDataset($isStore ? $products : []);
+        $database['productos'] = $productsTable;
+        if ($productCategories !== []) {
+            $existingCategories = is_array($database['categorias'] ?? null) ? $database['categorias'] : [];
+            $database['categorias'] = self::mergeCategories($existingCategories, $productCategories);
+        }
         $database['barberos'] = [
             [
                 'ID_Barber' => null, 'Nombre' => null, 'Apellido' => null, 'Cedula' => null,
@@ -225,6 +237,20 @@ final class CentralCommerceData
             $records[1] = ['ID_Servicio' => 1, 'Nombre' => 'Servicio', 'Duracion' => 30, 'Estado' => 'Activo', 'Precio' => 0.0, 'Puntos' => null, 'Img_Link' => ''];
         }
         return [$records];
+    }
+
+    private static function mergeCategories(array $current, array $incoming): array
+    {
+        $merged = [];
+        foreach (array_merge($current, $incoming) as $category) {
+            $label = trim((string)$category);
+            if ($label !== '') {
+                $merged[$label] = true;
+            }
+        }
+        $labels = array_keys($merged);
+        sort($labels, SORT_NATURAL | SORT_FLAG_CASE);
+        return array_values($labels);
     }
 
     /**

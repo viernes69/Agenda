@@ -552,7 +552,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <th style="padding: 20px; text-align: center; width: 18%;">
               <div style="border: 2px solid #10b981; background: rgba(16, 185, 129, 0.05); padding: 12px; border-radius: 12px; display: inline-block; width: 100%;">
                 <div style="font-weight: 800; color: #10b981; font-size: 1.1rem; margin-bottom: 4px;">Agendarte UY</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">(Plan Profesional)<br>$1.190 UYU/mes</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">(Plan Profesional)<br>$599 UYU/mes</div>
               </div>
             </th>
             <th style="padding: 20px; text-align: center; width: 18%;">
@@ -634,37 +634,13 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
           </tr>
           <!-- ROW 8 -->
           <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Membresías recurrentes</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
-          </tr>
-          <!-- ROW 9 -->
-          <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Comisiones profesionales</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
-          </tr>
-          <!-- ROW 10 -->
-          <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Múltiples sucursales</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
-          </tr>
-          <!-- ROW 11 -->
-          <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">100% en Español</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
-          <!-- ROW 12 -->
+          <!-- ROW 9 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Soporte por WhatsApp</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
@@ -672,7 +648,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
-          <!-- ROW 13 -->
+          <!-- ROW 10 -->
           <tr>
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Precios en moneda local</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>

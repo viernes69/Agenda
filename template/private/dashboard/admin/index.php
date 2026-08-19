@@ -1461,7 +1461,7 @@ if ($commerceLogoRaw !== '') {
         <?php endif; ?>
         <a class="admin-link" href="#clientes">Clientes</a>
         <a class="admin-link" href="#productos">Productos</a>
-        <a class="admin-link" href="<?php echo e(\Agenduy\Core\CommercePanel::siteUrl('admin/commerce_plan.php')); ?>">Mi Plan</a>
+        <a class="admin-link" href="#resumen" data-plan-membership-open>Mi Plan</a>
         <a class="admin-link" href="#config">Configuración</a>
       </nav>
     </aside>
@@ -2921,6 +2921,5 @@ if ($commerceLogoRaw !== '') {
   <script src="<?php echo e(admin_panel_href('../src/js/admin/admin-live-refresh.js')); ?>"></script>
   </body>
   </html>
-
 
 

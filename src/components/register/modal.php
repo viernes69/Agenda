@@ -25,8 +25,8 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
         <header class="reg-modal__header">
           <div>
             <p class="reg-badge">Gratis Ilimitado</p>
-            <h3 id="modal-registro-title">Registra tu negocio con nosotros y comienza a agendar a tus clientes</h3>
-          <p class="reg-subtitle">Completa los datos en cuatro pasos para crear tu cuenta gratuita.</p>
+            <h3 id="modal-registro-title" data-reg-copy="title">Registra tu negocio con nosotros y comienza a agendar a tus clientes</h3>
+          <p class="reg-subtitle" data-reg-copy="subtitle">Completa los datos en cuatro pasos para crear tu cuenta gratuita.</p>
           <p class="reg-plan" data-reg-plan><?= $planDestacado ? 'Plan ' . htmlspecialchars($planDestacado['nombre'], ENT_QUOTES, 'UTF-8') . ' - ' . htmlspecialchars($planDestacado['moneda'], ENT_QUOTES, 'UTF-8') . ' ' . number_format((float)$planDestacado['precio'], 2) . '/mes' : 'Selecciona un rubro para ver el plan disponible.' ?></p>
           <p class="reg-plan-note"><i class="bx bx-credit-card"></i>No necesitas tarjeta de credito</p>
         </div>
@@ -62,7 +62,7 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
         </section>
 
         <section class="reg-step" data-step-panel="1" aria-labelledby="reg-step-2-title" hidden>
-          <h4 id="reg-step-2-title">Datos de tu Negocio</h4>
+          <h4 id="reg-step-2-title" data-reg-copy="business-step-title">Datos de tu Negocio</h4>
           <div class="reg-grid">
             <label class="reg-field reg-field--full">
               <span>Tel&eacute;fono</span>
@@ -79,12 +79,12 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
               </div>
               <small data-reg-phone-hint>Ingresá un celular uruguayo (09 + 7 d&iacute;gitos)</small>
             </label>
-            <label class="reg-field"><span>Nombre del Negocio</span><input type="text" name="business_name" required></label>
+            <label class="reg-field"><span data-reg-copy="business-name-label">Nombre del Negocio</span><input type="text" name="business_name" data-reg-business-name required></label>
             <label class="reg-field">
               <span>Tipo de negocio</span>
               <select name="business_type" data-reg-business-type required>
-                <option value="servicios" selected>Servicios con reservas</option>
-                <option value="tienda">Tienda / catalogo</option>
+                <option value="servicios" selected>Agenda digital / servicios</option>
+                <option value="tienda">Tienda online / catalogo</option>
               </select>
             </label>
             <label class="reg-field"><span>RUT <small>(opcional)</small></span><input type="text" name="business_rut"></label>
@@ -108,11 +108,15 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
             </label>
             <label class="reg-field"><span>Calle y n&uacute;mero</span><input type="text" name="business_street" required></label>
             <label class="reg-field reg-field--full">
-              <span>Rubro</span>
+              <span data-reg-copy="business-rubro-label">Rubro</span>
               <select name="business_rubro" required>
                 <option value="">Selecciona un rubro</option>
                 <?php foreach ($rubros as $r): ?>
-                  <option value="<?= (int)$r['id_rubro'] ?>"><?= htmlspecialchars($r['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
+                  <option
+                    value="<?= (int)$r['id_rubro'] ?>"
+                    data-rubro-tipo="<?= htmlspecialchars((string)($r['tipo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                    data-rubro-nombre="<?= htmlspecialchars((string)($r['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                  ><?= htmlspecialchars($r['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
               </select>
             </label>
@@ -125,10 +129,10 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
           <div class="reg-collection-card">
             <div class="admin-form reg-service-form" data-reg-service-form>
               <div class="admin-form__grid">
-                <label class="admin-form__field"><span class="admin-form__label">Nombre</span>
+                <label class="admin-form__field"><span class="admin-form__label" data-reg-service-label="nombre">Nombre</span>
                   <input type="text" data-reg-service-field="Nombre" maxlength="120" placeholder="Ej: Corte cl&aacute;sico" required>
                 </label>
-                <label class="admin-form__field"><span class="admin-form__label">Duraci&oacute;n</span>
+                <label class="admin-form__field" data-reg-offering-duration><span class="admin-form__label" data-reg-service-label="duracion">Duraci&oacute;n</span>
                   <select data-reg-service-field="Duracion" required>
                     <option value="">Selecciona duraci&oacute;n</option>
                     <?php foreach ($serviceDurations as $min): ?>
@@ -136,9 +140,12 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
                     <?php endforeach; ?>
                   </select>
                 </label>
+                <label class="admin-form__field" data-reg-offering-category hidden><span class="admin-form__label" data-reg-service-label="categoria">Categor&iacute;a</span>
+                  <input type="text" data-reg-service-field="Categoria" maxlength="80" placeholder="Ej: Indumentaria" disabled>
+                </label>
               </div>
               <div class="admin-form__grid">
-                <label class="admin-form__field"><span class="admin-form__label">Precio</span>
+                <label class="admin-form__field"><span class="admin-form__label" data-reg-service-label="precio">Precio</span>
                   <input type="number" inputmode="decimal" min="0" max="99999" step="0.01"
                     data-reg-service-field="Precio" placeholder="Ej: 450" required>
                 </label>
@@ -154,7 +161,9 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
         </section>
 
         <section class="reg-step" data-step-panel="3" aria-labelledby="reg-step-4-title" hidden>
-          <div class="reg-hours" data-reg-hours>
+          <h4 id="reg-step-4-title" data-reg-copy="final-step-title">Horarios de atenci&oacute;n</h4>
+          <p class="reg-hint" data-reg-copy="final-step-hint">Defin&iacute; los d&iacute;as y horarios en los que tus clientes podr&aacute;n reservar.</p>
+          <div class="reg-hours" data-reg-hours data-reg-hours-panel>
             <section class="reg-hours__group">
               <h5 class="reg-hours__title">Zona horaria</h5>
               <p class="reg-hours__hint" data-reg-hours-summary>Detectando la zona horaria de tu dispositivo...</p>
@@ -176,6 +185,26 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
                   </div>
                 </fieldset>
                 <?php endforeach; ?>
+              </div>
+            </section>
+          </div>
+          <div class="reg-store-final" data-reg-store-final hidden>
+            <section class="reg-hours__group">
+              <h5 class="reg-hours__title">Venta y pedidos</h5>
+              <p class="reg-hours__hint">Dejamos tu tienda lista para recibir consultas y pedidos desde el catalogo.</p>
+              <div class="reg-grid reg-grid--compact">
+                <label class="reg-field">
+                  <span>Como vas a vender</span>
+                  <select name="store_order_mode" disabled required>
+                    <option value="whatsapp" selected>Pedidos por WhatsApp</option>
+                    <option value="pickup_delivery">Retiro y envio coordinado</option>
+                    <option value="catalog_only">Solo mostrar catalogo</option>
+                  </select>
+                </label>
+                <label class="reg-field reg-field--full">
+                  <span>Mensaje para tus pedidos</span>
+                  <textarea name="store_order_instructions" rows="3" maxlength="220" disabled>Coordinamos entrega o retiro por WhatsApp. Gracias!</textarea>
+                </label>
               </div>
             </section>
           </div>

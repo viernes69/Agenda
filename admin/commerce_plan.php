@@ -10,6 +10,7 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
@@ -31,6 +32,27 @@ if ($idCommerce <= 0) {
 $db = Database::getInstance();
 $commerce = $db->fetchOne('SELECT * FROM commerces WHERE id_commerce = :id', [':id' => $idCommerce]);
 if (!$commerce) { echo 'Comercio no encontrado.'; exit; }
+
+$slug = trim((string)($commerce['slug'] ?? ''));
+if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+    $query = ['membership_modal' => '1'];
+    if (isset($_GET['plan_id']) && (int)$_GET['plan_id'] > 0) {
+        $query['plan_id'] = (string)(int)$_GET['plan_id'];
+    }
+    if (isset($_GET['id_membership']) && (int)$_GET['id_membership'] > 0) {
+        $query['plan_id'] = (string)(int)$_GET['id_membership'];
+    }
+    if (isset($_GET['period']) && $_GET['period'] === 'yearly') {
+        $query['period'] = 'yearly';
+    }
+    foreach (['pay', 'token', 'order_id', 'PayerID'] as $key) {
+        if (isset($_GET[$key]) && is_scalar($_GET[$key]) && (string)$_GET[$key] !== '') {
+            $query[$key] = (string)$_GET[$key];
+        }
+    }
+    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'resumen', $query), true, 302);
+    exit;
+}
 
 $currentPlan = null;
 if (!empty($commerce['id_membership'])) {

@@ -13,6 +13,11 @@ ServerSignature Off
     RewriteRule ^ubicaciones/([a-z0-9-]+)/?$ ubicaciones/index.php?l=$1 [L,QSA]
     RewriteRule ^ubicaciones/?$ ubicaciones/index.php [L,QSA]
 
+    # Panel admin del negocio: usar siempre el panel central compartido,
+    # incluso si existe una carpeta tenant antigua con su propio dashboard.
+    RewriteRule ^(?!template/)([a-z0-9][a-z0-9-]*)/private/dashboard/admin/index\.php$ admin/commerce_panel.php?slug=$1 [L,QSA]
+    RewriteRule ^(?!template/)([a-z0-9][a-z0-9-]*)/private/dashboard/admin/?$ admin/commerce_panel.php?slug=$1 [L,QSA]
+
     # Si la URL es un archivo real (CSS, JS, imágenes), servirlo tal cual
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
@@ -21,10 +26,6 @@ ServerSignature Off
     # Apache sirve su index.php automáticamente
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
-
-    # Panel admin del negocio sin carpeta tenant → panel central compartido
-    RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/index\.php$ admin/commerce_panel.php?slug=$1 [L,QSA]
-    RewriteRule ^([a-z0-9][a-z0-9-]*)/private/dashboard/admin/?$ admin/commerce_panel.php?slug=$1 [L,QSA]
 
     # Assets/API del panel central bajo URL del comercio (si no hay carpeta tenant legacy)
     RewriteCond %{REQUEST_FILENAME} !-f

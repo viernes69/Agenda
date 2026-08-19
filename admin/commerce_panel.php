@@ -1,7 +1,7 @@
 <?php
 /**
  * Panel de negocio central (sin carpeta tenant).
- * Las URLs /{slug}/private/dashboard/admin/ se reescriben aquí cuando no hay carpeta legacy.
+ * Las URLs /{slug}/private/dashboard/admin/ se reescriben aquí para usar el panel compartido.
  */
 declare(strict_types=1);
 
@@ -53,11 +53,6 @@ if (!empty($_GET['plan_id'])) {
 }
 if (!empty($_GET['period'])) {
     $query['period'] = $_GET['period'];
-}
-
-if (CommercePanel::hasLegacyPanel($slug)) {
-    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, $section, $query));
-    exit;
 }
 
 CommercePanel::bootstrapCentralAccess($idCommerce, $slug);

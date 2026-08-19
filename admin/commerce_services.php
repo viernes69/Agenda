@@ -7,6 +7,7 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\Security;
@@ -17,6 +18,13 @@ Security::sendNoStoreHeaders();
 $idCommerce = (int)Auth::commerceId();
 
 $db = Database::getInstance();
+$commerceRoute = $db->fetchOne('SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1', [':id' => $idCommerce]);
+$slug = trim((string)($commerceRoute['slug'] ?? ''));
+if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'servicios'), true, 302);
+    exit;
+}
+
 $flash = ['type' => '', 'msg' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

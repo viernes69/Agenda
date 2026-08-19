@@ -37,6 +37,16 @@
   const phoneCountryField = form.querySelector('[data-reg-phone-country]');
   const phoneInput = form.querySelector('[data-reg-phone-input]');
   const phoneHintEl = form.querySelector('[data-reg-phone-hint]');
+  const modalTitleEl = modal.querySelector('[data-reg-copy="title"]');
+  const modalSubtitleEl = modal.querySelector('[data-reg-copy="subtitle"]');
+  const businessStepTitle = modal.querySelector('[data-reg-copy="business-step-title"]');
+  const businessNameLabel = modal.querySelector('[data-reg-copy="business-name-label"]');
+  const businessNameInput = form.querySelector('[data-reg-business-name]');
+  const businessRubroLabel = modal.querySelector('[data-reg-copy="business-rubro-label"]');
+  const finalStepTitle = modal.querySelector('[data-reg-copy="final-step-title"]');
+  const finalStepHint = modal.querySelector('[data-reg-copy="final-step-hint"]');
+  const hoursPanel = modal.querySelector('[data-reg-hours-panel]');
+  const storeFinalPanel = modal.querySelector('[data-reg-store-final]');
 
   const progressOverlay = modal.querySelector('[data-reg-progress]');
   const progressMessage = progressOverlay ? progressOverlay.querySelector('[data-reg-progress-message]') : null;
@@ -58,8 +68,17 @@
     nombre: serviceFormEl.querySelector('[data-reg-service-field="Nombre"]'),
     duracion: serviceFormEl.querySelector('[data-reg-service-field="Duracion"]'),
     precio: serviceFormEl.querySelector('[data-reg-service-field="Precio"]'),
+    categoria: serviceFormEl.querySelector('[data-reg-service-field="Categoria"]'),
     imagen: serviceFormEl.querySelector('[data-reg-service-field="Imagen"]'),
   } : {};
+  const serviceLabels = serviceFormEl ? {
+    nombre: serviceFormEl.querySelector('[data-reg-service-label="nombre"]'),
+    duracion: serviceFormEl.querySelector('[data-reg-service-label="duracion"]'),
+    precio: serviceFormEl.querySelector('[data-reg-service-label="precio"]'),
+    categoria: serviceFormEl.querySelector('[data-reg-service-label="categoria"]'),
+  } : {};
+  const offeringDurationField = serviceFormEl ? serviceFormEl.querySelector('[data-reg-offering-duration]') : null;
+  const offeringCategoryField = serviceFormEl ? serviceFormEl.querySelector('[data-reg-offering-category]') : null;
 
   const statusClasses = ['reg-status--info', 'reg-status--error', 'reg-status--success'];
   const DAY_KEYS = dayFieldsets.map((fieldset) => fieldset.getAttribute('data-reg-hours-day') || '');
@@ -112,6 +131,57 @@
   let registerDraftTimer = null;
 
   const REGISTER_DRAFT_KEY = 'agenduy-register-draft-v1';
+  const REGISTER_COPY = {
+    servicios: {
+      title: 'Crea tu agenda digital y comienza a recibir reservas',
+      subtitle: 'Configura tu negocio, tus servicios y los horarios en los que tus clientes podran agendar.',
+      stepLabels: ['Dueno', 'Negocio', 'Servicios', 'Horarios'],
+      businessStepTitle: 'Datos de tu negocio de servicios',
+      businessNameLabel: 'Nombre del negocio',
+      businessNamePlaceholder: 'Ej: Barberia Centro',
+      businessRubroLabel: 'Rubro de servicios',
+      offeringsTitle: 'Servicios de tu negocio',
+      offeringsHint: 'Agrega los servicios que ofreceras. Podras sumar mas desde el panel.',
+      offeringNameLabel: 'Nombre del servicio',
+      offeringNamePlaceholder: 'Ej: Corte clasico',
+      durationLabel: 'Duracion',
+      priceLabel: 'Precio',
+      pricePlaceholder: 'Ej: 450',
+      addLabel: 'Agregar servicio',
+      emptyList: 'Aun no agregaste servicios.',
+      incompleteMessage: 'Completa el servicio y presiona "Agregar servicio" o limpia los campos.',
+      requiredMessage: 'Agrega al menos un servicio para continuar.',
+      finalTitle: 'Horarios de atencion',
+      finalHint: 'Defini los dias y horarios en los que tus clientes podran reservar.',
+      progressMessage: 'Estamos preparando tu agenda digital, por favor espera.',
+      fallbackTitle: 'Servicio',
+    },
+    tienda: {
+      title: 'Crea tu tienda online y empieza a mostrar tu catalogo',
+      subtitle: 'Carga los datos de tu tienda, agrega productos iniciales y deja listo el canal de pedidos.',
+      stepLabels: ['Dueno', 'Tienda', 'Catalogo', 'Pedidos'],
+      businessStepTitle: 'Datos de tu tienda',
+      businessNameLabel: 'Nombre de la tienda',
+      businessNamePlaceholder: 'Ej: Mi Tienda Online',
+      businessRubroLabel: 'Rubro de la tienda',
+      offeringsTitle: 'Catalogo inicial',
+      offeringsHint: 'Agrega tus primeros productos. Despues podras sumar fotos, variantes y mas detalles desde el panel.',
+      offeringNameLabel: 'Nombre del producto',
+      offeringNamePlaceholder: 'Ej: Remera oversize',
+      categoryLabel: 'Categoria',
+      categoryPlaceholder: 'Ej: Indumentaria',
+      priceLabel: 'Precio',
+      pricePlaceholder: 'Ej: 1290',
+      addLabel: 'Agregar producto',
+      emptyList: 'Aun no agregaste productos.',
+      incompleteMessage: 'Completa el producto y presiona "Agregar producto" o limpia los campos.',
+      requiredMessage: 'Agrega al menos un producto para continuar.',
+      finalTitle: 'Pedidos y venta',
+      finalHint: 'Defini como queres recibir consultas o pedidos desde tu catalogo.',
+      progressMessage: 'Estamos preparando tu tienda online, por favor espera.',
+      fallbackTitle: 'Producto',
+    },
+  };
 
   const regGoogleWrap = modal.querySelector('#reg-google-wrap');
 
@@ -158,6 +228,21 @@
     return [prefix, normalized].filter(Boolean).join(' ').trim();
   }
 
+  function text(el, value) {
+    if (el) el.textContent = value;
+  }
+
+  function currentBusinessCopy() {
+    return REGISTER_COPY[selectedBusinessType()] || REGISTER_COPY.servicios;
+  }
+
+  function setPanelFieldsEnabled(panel, enabled) {
+    if (!panel) return;
+    panel.querySelectorAll('input, select, textarea, button').forEach((field) => {
+      field.disabled = !enabled;
+    });
+  }
+
   function getPlan(planId) {
     if (!planId) return null;
     const key = String(planId);
@@ -179,22 +264,66 @@
   function inferBusinessType(payload = {}) {
     const explicit = payload.tipoComercio || payload.tipo_comercio || payload.businessType || payload.business_type || '';
     if (explicit) return normalizeBusinessType(explicit);
-    const label = String(payload.rubroNombre || payload.rubro_nombre || currentRubroName || '').toLowerCase();
+    const rubroId = String(payload.rubroId || payload.rubro_id || (hiddenRubroId ? hiddenRubroId.value : '') || (businessRubroSelect ? businessRubroSelect.value : '') || '');
+    const found = rubroId ? rubrosConfig.find((item) => String(item.id) === rubroId) : null;
+    const rubroType = payload.rubroTipo || payload.rubro_tipo || (found && found.tipo) || '';
+    const rubroName = payload.rubroNombre || payload.rubro_nombre || (found && found.nombre) || currentRubroName || '';
+    const label = `${rubroType} ${rubroName}`.toLowerCase();
     return /tienda|comercio|retail|catalogo/.test(label) ? 'tienda' : 'servicios';
   }
 
   function syncBusinessTypeUi() {
     const isStore = selectedBusinessType() === 'tienda';
-    if (serviceStepTitle) {
-      serviceStepTitle.textContent = isStore ? 'Catalogo de tu tienda' : 'Servicios de tu Negocio';
+    const copy = currentBusinessCopy();
+
+    text(modalTitleEl, copy.title);
+    text(modalSubtitleEl, copy.subtitle);
+    text(businessStepTitle, copy.businessStepTitle);
+    text(businessNameLabel, copy.businessNameLabel);
+    text(businessRubroLabel, copy.businessRubroLabel);
+    text(serviceStepTitle, copy.offeringsTitle);
+    text(serviceStepHint, copy.offeringsHint);
+    text(finalStepTitle, copy.finalTitle);
+    text(finalStepHint, copy.finalHint);
+
+    stepIndicators.forEach((item, idx) => {
+      const label = item.querySelector('small');
+      if (label && copy.stepLabels[idx]) label.textContent = copy.stepLabels[idx];
+    });
+
+    if (businessNameInput) businessNameInput.placeholder = copy.businessNamePlaceholder;
+    if (serviceFields.nombre) serviceFields.nombre.placeholder = copy.offeringNamePlaceholder;
+    if (serviceFields.precio) serviceFields.precio.placeholder = copy.pricePlaceholder;
+    if (serviceFields.categoria) serviceFields.categoria.placeholder = copy.categoryPlaceholder || '';
+    text(serviceLabels.nombre, copy.offeringNameLabel);
+    text(serviceLabels.duracion, copy.durationLabel || 'Duracion');
+    text(serviceLabels.precio, copy.priceLabel);
+    text(serviceLabels.categoria, copy.categoryLabel || 'Categoria');
+
+    if (serviceFormEl) serviceFormEl.hidden = false;
+    if (serviceListEl) serviceListEl.hidden = false;
+    if (serviceAddBtn) serviceAddBtn.textContent = copy.addLabel;
+
+    if (offeringDurationField) offeringDurationField.hidden = isStore;
+    if (serviceFields.duracion) {
+      serviceFields.duracion.disabled = isStore;
+      serviceFields.duracion.required = !isStore;
+      if (isStore) serviceFields.duracion.value = '';
     }
-    if (serviceStepHint) {
-      serviceStepHint.textContent = isStore
-        ? 'No necesitas cargar servicios ahora. Al finalizar vas al panel para subir productos y armar tu catalogo.'
-        : 'Agrega los servicios que ofreceras. Podras sumar mas desde el panel.';
+    if (offeringCategoryField) offeringCategoryField.hidden = !isStore;
+    if (serviceFields.categoria) {
+      serviceFields.categoria.disabled = !isStore;
+      serviceFields.categoria.required = false;
+      if (!isStore) serviceFields.categoria.value = '';
     }
-    if (serviceFormEl) serviceFormEl.hidden = isStore;
-    if (serviceListEl) serviceListEl.hidden = isStore;
+
+    if (hoursPanel) hoursPanel.hidden = isStore;
+    if (storeFinalPanel) storeFinalPanel.hidden = !isStore;
+    setPanelFieldsEnabled(storeFinalPanel, isStore);
+    if (!isStore) {
+      prepareHoursStep();
+    }
+    renderServicesList();
     showServiceError('');
   }
 
@@ -290,6 +419,7 @@
       nombre: serviceFields.nombre ? serviceFields.nombre.value : '',
       duracion: serviceFields.duracion ? serviceFields.duracion.value : '',
       precio: serviceFields.precio ? serviceFields.precio.value : '',
+      categoria: serviceFields.categoria ? serviceFields.categoria.value : '',
     };
   }
 
@@ -298,6 +428,7 @@
     if (serviceFields.nombre) serviceFields.nombre.value = String(draft.nombre || '');
     if (serviceFields.duracion) serviceFields.duracion.value = String(draft.duracion || '');
     if (serviceFields.precio) serviceFields.precio.value = String(draft.precio || '');
+    if (serviceFields.categoria) serviceFields.categoria.value = String(draft.categoria || '');
   }
 
   function collectRegisterDraft() {
@@ -465,6 +596,9 @@
     if (serviceFields.precio && String(serviceFields.precio.value || '').trim() !== '') {
       dirty = true;
     }
+    if (serviceFields.categoria && String(serviceFields.categoria.value || '').trim() !== '') {
+      dirty = true;
+    }
     if (serviceFields.imagen && serviceFields.imagen.files && serviceFields.imagen.files.length > 0) {
       dirty = true;
     }
@@ -473,16 +607,14 @@
 
   function validateServicesStep() {
     showServiceError('');
-    if (selectedBusinessType() === 'tienda') {
-      return true;
-    }
+    const copy = currentBusinessCopy();
     if (!serviceFormEl) return true;
     if (serviceFormHasValues()) {
-      showServiceError('Completa el servicio y presiona "Agregar servicio" o limpia los campos.');
+      showServiceError(copy.incompleteMessage);
       return false;
     }
     if (servicesData.length === 0) {
-      showServiceError('Agrega al menos un servicio para continuar.');
+      showServiceError(copy.requiredMessage);
       return false;
     }
     return true;
@@ -531,6 +663,13 @@
         logoNombre: logoInput && logoInput.files && logoInput.files[0] ? logoInput.files[0].name : ''
       },
       servicios: tipoComercio === 'tienda' ? [] : serializeServices(),
+      productos: tipoComercio === 'tienda' ? serializeProducts() : [],
+      carrito: tipoComercio === 'tienda'
+        ? {
+            order_mode: (formData.get('store_order_mode') || 'whatsapp').toString().trim(),
+            instructions: (formData.get('store_order_instructions') || '').toString().trim(),
+          }
+        : {},
       horarios: collectHoursData(),
     };
   }
@@ -544,6 +683,18 @@
       precio: service.precio,
       puntos: service.puntos,
       imagenNombre: service.imagenNombre,
+    }));
+  }
+
+  function serializeProducts() {
+    return servicesData.map((product) => ({
+      tempId: product.id,
+      nombre: product.nombre,
+      tipo: product.categoria || 'General',
+      precio: product.precio,
+      descripcion: product.descripcion || '',
+      estado: product.estado || 'Activo',
+      imagenNombre: product.imagenNombre || '',
     }));
   }
 
@@ -563,16 +714,19 @@
     if (serviceFields.nombre) serviceFields.nombre.value = '';
     if (serviceFields.duracion) serviceFields.duracion.value = '';
     if (serviceFields.precio) serviceFields.precio.value = '';
+    if (serviceFields.categoria) serviceFields.categoria.value = '';
     if (serviceFields.imagen) serviceFields.imagen.value = '';
   }
 
   function renderServicesList() {
     if (!serviceListEl) return;
+    const isStore = selectedBusinessType() === 'tienda';
+    const copy = currentBusinessCopy();
     serviceListEl.replaceChildren();
     if (servicesData.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'reg-hint';
-      empty.textContent = 'Aún no agregaste servicios.';
+      empty.textContent = copy.emptyList;
       serviceListEl.appendChild(empty);
       return;
     }
@@ -584,7 +738,7 @@
       const header = document.createElement('header');
       const title = document.createElement('h5');
       title.className = 'reg-collection__title';
-      title.textContent = service.nombre || `Servicio ${service.id}`;
+      title.textContent = service.nombre || `${copy.fallbackTitle} ${service.id}`;
       header.appendChild(title);
 
       const removeBtn = document.createElement('button');
@@ -599,9 +753,15 @@
       const meta = document.createElement('p');
       meta.className = 'reg-collection__meta';
 
-      const durationBadge = document.createElement('span');
-      durationBadge.textContent = `${service.duracion} min`;
-      meta.appendChild(durationBadge);
+      if (!isStore) {
+        const durationBadge = document.createElement('span');
+        durationBadge.textContent = `${service.duracion} min`;
+        meta.appendChild(durationBadge);
+      } else if (service.categoria) {
+        const categoryBadge = document.createElement('span');
+        categoryBadge.textContent = service.categoria;
+        meta.appendChild(categoryBadge);
+      }
 
       const priceBadge = document.createElement('span');
       priceBadge.textContent = formatCurrency(service.precio, defaultCurrency);
@@ -622,18 +782,24 @@
   function addServiceFromForm() {
     if (!serviceFormEl) return;
     showServiceError('');
+    const isStore = selectedBusinessType() === 'tienda';
     const fieldsToValidate = [
       serviceFields.nombre,
-      serviceFields.duracion,
       serviceFields.precio,
     ];
+    if (!isStore) {
+      fieldsToValidate.splice(1, 0, serviceFields.duracion);
+    }
     if (!ensureInputsValid(fieldsToValidate)) {
       return;
     }
 
     const nombre = serviceFields.nombre ? serviceFields.nombre.value.trim() : '';
-    const duracion = serviceFields.duracion ? Number(serviceFields.duracion.value) : 0;
+    const duracion = !isStore && serviceFields.duracion ? Number(serviceFields.duracion.value) : 0;
     const precioRaw = serviceFields.precio ? Number(serviceFields.precio.value) : 0;
+    const categoria = isStore && serviceFields.categoria
+      ? serviceFields.categoria.value.trim()
+      : '';
     const imagenNombre = serviceFields.imagen && serviceFields.imagen.files && serviceFields.imagen.files[0]
       ? serviceFields.imagen.files[0].name
       : '';
@@ -644,6 +810,7 @@
       duracion: Number.isFinite(duracion) ? duracion : 0,
       estado: 'Activo',
       precio: Number.isFinite(precioRaw) ? precioRaw : 0,
+      categoria,
       puntos: null,
       imagenNombre,
     };
@@ -897,6 +1064,7 @@
           duracion: Number(service.duracion) || 0,
           estado: service.estado || 'Activo',
           precio: Number(service.precio) || 0,
+          categoria: String(service.categoria || service.tipo || ''),
           puntos: service.puntos ?? null,
           imagenNombre: String(service.imagenNombre || ''),
         };
@@ -984,14 +1152,16 @@
     }
 
     const data = collectData();
-    const validation = validateHoursData(data.horarios || {});
-    if (!validation.ok) {
-      setStatus(validation.error || 'Revisa los horarios configurados.', 'error');
-      return;
+    if (data.tipoComercio !== 'tienda') {
+      const validation = validateHoursData(data.horarios || {});
+      if (!validation.ok) {
+        setStatus(validation.error || 'Revisa los horarios configurados.', 'error');
+        return;
+      }
     }
 
     setStatus('Datos listos. Finalizando registro...', 'success');
-    toggleProgress(true, 'Estamos Preparando el sitio para tu Negocio, Por Favor Espera');
+    toggleProgress(true, currentBusinessCopy().progressMessage);
     if (submitBtn) submitBtn.disabled = true;
     isSubmitting = true;
 

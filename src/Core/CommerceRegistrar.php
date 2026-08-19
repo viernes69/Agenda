@@ -20,6 +20,8 @@ final class CommerceRegistrar
         $business = is_array($payload['negocio'] ?? null) ? $payload['negocio'] : [];
         $schedule = is_array($payload['horarios'] ?? null) ? $payload['horarios'] : [];
         $services = is_array($payload['servicios'] ?? null) ? $payload['servicios'] : [];
+        $products = is_array($payload['productos'] ?? null) ? $payload['productos'] : [];
+        $cartConfig = is_array($payload['carrito'] ?? null) ? $payload['carrito'] : [];
         $planId = (int)($payload['planId'] ?? $payload['plan_id'] ?? 0);
         $rubroId = (int)($payload['rubroId'] ?? $business['rubroId'] ?? 0);
         $businessType = self::normalizeBusinessType(
@@ -86,6 +88,8 @@ final class CommerceRegistrar
         self::assert($rubroId > 0, 'Selecciona un rubro válido.');
         if (!$isStore) {
             self::assert(count($services) > 0, 'Agrega al menos un servicio.');
+        } else {
+            self::assert(self::hasNamedProduct($products), 'Agrega al menos un producto.');
         }
 
         $db = Database::getInstance();
@@ -133,7 +137,8 @@ final class CommerceRegistrar
             $db->transaction(function () use (
                 &$idCommerce, &$idUser, $db, $slug, $rubroId, $planId, $bizName, $rut, $email, $tel,
                 $pais, $ciudad, $calle, $tz, $trialEnd, $trialDays, $name, $last, $cedula, $pass,
-                $services, $schedule, $membership, $googleProfile, $businessType, $billingPeriod
+                $services, $products, $cartConfig, $schedule, $membership, $googleProfile, $businessType,
+                $billingPeriod, $isFree, $isStore
             ) {
                 $idCommerce = (int)$db->insert('commerces', [
                     'slug'             => $slug,
@@ -199,6 +204,13 @@ final class CommerceRegistrar
                 CommerceSettings::set($idCommerce, 'moneda', CommerceSettings::defaultsForSection('moneda'));
                 CommerceSettings::set($idCommerce, 'tema', ['publico' => 'claro', 'privado' => 'claro']);
                 CommerceSettings::set($idCommerce, 'funciones', self::featuresForBusinessType($businessType));
+                if ($isStore) {
+                    CommerceSettings::set($idCommerce, 'carrito', self::cartSettingsFromPayload($cartConfig));
+                    [, $productCategories] = self::buildProductsDataset($products);
+                    if ($productCategories !== []) {
+                        CommerceSettings::set($idCommerce, 'categorias', $productCategories);
+                    }
+                }
             });
 
             if ($useLegacyFolders) {
@@ -221,7 +233,8 @@ final class CommerceRegistrar
                     ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'rubro_id' => $rubroId, 'website' => $website, 'timezone' => $tz, 'id_negocio' => $idCommerce, 'telefono' => $tel, 'tipo_comercio' => $businessType],
                     $schedule,
                     $services,
-                    $rubroId
+                    $rubroId,
+                    $products
                 );
                 self::writeDatabase($databasePath, $legacy);
             } else {
@@ -232,7 +245,8 @@ final class CommerceRegistrar
                     ['nombre' => $bizName, 'rut' => $rut, 'pais' => $pais, 'ciudad' => $ciudad, 'calle' => $calle, 'telefono' => $tel, 'tipo_comercio' => $businessType],
                     $schedule,
                     $services,
-                    $rubroId
+                    $rubroId,
+                    $products
                 );
             }
 
@@ -250,9 +264,11 @@ final class CommerceRegistrar
                 'billing_period' => $billingPeriod === 'yearly' ? 'anual' : 'mensual',
             ]);
 
-            $baseRedirect = self::buildRedirectUrl($slug);
-            $separator = str_contains($baseRedirect, '?') ? '&' : '?';
-            $redirectUrl = $baseRedirect . $separator . 'membership_modal=1&plan_id=' . $planId . '&period=' . $billingPeriod;
+            $redirectUrl = CommercePanel::dashboardUrlForSlug($slug, 'resumen', [
+                'membership_modal' => '1',
+                'plan_id' => (string)$planId,
+                'period' => $billingPeriod,
+            ]);
 
             return [
                 'ok'          => true,
@@ -430,7 +446,7 @@ final class CommerceRegistrar
 
     public static function buildCentralDashboardUrl(): string
     {
-        return CommercePanel::siteUrl('admin/commerce_dashboard.php');
+        return CommercePanel::siteUrl('admin/commerce_panel.php');
     }
 
     private static function tenantDashboardExists(string $slug): bool
@@ -451,7 +467,8 @@ final class CommerceRegistrar
         array $business,
         array $schedule,
         array $services,
-        int $rubroId
+        int $rubroId,
+        array $products = []
     ): array {
         $preset = self::rubroPreset($rubroId);
         $adminId = (int)($owner['id_admin'] ?? 1);
@@ -504,6 +521,12 @@ final class CommerceRegistrar
         $isStore = self::normalizeBusinessType((string)($business['tipo_comercio'] ?? 'servicios')) === 'tienda';
         [$servicesTable] = self::buildServicesDataset($services, !$isStore);
         $database['servicios'] = $servicesTable;
+        [$productsTable, $productCategories] = self::buildProductsDataset($isStore ? $products : []);
+        $database['productos'] = $productsTable;
+        if ($productCategories !== []) {
+            $existingCategories = is_array($database['categorias'] ?? null) ? $database['categorias'] : [];
+            $database['categorias'] = self::mergeCategories($existingCategories, $productCategories);
+        }
 
         $database['barberos'] = [
             [
@@ -555,6 +578,112 @@ final class CommerceRegistrar
             $records[1] = ['ID_Servicio' => 1, 'Nombre' => 'Servicio', 'Duracion' => 30, 'Estado' => 'Activo', 'Precio' => 0.0, 'Puntos' => null, 'Img_Link' => ''];
         }
         return [$records];
+    }
+
+    private static function hasNamedProduct(array $products): bool
+    {
+        foreach ($products as $product) {
+            if (is_array($product) && trim((string)($product['nombre'] ?? '')) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return array{0:list<array<string,mixed>>,1:list<string>}
+     */
+    public static function buildProductsDataset(array $products): array
+    {
+        $records = [[
+            'ID_Product' => null,
+            'Nombre' => null,
+            'Tipo' => null,
+            'Precio' => null,
+            'Descripcion' => null,
+            'Puntos' => null,
+            'Img_src' => null,
+            'Img_Gallery' => '',
+            'Imagenes' => '',
+            'Descuento_Porcentaje' => '',
+            'Etiqueta_Venta' => '',
+        ]];
+        $categories = [];
+        $nextId = 1;
+        foreach ($products as $product) {
+            if (!is_array($product)) {
+                continue;
+            }
+            $name = trim((string)($product['nombre'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $type = trim((string)($product['tipo'] ?? $product['categoria'] ?? ''));
+            if ($type === '') {
+                $type = 'General';
+            }
+            $categories[$type] = true;
+            $records[$nextId] = [
+                'ID_Product' => $nextId,
+                'Nombre' => $name,
+                'Tipo' => $type,
+                'Precio' => max(0.0, (float)($product['precio'] ?? 0)),
+                'Descripcion' => trim((string)($product['descripcion'] ?? '')),
+                'Puntos' => null,
+                'Img_src' => '',
+                'Img_Gallery' => '',
+                'Imagenes' => '',
+                'Descuento_Porcentaje' => '',
+                'Etiqueta_Venta' => '',
+            ];
+            $nextId++;
+        }
+
+        $categoryNames = array_keys($categories);
+        sort($categoryNames, SORT_NATURAL | SORT_FLAG_CASE);
+        return [$records, array_values($categoryNames)];
+    }
+
+    private static function mergeCategories(array $current, array $incoming): array
+    {
+        $merged = [];
+        foreach (array_merge($current, $incoming) as $category) {
+            $label = trim((string)$category);
+            if ($label !== '') {
+                $merged[$label] = true;
+            }
+        }
+        $labels = array_keys($merged);
+        sort($labels, SORT_NATURAL | SORT_FLAG_CASE);
+        return array_values($labels);
+    }
+
+    private static function cartSettingsFromPayload(array $payload): array
+    {
+        $defaults = CommerceSettings::defaultsForSection('carrito');
+        $mode = trim((string)($payload['order_mode'] ?? $payload['modo'] ?? 'whatsapp'));
+        if (!in_array($mode, ['whatsapp', 'pickup_delivery', 'catalog_only'], true)) {
+            $mode = 'whatsapp';
+        }
+        $instructions = trim((string)($payload['instructions'] ?? $payload['instrucciones'] ?? ''));
+        if ($instructions === '') {
+            $instructions = (string)($defaults['instructions'] ?? '');
+        }
+        if (function_exists('mb_substr')) {
+            $instructions = mb_substr($instructions, 0, 220);
+        } else {
+            $instructions = substr($instructions, 0, 220);
+        }
+
+        $cartEnabled = $mode !== 'catalog_only';
+        return array_replace($defaults, [
+            'enabled' => $cartEnabled,
+            'whatsapp_enabled' => $cartEnabled,
+            'pickup_enabled' => $cartEnabled,
+            'delivery_enabled' => $mode === 'pickup_delivery' || $mode === 'whatsapp',
+            'instructions' => $instructions,
+            'order_mode' => $mode,
+        ]);
     }
 
     private static function rubroPreset(int $rubroId): array

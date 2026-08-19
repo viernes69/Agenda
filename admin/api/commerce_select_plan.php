@@ -15,6 +15,7 @@ declare(strict_types=1);
 $config = require __DIR__ . '/../../src/Core/bootstrap.php';
 
 use Agenduy\Core\Auth;
+use Agenduy\Core\CommercePanel;
 use Agenduy\Core\CSRF;
 use Agenduy\Core\Database;
 use Agenduy\Core\MembershipPlan;
@@ -90,7 +91,11 @@ try {
                 'name' => (string)($plan['nombre'] ?? 'Plan'),
             ]);
         } else {
-            header('Location: ../commerce_plan.php?msg=pay&id_membership=' . $idMembership);
+            header('Location: ' . CommercePanel::dashboardUrlForSlug((string)$commerce['slug'], 'resumen', [
+                'membership_modal' => '1',
+                'plan_id' => (string)$idMembership,
+                'period' => $billingPeriod,
+            ]));
         }
         exit;
     }
@@ -151,8 +156,9 @@ try {
             'billing_period' => $billingPeriod,
         ]);
     } else {
-        // Form submission clásica: redirigir
-        header('Location: ../commerce_plan.php?msg=ok');
+        header('Location: ' . CommercePanel::dashboardUrlForSlug((string)$commerce['slug'], 'resumen', [
+            'membership_modal' => '1',
+        ]));
     }
 } catch (Throwable $e) {
     error_log('[commerce_select_plan] ' . $e->getMessage());
@@ -160,6 +166,8 @@ try {
         http_response_code(500);
         echo json_encode(['ok' => false, 'error' => 'Error interno.']);
     } else {
-        header('Location: ../commerce_plan.php?err=' . urlencode('Error al cambiar el plan.'));
+        header('Location: ' . CommercePanel::dashboardUrlForSlug((string)($commerce['slug'] ?? ''), 'resumen', [
+            'membership_modal' => '1',
+        ]));
     }
 }

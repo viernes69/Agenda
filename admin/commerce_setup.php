@@ -29,7 +29,7 @@ if (!$commerce) {
 }
 
 if (!CommerceSetup::needsOnboarding($commerce)) {
-    header('Location: ' . (Auth::dashboardUrl(Auth::user() ?? []) ?? 'commerce_dashboard.php'));
+    header('Location: ' . (Auth::dashboardUrl(Auth::user() ?? []) ?? 'commerce_panel.php'));
     exit;
 }
 

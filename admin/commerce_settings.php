@@ -22,6 +22,13 @@ Security::sendNoStoreHeaders();
 $idCommerce = (int)Auth::commerceId();
 
 $db = Database::getInstance();
+$commerceRoute = $db->fetchOne('SELECT slug FROM commerces WHERE id_commerce = :id LIMIT 1', [':id' => $idCommerce]);
+$slug = trim((string)($commerceRoute['slug'] ?? ''));
+if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+    header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, 'config'), true, 302);
+    exit;
+}
+
 $encKey = (string)$db->config()['security']['encryption_key'];
 $crypto = new Crypto($encKey);
 $flash = ['type' => '', 'msg' => '', 'plain' => ''];
