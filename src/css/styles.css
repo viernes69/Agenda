@@ -2249,11 +2249,18 @@ body.modal-open{
   letter-spacing:.08em;
   text-transform:uppercase;
 }
+.search-card__avatar.has-logo{
+  padding:8px;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
 .search-card__avatar-img{
   width:100%;
   height:100%;
-  object-fit:cover;
+  object-fit:contain;
   display:block;
+  border-radius:14px;
 }
 .search-card__avatar.has-logo .search-card__initials{ opacity:0; }
 .search-card__initials{ transition: opacity .2s ease; }

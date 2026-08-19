@@ -12,6 +12,22 @@ function h($value) {
   return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+function business_text_lower(string $value): string {
+  return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+}
+
+function business_text_upper(string $value): string {
+  return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+}
+
+function business_text_substr(string $value, int $start, int $length): string {
+  return function_exists('mb_substr') ? mb_substr($value, $start, $length, 'UTF-8') : substr($value, $start, $length);
+}
+
+function business_text_length(string $value): int {
+  return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+}
+
 function business_initials(string $name): string {
   $name = trim($name);
   if ($name === '') {
@@ -20,12 +36,12 @@ function business_initials(string $name): string {
   $parts = preg_split('/\s+/', $name);
   $initials = '';
   foreach ($parts as $part) {
-    $initials .= mb_strtoupper(mb_substr($part, 0, 1, 'UTF-8'), 'UTF-8');
-    if (mb_strlen($initials, 'UTF-8') >= 2) {
+    $initials .= business_text_upper(business_text_substr($part, 0, 1));
+    if (business_text_length($initials) >= 2) {
       break;
     }
   }
-  return $initials ?: mb_strtoupper(mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+  return $initials ?: business_text_upper(business_text_substr($name, 0, 2));
 }
 
 function country_name(string $code): string {
@@ -38,6 +54,73 @@ function country_name(string $code): string {
   ];
   $code = strtoupper($code);
   return $map[$code] ?? $code;
+}
+
+function business_logo_url(array $business): string {
+  $idCommerce = (int)($business['id_commerce'] ?? 0);
+  $slug = trim((string)($business['slug'] ?? ''), '/');
+  $candidates = [trim((string)($business['logo'] ?? ''))];
+
+  if ($idCommerce > 0 && $slug !== '' && class_exists('Agenduy\\Core\\CommercePublic')) {
+    $localDbPath = \Agenduy\Core\CommercePublic::resolveLocalDatabasePath($idCommerce, $slug);
+    if ($localDbPath !== null && is_file($localDbPath)) {
+      $localDb = @include $localDbPath;
+      $info = is_array($localDb) && isset($localDb['info_barberia']) && is_array($localDb['info_barberia'])
+        ? $localDb['info_barberia']
+        : [];
+      foreach (['logo_src', 'logo', 'imagen', 'Logo', 'avatar'] as $key) {
+        $candidates[] = trim((string)($info[$key] ?? ''));
+      }
+    }
+  }
+
+  foreach ($candidates as $candidate) {
+    $url = business_logo_candidate_url($idCommerce, $slug, $candidate);
+    if ($url !== '') {
+      return $url;
+    }
+  }
+
+  foreach (['src/img/logo.png', 'src/img/logo.jpg', 'src/img/logo.webp', 'src/media/logo/logo.png'] as $fallback) {
+    $url = business_logo_candidate_url($idCommerce, $slug, $fallback);
+    if ($url !== '') {
+      return $url;
+    }
+  }
+
+  return '';
+}
+
+function business_logo_candidate_url(int $idCommerce, string $slug, string $storedPath): string {
+  $storedPath = trim(str_replace('\\', '/', $storedPath));
+  if ($storedPath === '') {
+    return '';
+  }
+  if (preg_match('#^https?://#i', $storedPath)) {
+    return $storedPath;
+  }
+  if ($storedPath[0] === '/') {
+    return $storedPath;
+  }
+
+  if ($idCommerce > 0 && class_exists('Agenduy\\Core\\CommerceStorage')) {
+    $url = \Agenduy\Core\CommerceStorage::publicUrl($idCommerce, $slug, $storedPath);
+    if ($url !== '') {
+      return $url;
+    }
+  }
+
+  $root = dirname(__DIR__, 2);
+  $relative = ltrim($storedPath, '/');
+  if ($slug !== '') {
+    $tenantRelative = str_starts_with($relative, $slug . '/') ? $relative : $slug . '/' . $relative;
+    $tenantFullPath = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $tenantRelative);
+    if (is_file($tenantFullPath)) {
+      return url($tenantRelative);
+    }
+  }
+
+  return '';
 }
 
 // Lee comercios de la BD nueva (SQLite).
@@ -102,13 +185,7 @@ try {
         $name = trim((string)($biz['nombre'] ?? 'Negocio'));
         $initials = business_initials($name);
         $slug = (string)($biz['slug'] ?? '');
-        $logo = trim((string)($biz['logo'] ?? ''));
-        if ($logo !== '' && !preg_match('#^https?://#i', $logo) && $logo[0] !== '/') {
-            $logo = url($logo);
-        }
-        if ($logo === '' && $slug !== '') {
-          $logo = url($slug . '/src/media/logo/logo.png');
-        }
+        $logo = business_logo_url($biz);
         $addressParts = array_filter([
           (string)($biz['calle'] ?? ''),
           (string)($biz['ciudad'] ?? ''),
@@ -117,7 +194,7 @@ try {
         $address = implode(', ', array_map('trim', $addressParts));
         $profileUrl = $slug !== '' ? url($slug) : url_base();
       ?>
-        <article class="search-card" data-search-name="<?php echo h(mb_strtolower($name, 'UTF-8')); ?>">
+        <article class="search-card" data-search-name="<?php echo h(business_text_lower($name)); ?>">
           <a class="search-card__link" href="<?php echo h($profileUrl); ?>" target="_blank" rel="noopener noreferrer">
             <div class="search-card__avatar<?php echo $logo !== '' ? ' has-logo' : ''; ?>">
               <?php if ($logo !== ''): ?>
@@ -126,6 +203,7 @@ try {
                      class="search-card__avatar-img"
                      loading="lazy"
                      decoding="async"
+                     onerror="this.hidden=true; this.parentElement && this.parentElement.classList.remove('has-logo');"
                      width="48" height="48" />
               <?php endif; ?>
               <span class="search-card__initials" aria-hidden="true"><?php echo h($initials); ?></span>
