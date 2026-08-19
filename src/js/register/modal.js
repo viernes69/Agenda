@@ -30,6 +30,7 @@
   const hiddenPlanId = form.querySelector('input[name="plan_id"]');
   const hiddenPlanNombre = form.querySelector('input[name="plan_nombre"]');
   const businessPlanSelect = form.querySelector('select[name="business_plan"]');
+  const planSelectContainer = form.querySelector('[data-reg-plan-select-container]');
   const businessTypeSelect = form.querySelector('[data-reg-business-type]');
   const logoInput = form.querySelector('input[name="business_logo"]');
   const termsInput = form.querySelector('input[name="terms"]');
@@ -1072,6 +1073,9 @@
     syncRubroSelection(targetRubroId);
     if (businessTypeSelect) {
       businessTypeSelect.value = inferBusinessType({ ...payload, rubroNombre: rubroName || currentRubroName });
+    }
+    if (planSelectContainer) {
+      planSelectContainer.hidden = !!incomingPlanId;
     }
     syncBusinessTypeUi();
     if (hiddenPlanNombre && payload.planNombre) hiddenPlanNombre.value = payload.planNombre;

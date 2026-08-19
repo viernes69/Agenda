@@ -180,7 +180,7 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
             </section>
           </div>
           <?php if (count($plans) > 1): ?>
-          <div style="margin-bottom: 1.5rem;">
+          <div style="margin-bottom: 1.5rem;" data-reg-plan-select-container>
             <label class="reg-field reg-field--full">
               <span>Plan</span>
               <select name="business_plan" required>

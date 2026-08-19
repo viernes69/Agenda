@@ -2151,7 +2151,7 @@ $summaryCards = [
   <script src="../src/js/admin/core.js"></script>
   <script src="../src/js/admin/admin-orders.js?v=20260814_4"></script>
   <script src="../src/js/admin/plan-trial-modal.js"></script>
-  <script src="../src/js/admin/plan-membership-modal.js"></script>
+  <script src="../src/js/admin/plan-membership-modal.js?v=<?php echo e(is_file(__DIR__ . '/../src/js/admin/plan-membership-modal.js') ? (string)filemtime(__DIR__ . '/../src/js/admin/plan-membership-modal.js') : '2'); ?>"></script>
   <script src="../src/js/admin/modal-loading.js"></script>
   <script src="../src/js/admin/layout-sidebar.js"></script>
   <script src="../src/js/admin/bottom-nav.js?v=4"></script>
