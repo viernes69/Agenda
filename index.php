@@ -461,6 +461,196 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
     </div>
   </section>
 
+  <section class="features-section" id="funcionalidades" style="margin-top: 5rem;">
+    <div class="section-heading">
+      <p class="section-heading__eyebrow">Todo lo que necesitas</p>
+      <h2 class="section-heading__title">Todo lo que Necesitas para <span style="background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Triunfar</span></h2>
+      <p class="section-heading__text">Funcionalidades diseñadas específicamente para potenciar y hacer crecer tu negocio.</p>
+    </div>
+    
+    <div class="features-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 1rem;">
+      <!-- CARD 1 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-calendar"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Agenda Inteligente</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Calendario compartido entre profesionales con disponibilidad en tiempo real.</p>
+        </div>
+      </div>
+      
+      <!-- CARD 2 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-message-rounded-dots"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Recordatorios Automáticos</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Confirmaciones y recordatorios por WhatsApp para reducir ausencias.</p>
+        </div>
+      </div>
+      
+      <!-- CARD 3 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-user"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Gestión de Clientes</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Base de datos completa con historial de citas y preferencias.</p>
+        </div>
+      </div>
+      
+      <!-- CARD 4 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-wallet"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Cobros Online</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Integración con MercadoPago y gestión de señas y pagos rápidos.</p>
+        </div>
+      </div>
+      
+      <!-- CARD 5 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-bar-chart-alt-2"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Reportes Avanzados</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Estadísticas de ingresos, profesionales y servicios más rentables.</p>
+        </div>
+      </div>
+      
+      <!-- CARD 6 -->
+      <div class="feature-card" style="background: var(--surface); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 16px; align-items: flex-start; transition: all 0.3s ease;">
+        <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+          <i class="bx bx-globe"></i>
+        </div>
+        <div>
+          <h3 style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">Página de Reservas</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Tu propia página personalizada donde clientes reservan 24/7.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="comparison-section" id="comparativa" style="margin-top: 5rem;">
+    <div class="section-heading">
+      <p class="section-heading__eyebrow">Comparativa</p>
+      <h2 class="section-heading__title">¿Por qué elegir Agendarte UY?</h2>
+      <p class="section-heading__text">Compara las características y descubre por qué somos la mejor opción para potenciar tu negocio.</p>
+    </div>
+    
+    <div style="max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 1rem; overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); min-width: 750px;">
+        <thead>
+          <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border);">
+            <th style="padding: 20px; font-weight: 700; color: var(--text-muted); font-size: 0.95rem; width: 28%;">Característica</th>
+            <th style="padding: 20px; text-align: center; width: 18%;">
+              <div style="border: 2px solid #10b981; background: rgba(16, 185, 129, 0.05); padding: 12px; border-radius: 12px; display: inline-block; width: 100%;">
+                <div style="font-weight: 800; color: #10b981; font-size: 1.1rem; margin-bottom: 4px;">Agendarte UY</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Desde $299 UYU/mes</div>
+              </div>
+            </th>
+            <th style="padding: 20px; text-align: center; width: 18%;">
+              <div style="background: var(--surface-3); padding: 12px; border-radius: 12px; display: inline-block; width: 100%; border: 1px solid var(--border);">
+                <div style="font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: 4px;">Booksy</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">$30 USD/mes</div>
+              </div>
+            </th>
+            <th style="padding: 20px; text-align: center; width: 18%;">
+              <div style="background: var(--surface-3); padding: 12px; border-radius: 12px; display: inline-block; width: 100%; border: 1px solid var(--border);">
+                <div style="font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: 4px;">Fresha</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">$20 USD/mes</div>
+              </div>
+            </th>
+            <th style="padding: 20px; text-align: center; width: 18%;">
+              <div style="background: var(--surface-3); padding: 12px; border-radius: 12px; display: inline-block; width: 100%; border: 1px solid var(--border);">
+                <div style="font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: 4px;">AgendaPro</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">$30 USD/mes</div>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Profesionales incluidos</td>
+            <td style="padding: 16px 20px; text-align: center; font-weight: 700; color: #10b981; font-size: 0.9rem; background: rgba(16, 185, 129, 0.02);">Hasta 15 (Básico/Pro)</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">1 (+$20 USD c/u)</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">1 (+$15 USD c/u)</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">Variable</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">WhatsApp nativo</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Cuponeras / Paquetes</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Membresías recurrentes</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Señas por servicio</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Comisiones profesionales</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Múltiples sucursales</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">100% en Español</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Soporte por WhatsApp</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Precios en moneda local</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="planes-section" id="planes" style="margin-top: 5rem;">
     <div class="section-heading">
       <p class="section-heading__eyebrow">Planes</p>

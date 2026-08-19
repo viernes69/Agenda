@@ -1661,6 +1661,7 @@ body.modal-open{
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap:16px;
   align-items:stretch;
+  justify-content:center;
   min-width:0;
 }
 .plan-card{
@@ -1674,6 +1675,9 @@ body.modal-open{
   border:1px solid var(--border);
   box-shadow: var(--shadow-sm);
   transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
 }
 .plan-card:hover{
   transform: translateY(-3px);
@@ -1690,6 +1694,11 @@ body.modal-open{
 }
 .plan-card--featured:hover{
   box-shadow: 0 14px 34px rgba(109, 40, 217, .2);
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: var(--shadow-md), 0 0 15px rgba(16, 185, 129, 0.1) !important;
 }
 .plan-card__badge{
   position:absolute;
