@@ -414,7 +414,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
           <!-- GASTRONOMIA -->
           <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
             <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
-              <img src="<?= h(url('src/media/carousel/emprendedores.jpg')) ?>" alt="Gastronomía" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <img src="<?= h(url('src/media/carousel/gastronomia.png')) ?>" alt="Gastronomía" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
               <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Restaurantes & Delivery</h3>
               <div class="hc-highlight">Gratis ilimitado</div>
               <ul class="plan-card__features" aria-label="Características de Gastronomía" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
@@ -429,7 +429,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
           <!-- MINIMARKET / ALMACEN -->
           <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
             <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
-              <img src="<?= h(url('src/media/carousel/emprendedores.jpg')) ?>" alt="Minimarket" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <img src="<?= h(url('src/media/carousel/minimarket.png')) ?>" alt="Minimarket" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
               <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Almacenes & Kioscos</h3>
               <div class="hc-highlight">Gratis ilimitado</div>
               <ul class="plan-card__features" aria-label="Características de Minimarket" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
@@ -444,7 +444,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
           <!-- PRODUCTOS DIGITALES -->
           <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
             <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
-              <img src="<?= h(url('src/media/carousel/emprendedores.jpg')) ?>" alt="Productos Digitales" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <img src="<?= h(url('src/media/carousel/digital.png')) ?>" alt="Productos Digitales" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
               <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Servicios & Digitales</h3>
               <div class="hc-highlight">Gratis ilimitado</div>
               <ul class="plan-card__features" aria-label="Características de Productos Digitales" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
@@ -552,7 +552,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <th style="padding: 20px; text-align: center; width: 18%;">
               <div style="border: 2px solid #10b981; background: rgba(16, 185, 129, 0.05); padding: 12px; border-radius: 12px; display: inline-block; width: 100%;">
                 <div style="font-weight: 800; color: #10b981; font-size: 1.1rem; margin-bottom: 4px;">Agendarte UY</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Desde $299 UYU/mes</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">(Plan Profesional)<br>$1.190 UYU/mes</div>
               </div>
             </th>
             <th style="padding: 20px; text-align: center; width: 18%;">
@@ -576,13 +576,15 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
           </tr>
         </thead>
         <tbody>
+          <!-- ROW 1 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Profesionales incluidos</td>
-            <td style="padding: 16px 20px; text-align: center; font-weight: 700; color: #10b981; font-size: 0.9rem; background: rgba(16, 185, 129, 0.02);">Hasta 15 (Básico/Pro)</td>
+            <td style="padding: 16px 20px; text-align: center; font-weight: 700; color: #10b981; font-size: 0.9rem; background: rgba(16, 185, 129, 0.02);">Ilimitado</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">1 (+$20 USD c/u)</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">1 (+$15 USD c/u)</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">Variable</td>
           </tr>
+          <!-- ROW 2 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">WhatsApp nativo</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
@@ -590,41 +592,71 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
           </tr>
+          <!-- ROW 3 -->
           <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Cuponeras / Paquetes</td>
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Notificaciones WhatsApp & Email</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <!-- ROW 4 -->
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Recordatorio Google Calendar</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <!-- ROW 5 -->
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Selección por Profesionales</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
+          </tr>
+          <!-- ROW 6 -->
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Sistema de Puntos</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
           </tr>
+          <!-- ROW 7 -->
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Pago por servicios (total)</td>
+            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
+          </tr>
+          <!-- ROW 8 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Membresías recurrentes</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
-          <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Señas por servicio</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
-          </tr>
+          <!-- ROW 9 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Comisiones profesionales</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
+          <!-- ROW 10 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Múltiples sucursales</td>
-            <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
+            <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem; background: rgba(16, 185, 129, 0.02);">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
+          <!-- ROW 11 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">100% en Español</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
@@ -632,6 +664,7 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
+          <!-- ROW 12 -->
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Soporte por WhatsApp</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
@@ -639,7 +672,8 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold;">✓</td>
           </tr>
-          <tr style="border-bottom: 1px solid var(--border);">
+          <!-- ROW 13 -->
+          <tr>
             <td style="padding: 16px 20px; font-weight: 600; color: var(--text); font-size: 0.9rem;">Precios en moneda local</td>
             <td style="padding: 16px 20px; text-align: center; color: #10b981; font-size: 1.25rem; font-weight: bold; background: rgba(16, 185, 129, 0.02);">✓</td>
             <td style="padding: 16px 20px; text-align: center; color: var(--text-muted); font-size: 1.25rem;">✗</td>
@@ -669,6 +703,69 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             }
         }
         $planCount = count($planesActivos);
+
+        // Custom features for Agenda Digital
+        $agendaFeatures = [
+            'Free' => [
+                ['label' => 'Reservas al mes', 'value' => 'Hasta 25 reservas', 'included' => true],
+                ['label' => 'Profesionales', 'value' => '1 profesional', 'included' => true],
+                ['label' => 'Clientes registrados', 'value' => 'Hasta 25 clientes', 'included' => true],
+                ['label' => 'Servicios a agendar', 'value' => 'Hasta 4 servicios', 'included' => true],
+                ['label' => 'Página web de reservas', 'value' => 'Básica', 'included' => true],
+                ['label' => 'Recordatorios WhatsApp', 'value' => 'No incluido', 'included' => false],
+                ['label' => 'Sistema de puntos', 'value' => 'No incluido', 'included' => false],
+            ],
+            'Básico' => [
+                ['label' => 'Reservas al mes', 'value' => 'Hasta 100 reservas', 'included' => true],
+                ['label' => 'Profesionales', 'value' => 'Hasta 3 profesionales', 'included' => true],
+                ['label' => 'Clientes registrados', 'value' => 'Hasta 100 clientes', 'included' => true],
+                ['label' => 'Servicios a agendar', 'value' => 'Hasta 8 servicios', 'included' => true],
+                ['label' => 'Página web de reservas', 'value' => 'Personalizada', 'included' => true],
+                ['label' => 'Recordatorios WhatsApp', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Soporte prioritario', 'value' => 'No incluido', 'included' => false],
+            ],
+            'Profesional' => [
+                ['label' => 'Reservas al mes', 'value' => 'Ilimitadas', 'included' => true],
+                ['label' => 'Profesionales', 'value' => 'Ilimitados', 'included' => true],
+                ['label' => 'Clientes registrados', 'value' => 'Ilimitados', 'included' => true],
+                ['label' => 'Servicios a agendar', 'value' => 'Ilimitados', 'included' => true],
+                ['label' => 'Página web de reservas', 'value' => 'Avanzada', 'included' => true],
+                ['label' => 'Notificaciones WhatsApp & Email', 'value' => 'Ilimitadas', 'included' => true],
+                ['label' => 'Recordatorio Google Calendar', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Sistema de puntos', 'value' => 'Incluido', 'included' => true],
+            ]
+        ];
+
+        // Custom features for Tienda Online / Catálogo
+        $tiendaFeatures = [
+            'Free' => [
+                ['label' => 'Catálogo online', 'value' => 'Básico (Hasta 3 productos)', 'included' => true],
+                ['label' => 'Pedidos al WhatsApp', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Carrito de compras', 'value' => 'No incluido', 'included' => false],
+                ['label' => 'Pagos online (Mercado Pago)', 'value' => 'No incluido', 'included' => false],
+                ['label' => 'Envíos y retiros', 'value' => 'No incluido', 'included' => false],
+                ['label' => 'Configuración básica', 'value' => 'Incluida', 'included' => true],
+                ['label' => 'Reportes y estadísticas', 'value' => 'No incluido', 'included' => false],
+            ],
+            'Básico' => [
+                ['label' => 'Catálogo online', 'value' => 'Hasta 20 productos', 'included' => true],
+                ['label' => 'Carrito de compras integrado', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Pedidos al WhatsApp', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Pagos online (Mercado Pago)', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Envíos y retiros locales', 'value' => 'Configurable', 'included' => true],
+                ['label' => 'Control básico de stock', 'value' => 'Incluido', 'included' => true],
+                ['label' => 'Reportes de ventas', 'value' => 'Básicos', 'included' => true],
+            ],
+            'Profesional' => [
+                ['label' => 'Catálogo online', 'value' => 'Productos ilimitados', 'included' => true],
+                ['label' => 'E-commerce con carrito', 'value' => 'Completo', 'included' => true],
+                ['label' => 'Pagos online (MP & PayPal)', 'value' => 'Integrado', 'included' => true],
+                ['label' => 'Impresión de tickets automática', 'value' => 'Incluida', 'included' => true],
+                ['label' => 'Control de stock avanzado', 'value' => 'Ilimitado', 'included' => true],
+                ['label' => 'Notificaciones WhatsApp & Email', 'value' => 'Ilimitadas', 'included' => true],
+                ['label' => 'Reportes avanzados y ventas', 'value' => 'Completos', 'included' => true],
+            ]
+        ];
       ?>
         <?php if ($anyAnnual): ?>
           <div class="plan-billing-toggle" data-landing-billing-toggle style="margin: 0 auto 2.5rem; display: inline-flex; justify-content: center; width: 100%;">
@@ -685,16 +782,10 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
             $isFeatured = $planCount >= 3 && $i === 1;
             $ctaLabel = $isFree ? 'Empezar gratis' : 'Elegir este plan';
             $displayDesc = MembershipPlan::displayDescription($p);
-            $comparisonRows = MembershipPlan::comparisonRows($p);
-            $features = MembershipPlan::features($p);
-            $maxProducts = MembershipPlan::maxProducts($p);
-            $maxServices = MembershipPlan::maxServices($p);
-            $maxAppts = MembershipPlan::maxAppointmentsMonth($p);
-            $maxProfessionals = MembershipPlan::maxProfessionals($p);
-            $maxClients = MembershipPlan::maxClients($p);
             $yearly = MembershipPlan::yearlyPrice($p);
             $discount = MembershipPlan::annualDiscountPct($p);
             $hasAnnual = MembershipPlan::isAnnualEnabled($p);
+            $nombrePlan = trim((string)($p['nombre'] ?? ''));
           ?>
             <article class="plan-card<?= $isFeatured ? ' plan-card--featured' : '' ?>"
                      role="listitem"
@@ -722,46 +813,17 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
               <?php if ($hasAnnual && $discount > 0): ?>
                 <p class="plan-card__annual-note" data-landing-annual-note hidden><?= (int)$discount ?>% off al pagar anual</p>
               <?php endif; ?>
-              <?php
-                $limitBits = [];
-                if ($maxAppts !== null) {
-                    $limitBits[] = 'Hasta ' . (int)$maxAppts . ' reservas/mes';
-                }
-                if ($maxProfessionals !== null) {
-                    $limitBits[] = ((int)$maxProfessionals === 1)
-                        ? '1 profesional'
-                        : ('Hasta ' . (int)$maxProfessionals . ' profesionales');
-                }
-                if ($maxClients !== null) {
-                    $limitBits[] = 'Hasta ' . (int)$maxClients . ' clientes';
-                }
-                if ($maxServices !== null) {
-                    $limitBits[] = (int)$maxServices . ' servicios';
-                }
-                if ($maxProducts !== null) {
-                    $limitBits[] = ((int)$maxProducts === 0) ? '0 productos' : ('Hasta ' . (int)$maxProducts . ' productos');
-                }
-                if ($limitBits === [] && MembershipPlan::settingsTier($p) === MembershipPlan::SETTINGS_TIER_FULL) {
-                    $limitBits[] = 'Ilimitado';
-                }
-                
-                $combinedFeatures = [];
-                foreach (array_merge($limitBits, $features) as $f) {
-                    $f = trim($f);
-                    if ($f !== '' && !in_array($f, $combinedFeatures, true)) {
-                        $combinedFeatures[] = $f;
-                    }
-                }
-              ?>
               <?php if (!$isFree && $trialDias > 0): ?>
                 <p class="plan-card__trial"><?= $trialDias ?> días de prueba gratis</p>
               <?php endif; ?>
               <?php if ($displayDesc !== '' || $descripcion !== ''): ?>
                 <p class="plan-card__desc"><?= h($displayDesc !== '' ? $displayDesc : $descripcion) ?></p>
               <?php endif; ?>
-              <?php if ($comparisonRows !== []): ?>
-                <ul class="plan-card__features" aria-label="Comparativa de <?= h((string)$p['nombre']) ?>">
-                  <?php foreach ($comparisonRows as $row): ?>
+
+              <!-- Agenda specific features -->
+              <?php if (isset($agendaFeatures[$nombrePlan])): ?>
+                <ul class="plan-card__features plan-features-agenda" aria-label="Características de Agenda - <?= h($nombrePlan) ?>">
+                  <?php foreach ($agendaFeatures[$nombrePlan] as $row): ?>
                     <?php $included = !empty($row['included']); ?>
                     <li class="<?= $included ? 'is-included' : 'is-excluded' ?>">
                       <span class="plan-card__feature-icon" aria-hidden="true"><?= $included ? '&#10003;' : '&#10005;' ?></span>
@@ -773,6 +835,23 @@ $buscarJsVer = is_file(__DIR__ . '/src/js/buscar-modal.js') ? (string)filemtime(
                   <?php endforeach; ?>
                 </ul>
               <?php endif; ?>
+
+              <!-- Tienda specific features -->
+              <?php if (isset($tiendaFeatures[$nombrePlan])): ?>
+                <ul class="plan-card__features plan-features-tienda" style="display: none;" aria-label="Características de Tienda - <?= h($nombrePlan) ?>">
+                  <?php foreach ($tiendaFeatures[$nombrePlan] as $row): ?>
+                    <?php $included = !empty($row['included']); ?>
+                    <li class="<?= $included ? 'is-included' : 'is-excluded' ?>">
+                      <span class="plan-card__feature-icon" aria-hidden="true"><?= $included ? '&#10003;' : '&#10005;' ?></span>
+                      <span class="plan-card__feature-copy">
+                        <span class="plan-card__feature-label"><?= h((string)($row['label'] ?? '')) ?></span>
+                        <span class="plan-card__feature-value"><?= h((string)($row['value'] ?? '')) ?></span>
+                      </span>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              <?php endif; ?>
+
               <button type="button" class="plan-btn plan-card__cta"
                 data-plan-id="<?= (int)$p['id_membership'] ?>"
                 data-plan-nombre="<?= h((string)$p['nombre']) ?>"

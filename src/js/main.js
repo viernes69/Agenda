@@ -279,6 +279,17 @@
             pane.classList.remove("active");
           }
         });
+
+        // Toggle pricing plan features (Agenda vs Tienda)
+        const planFeaturesAgenda = document.querySelectorAll(".plan-features-agenda");
+        const planFeaturesTienda = document.querySelectorAll(".plan-features-tienda");
+        if (targetId === "agenda-rubros") {
+          planFeaturesAgenda.forEach((el) => el.style.display = "block");
+          planFeaturesTienda.forEach((el) => el.style.display = "none");
+        } else if (targetId === "tienda-rubros") {
+          planFeaturesAgenda.forEach((el) => el.style.display = "none");
+          planFeaturesTienda.forEach((el) => el.style.display = "block");
+        }
       });
     });
   })();

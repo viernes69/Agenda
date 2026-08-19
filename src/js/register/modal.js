@@ -1135,11 +1135,21 @@
     if (!trigger) return;
     event.preventDefault();
     const card = trigger.closest('.hc-card') || trigger.closest('.plan-card');
-    const rubroId = trigger.dataset.rubroId || (card ? card.dataset.rubroId : '');
+    let rubroId = trigger.dataset.rubroId || (card ? card.dataset.rubroId : '');
+    let rubroNombre = trigger.dataset.rubroNombre || (card ? card.querySelector('figcaption')?.textContent?.trim() : '');
     const planId = trigger.dataset.planId || (card ? card.dataset.planId : '');
-    const rubroNombre = trigger.dataset.rubroNombre || (card ? card.querySelector('figcaption')?.textContent?.trim() : '');
     const planNombre = trigger.dataset.planNombre || (planConfig[planId]?.nombre || '');
     const billingPeriod = trigger.dataset.billingPeriod || (card ? card.dataset.billingPeriod : '') || 'monthly';
+
+    // Auto-infer rubro to Tienda if registration is triggered from the plans section while the store tab is active
+    if (!rubroId && planId) {
+      const activeTab = document.querySelector(".business-type-tabs .tab-btn.active");
+      if (activeTab && activeTab.getAttribute("data-tab-target") === "tienda-rubros") {
+        rubroId = "13";
+        rubroNombre = "Tienda";
+      }
+    }
+
     openModal({ rubroId, planId, rubroNombre, planNombre, billingPeriod });
   }
 
