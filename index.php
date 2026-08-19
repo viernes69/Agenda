@@ -296,60 +296,130 @@ $seoKeywords = implode(', ', LandingContent::metaKeywords());
     </div>
   </section>
 
-  <section class="rubros-section" id="rubros" aria-label="Rubros destacados">
+  <section class="rubros-section" id="rubros" aria-label="Elige tu tipo de negocio">
     <div class="section-heading">
-      <p class="section-heading__eyebrow">Rubros</p>
-      <h2 class="section-heading__title">Pensado para tu negocio</h2>
-      <p class="section-heading__text">Elegí tu rubro y empezá a recibir reservas hoy mismo.</p>
+      <p class="section-heading__eyebrow">Soluciones</p>
+      <h2 class="section-heading__title">¿Qué tipo de negocio querés crear?</h2>
+      <p class="section-heading__text">Seleccioná la opción que mejor se adapte a tu necesidad para comenzar el registro.</p>
     </div>
-    <div class="hero-carousel">
-      <button class="hc-btn prev" aria-label="Anterior"><i class="bx bx-chevron-left" aria-hidden="true"></i></button>
-      <div class="hc-viewport">
-        <ul class="hc-track">
-          <?php if (!empty($rubros)): ?>
-            <?php foreach (array_slice($rubros, 0, 6) as $r):
-              $rImg = trim((string)($r['imagen'] ?? ''));
-              // default.jpg no existe en disco; Apache lo enruta a index.php (HTML) y rompe el icono
-              if ($rImg === '' || !is_file(__DIR__ . '/' . ltrim(str_replace('\\', '/', $rImg), '/'))) {
-                $rImg = 'src/media/carousel/profesionales.jpg';
-              }
-            ?>
-            <li class="hc-card" data-rubro-id="<?= (int)$r['id_rubro'] ?>" data-plan-id="">
-              <figure>
-                <img src="<?= h(url($rImg)) ?>" alt="<?= h($r['nombre']) ?>" loading="lazy" decoding="async" width="104" height="104">
-                <figcaption><?= h($r['nombre']) ?></figcaption>
-                <div class="hc-highlight">Gratis ilimitado</div>
-                <div class="hc-perks">
-                  <div class="hc-perk">
-                    <i class="bx bx-check" aria-hidden="true"></i>
-                    <span>Sin tarjeta de crédito</span>
-                  </div>
-                  <div class="hc-perk">
-                    <i class="bx bx-check" aria-hidden="true"></i>
-                    <span>Listo en 5 minutos</span>
-                  </div>
-                  <div class="hc-perk">
-                    <i class="bx bx-check" aria-hidden="true"></i>
-                    <span>Página web incluida</span>
-                  </div>
-                </div>
-                <button type="button" class="plan-btn" data-rubro-id="<?= (int)$r['id_rubro'] ?>" data-rubro-nombre="<?= h($r['nombre']) ?>">Comenzar ahora</button>
-              </figure>
-            </li>
-            <?php endforeach; ?>
-          <?php else: ?>
-            <li class="hc-card">
-              <figure>
-                <img src="<?= h(url('src/media/carousel/barberias.jpg')) ?>" alt="Barberías" loading="lazy" decoding="async" width="104" height="104">
-                <figcaption>Barberías</figcaption>
-                <button type="button" class="plan-btn" data-rubro-id="0" data-rubro-nombre="Barberias">Comenzar ahora</button>
-              </figure>
-            </li>
-          <?php endif; ?>
-        </ul>
+
+    <!-- Toggle de Tipo de Negocio (Tabs) -->
+    <div class="business-type-tabs" style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
+      <button type="button" class="tab-btn active" data-tab-target="agenda-rubros" style="padding: 14px 28px; border-radius: 999px; border: 2px solid var(--primary); background: var(--primary); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; font-family: inherit;">
+        <i class="bx bx-calendar" style="font-size: 1.25rem;"></i>
+        <span>Agenda Digital / Servicios</span>
+      </button>
+      <button type="button" class="tab-btn" data-tab-target="tienda-rubros" style="padding: 14px 28px; border-radius: 999px; border: 2px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; font-family: inherit;">
+        <i class="bx bx-store" style="font-size: 1.25rem;"></i>
+        <span>Tienda Online / Catálogo</span>
+      </button>
+    </div>
+
+    <!-- Contenido de las Tabs -->
+    <div class="tab-contents">
+      <!-- TAB AGENDA DIGITAL -->
+      <div class="tab-pane active" id="agenda-rubros">
+        <div class="plan-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+          
+          <!-- CLINICA DENTAL -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/dentistas.jpg')) ?>" alt="Clínica Dental" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Clínica Dental / Dentistas</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Clínica Dental" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Gestión de pacientes y citas</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Recordatorios por WhatsApp</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Ficha clínica digital</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="7" data-rubro-nombre="Dentistas" style="width: 100%; margin-top: auto;">Crear mi Agenda</button>
+          </article>
+
+          <!-- LAVADERO DE AUTOS -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/lavaderos.jpg')) ?>" alt="Lavadero de Autos" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Lavadero de Autos</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Lavadero de Autos" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Control de turnos y boxes</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Selección de tipos de lavado</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Notificación de coche listo</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="9" data-rubro-nombre="Lavaderos" style="width: 100%; margin-top: auto;">Crear mi Agenda</button>
+          </article>
+
+          <!-- BARBERIA -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/barberias.jpg')) ?>" alt="Barbería" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Barbería / Peluquería</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Barbería" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Selección de profesional</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Reserva de cortes y combos</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Recordatorio automático</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="2" data-rubro-nombre="Barbería" style="width: 100%; margin-top: auto;">Crear mi Agenda</button>
+          </article>
+
+          <!-- CONSULTORIOS / SALUD -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/consultorios.jpg')) ?>" alt="Consultorio / Salud" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Estética & Consultorios</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Consultorio" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Configuración de horarios</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Página web de reservas</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Historial de reservas</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="4" data-rubro-nombre="Clínica de Estética" style="width: 100%; margin-top: auto;">Crear mi Agenda</button>
+          </article>
+
+        </div>
       </div>
-      <button class="hc-btn next" aria-label="Siguiente"><i class="bx bx-chevron-right" aria-hidden="true"></i></button>
-      <div class="hc-dots" role="tablist" aria-label="Paginacion"></div>
+
+      <!-- TAB TIENDA ONLINE -->
+      <div class="tab-pane" id="tienda-rubros" style="display: none;">
+        <div class="plan-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 800px; margin: 0 auto; padding: 0 1rem;">
+          
+          <!-- TIENDA COMPLETA -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/emprendedores.jpg')) ?>" alt="Tienda Online" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Tienda Digital / Catálogo</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Tienda" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Catálogo de productos e imágenes</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Carrito de compras integrado</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Pedidos directo al WhatsApp o MP</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="13" data-rubro-nombre="Tienda" style="width: 100%; margin-top: auto;">Crear mi Tienda</button>
+          </article>
+
+          <!-- EMPRENDEDORES / COMERCIOS -->
+          <article class="plan-card" style="position: relative; padding: clamp(24px, 2.5vw, 32px); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .35s var(--ease-spring), box-shadow .35s var(--ease-spring), border-color .35s ease;" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='var(--shadow-lg), var(--shadow-glow)'; this.style.borderColor='rgba(124, 58, 237, 0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='var(--border)'">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+              <img src="<?= h(url('src/media/carousel/emprendedores.jpg')) ?>" alt="Emprendedores" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--surface-3); object-fit: cover; box-shadow: var(--shadow-md);">
+              <h3 style="font-weight: 700; font-size: 1.25rem; color: var(--text); margin-top: 0.5rem;">Almacén & Emprendedores</h3>
+              <div class="hc-highlight">Gratis ilimitado</div>
+              <ul class="plan-card__features" aria-label="Características de Almacén" style="margin-top: 1rem; width: 100%; text-align: left; padding: 0;">
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Control básico de stock</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> Galería y fotos de productos</li>
+                <li class="is-included" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px;"><span style="color: var(--success); font-weight: bold;">✓</span> QR de pago en tienda o online</li>
+              </ul>
+            </div>
+            <button type="button" class="plan-btn" data-rubro-id="8" data-rubro-nombre="Emprendedores" style="width: 100%; margin-top: auto;">Crear mi Tienda</button>
+          </article>
+
+        </div>
+      </div>
     </div>
   </section>
 

@@ -248,4 +248,38 @@
     }
     apply();
   })();
+
+  // Lógica de Tabs de Rubros (Agenda vs Tienda)
+  (function () {
+    const tabBtns = document.querySelectorAll(".business-type-tabs .tab-btn");
+    const tabPanes = document.querySelectorAll(".tab-contents .tab-pane");
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-tab-target");
+        
+        // Update active tab button style
+        tabBtns.forEach((b) => {
+          b.classList.remove("active");
+          b.style.background = "var(--surface)";
+          b.style.color = "var(--text)";
+          b.style.borderColor = "var(--border)";
+        });
+        btn.classList.add("active");
+        btn.style.background = "var(--primary)";
+        btn.style.color = "#fff";
+        btn.style.borderColor = "var(--primary)";
+
+        // Toggle active pane visibility
+        tabPanes.forEach((pane) => {
+          if (pane.id === targetId) {
+            pane.style.display = "block";
+            pane.classList.add("active");
+          } else {
+            pane.style.display = "none";
+            pane.classList.remove("active");
+          }
+        });
+      });
+    });
+  })();
 })();

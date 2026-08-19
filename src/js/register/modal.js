@@ -169,7 +169,10 @@
   }
 
   function selectedBusinessType() {
-    return normalizeBusinessType(businessTypeSelect ? businessTypeSelect.value : 'servicios');
+    if (businessTypeSelect) {
+      return normalizeBusinessType(businessTypeSelect.value);
+    }
+    return inferBusinessType();
   }
 
   function inferBusinessType(payload = {}) {
@@ -1069,8 +1072,8 @@
     syncRubroSelection(targetRubroId);
     if (businessTypeSelect) {
       businessTypeSelect.value = inferBusinessType({ ...payload, rubroNombre: rubroName || currentRubroName });
-      syncBusinessTypeUi();
     }
+    syncBusinessTypeUi();
     if (hiddenPlanNombre && payload.planNombre) hiddenPlanNombre.value = payload.planNombre;
     currentRubroName = rubroName || currentRubroName || '';
     syncPlanInfo(targetPlanId, currentRubroName, billingPeriod);
@@ -1242,8 +1245,8 @@
       syncPlanInfo(getPlanIdForRubro(rid), currentRubroName);
       if (businessTypeSelect) {
         businessTypeSelect.value = inferBusinessType({ rubroNombre: currentRubroName });
-        syncBusinessTypeUi();
       }
+      syncBusinessTypeUi();
     });
   }
   if (businessPlanSelect) {
