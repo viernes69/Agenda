@@ -100,11 +100,9 @@ final class CommerceRegistrar
             : null;
         self::assert($membership !== null, 'Plan no disponible.');
 
-        $trialDays = max(0, (int)($membership['trial_dias'] ?? 30));
-        if ($trialDays <= 0 && (float)$membership['precio'] <= 0) {
-            $trialDays = 30;
-        }
-        $trialEnd = date('Y-m-d', strtotime("+{$trialDays} days"));
+        $isFree = (float)($membership['precio'] ?? 0) <= 0;
+        $trialDays = $isFree ? 0 : max(0, (int)($membership['trial_dias'] ?? 30));
+        $trialEnd = $isFree ? null : date('Y-m-d', strtotime("+{$trialDays} days"));
 
         $rootPath = realpath(dirname(__DIR__, 2));
         self::assert($rootPath !== false, 'No se pudo resolver la ruta base.');
@@ -151,8 +149,8 @@ final class CommerceRegistrar
                     'ciudad'           => $ciudad,
                     'calle'            => $calle,
                     'timezone'         => $tz,
-                    'status'           => 'trial',
-                    'trial_expires_at' => $trialEnd,
+                    'status'           => $isFree ? 'active' : 'trial',
+                    'trial_expires_at' => $isFree ? null : $trialEnd,
                     'serial'           => Keys::serial(),
                 ]);
 
@@ -174,13 +172,13 @@ final class CommerceRegistrar
                 $db->insert('subscriptions', [
                     'id_commerce'          => $idCommerce,
                     'id_membership'        => $planId,
-                    'status'               => 'trial',
-                    'gateway'              => (float)$membership['precio'] > 0 ? null : 'manual',
+                    'status'               => $isFree ? 'active' : 'trial',
+                    'gateway'              => $isFree ? 'manual' : null,
                     'billing_period'       => $billingPeriod,
                     'started_at'           => date('Y-m-d'),
-                    'trial_expires_at'     => $trialEnd,
+                    'trial_expires_at'     => $isFree ? null : $trialEnd,
                     'current_period_start' => date('Y-m-d'),
-                    'current_period_end'   => $trialEnd,
+                    'current_period_end'   => $isFree ? null : $trialEnd,
                     'notes'                => 'Registro público' . ($billingPeriod === 'yearly' ? ' (Anual)' : ''),
                 ]);
 
@@ -253,12 +251,8 @@ final class CommerceRegistrar
             ]);
 
             $baseRedirect = self::buildRedirectUrl($slug);
-            if ((float)($membership['precio'] ?? 0) > 0) {
-                $separator = str_contains($baseRedirect, '?') ? '&' : '?';
-                $redirectUrl = $baseRedirect . $separator . 'membership_modal=1&plan_id=' . $planId . '&period=' . $billingPeriod;
-            } else {
-                $redirectUrl = $baseRedirect;
-            }
+            $separator = str_contains($baseRedirect, '?') ? '&' : '?';
+            $redirectUrl = $baseRedirect . $separator . 'membership_modal=1&plan_id=' . $planId . '&period=' . $billingPeriod;
 
             return [
                 'ok'          => true,

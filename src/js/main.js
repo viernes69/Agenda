@@ -193,48 +193,59 @@
     (root) => window.AgenduyRegister?.bindCategoryButtons?.(root)
   );
 
-  bindFetchModal(
-    "btnPlanes",
-    "modal-planes",
-    "modal-planes-content",
-    "src/components/planes.php",
-    (root) => {
-      const toggle = root.querySelector('[data-landing-billing-toggle]');
-      let period = 'monthly';
-      const apply = () => {
-        if (toggle) {
-          toggle.querySelectorAll('button').forEach((btn) => {
-            btn.classList.toggle('is-active', btn.getAttribute('data-billing') === period);
-          });
-        }
-        root.querySelectorAll('[data-landing-plan]').forEach((card) => {
-          const monthly = parseFloat(card.getAttribute('data-monthly') || '0');
-          const yearly = card.getAttribute('data-yearly');
-          const hasAnnual = card.getAttribute('data-has-annual') === '1';
-          const amountEl = card.querySelector('[data-landing-price-amount]');
-          const periodEl = card.querySelector('[data-landing-price-period]');
-          const note = card.querySelector('[data-landing-annual-note]');
-          const ctaBtn = card.querySelector('.plan-card__cta');
-          const useYearly = period === 'yearly' && hasAnnual && yearly !== '';
-          if (amountEl && periodEl && monthly > 0) {
-            amountEl.textContent = Math.round(useYearly ? parseFloat(yearly) : monthly).toLocaleString('es-UY');
-            periodEl.textContent = useYearly ? '/ año' : '/ mes';
-          }
-          if (note) note.hidden = !useYearly;
-          if (ctaBtn) {
-            ctaBtn.setAttribute('data-billing-period', useYearly ? 'yearly' : 'monthly');
-          }
-        });
-      };
+  const btnPlanes = document.getElementById("btnPlanes");
+  if (btnPlanes) {
+    btnPlanes.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("planes")?.scrollIntoView({ behavior: "smooth" });
+    });
+    btnPlanes.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        document.getElementById("planes")?.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  }
+
+  // Inicializar toggle de facturacion en la seccion inline
+  (function () {
+    const section = document.querySelector(".planes-section");
+    if (!section) return;
+    const toggle = section.querySelector("[data-landing-billing-toggle]");
+    let period = "monthly";
+    const apply = () => {
       if (toggle) {
-        toggle.addEventListener('click', (e) => {
-          const btn = e.target.closest('[data-billing]');
-          if (!btn) return;
-          period = btn.getAttribute('data-billing') || 'monthly';
-          apply();
+        toggle.querySelectorAll("button").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-billing") === period);
         });
       }
-      apply();
+      section.querySelectorAll("[data-landing-plan]").forEach((card) => {
+        const monthly = parseFloat(card.getAttribute("data-monthly") || "0");
+        const yearly = card.getAttribute("data-yearly");
+        const hasAnnual = card.getAttribute("data-has-annual") === "1";
+        const amountEl = card.querySelector("[data-landing-price-amount]");
+        const periodEl = card.querySelector("[data-landing-price-period]");
+        const note = card.querySelector("[data-landing-annual-note]");
+        const ctaBtn = card.querySelector(".plan-card__cta");
+        const useYearly = period === "yearly" && hasAnnual && yearly !== "";
+        if (amountEl && periodEl && monthly > 0) {
+          amountEl.textContent = Math.round(useYearly ? parseFloat(yearly) : monthly).toLocaleString("es-UY");
+          periodEl.textContent = useYearly ? "/ año" : "/ mes";
+        }
+        if (note) note.hidden = !useYearly;
+        if (ctaBtn) {
+          ctaBtn.setAttribute("data-billing-period", useYearly ? "yearly" : "monthly");
+        }
+      });
+    };
+    if (toggle) {
+      toggle.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-billing]");
+        if (!btn) return;
+        period = btn.getAttribute("data-billing") || "monthly";
+        apply();
+      });
     }
-  );
+    apply();
+  })();
 })();

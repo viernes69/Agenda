@@ -199,16 +199,16 @@ try {
 
     if ($status === 'trial' && $planIsFree) {
         $planBannerData = $buildBanner(
-            'admin-plan-banner--trial',
+            'admin-plan-banner--active',
             'Plan gratuito',
-            'Tu prueba ilimitada está activa.',
-            'Prueba ilimitada',
+            'Tu plan gratuito está activo.',
+            'Gratuito',
             $details,
-            'prueba',
+            'activo',
             null,
             '',
             $tenantNegocioId,
-            'Mejorar plan',
+            'Ver planes',
             $membershipId
         );
     } elseif ($status === 'trial') {
@@ -228,9 +228,9 @@ try {
         }
         $planBannerData = $buildBanner(
             'admin-plan-banner--trial',
-            'Plan en prueba',
+            $planName !== '' ? 'Plan ' . $planName . ' (En prueba)' : 'Plan en prueba',
             $message,
-            'Prueba',
+            $planName !== '' ? 'Prueba ' . $planName : 'Prueba',
             $details,
             'prueba',
             $daysRemaining,
