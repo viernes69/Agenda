@@ -116,20 +116,6 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
                 <?php endforeach; ?>
               </select>
             </label>
-            <?php if (count($plans) > 1): ?>
-            <label class="reg-field reg-field--full">
-              <span>Plan</span>
-              <select name="business_plan" required>
-                <?php foreach ($plans as $plan): ?>
-                  <option value="<?= (int)$plan['id_membership'] ?>">
-                    <?= htmlspecialchars($plan['nombre'], ENT_QUOTES, 'UTF-8') ?>
-                    — <?= htmlspecialchars($plan['moneda'], ENT_QUOTES, 'UTF-8') ?>
-                    <?= number_format((float)$plan['precio'], 2) ?>/mes
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <?php endif; ?>
           </div>
         </section>
 
@@ -193,6 +179,22 @@ $serviceDurations = [15, 30, 45, 60, 75, 90];
               </div>
             </section>
           </div>
+          <?php if (count($plans) > 1): ?>
+          <div style="margin-bottom: 1.5rem;">
+            <label class="reg-field reg-field--full">
+              <span>Plan</span>
+              <select name="business_plan" required>
+                <?php foreach ($plans as $plan): ?>
+                  <option value="<?= (int)$plan['id_membership'] ?>">
+                    <?= htmlspecialchars($plan['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                    — <?= htmlspecialchars($plan['moneda'], ENT_QUOTES, 'UTF-8') ?>
+                    <?= number_format((float)$plan['precio'], 2) ?>/mes
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+          </div>
+          <?php endif; ?>
           <label class="reg-checkbox">
             <input type="checkbox" name="terms" required />
             <span>Acepto los t&eacute;rminos y autorizo la creaci&oacute;n de mi cuenta.</span>

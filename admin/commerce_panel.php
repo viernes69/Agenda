@@ -45,6 +45,15 @@ $query = [];
 if (!empty($_GET['setup'])) {
     $query['setup'] = 'ok';
 }
+if (!empty($_GET['membership_modal'])) {
+    $query['membership_modal'] = $_GET['membership_modal'];
+}
+if (!empty($_GET['plan_id'])) {
+    $query['plan_id'] = $_GET['plan_id'];
+}
+if (!empty($_GET['period'])) {
+    $query['period'] = $_GET['period'];
+}
 
 if (CommercePanel::hasLegacyPanel($slug)) {
     header('Location: ' . CommercePanel::dashboardUrlForSlug($slug, $section, $query));

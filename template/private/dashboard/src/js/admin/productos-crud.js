@@ -241,6 +241,14 @@
       const prefix = appBase || '';
       return `${prefix}/src/API/commerce_asset.php?p=${encodeURIComponent(rel)}`;
     }
+    if (!rel.includes('/')) {
+      const prefix = appBase || '';
+      const slug = String(document.querySelector('meta[name="tenant-slug"]')?.content || '').trim().replace(/^\/+|\/+$/g, '');
+      if (slug && slug !== 'template') {
+        return `${prefix}/${slug}/src/img/products/${rel}`;
+      }
+      return `${prefix}/src/img/products/${rel}`;
+    }
     if (rel.startsWith('src/') || rel.startsWith('storage/') || rel.startsWith('uploads/') || rel.startsWith('assets/')) {
       return appBase ? `${appBase}/${rel}` : `/${rel}`;
     }
@@ -327,6 +335,15 @@
         img.style.display = 'block';
         img.src = url;
         img.alt = alt || 'Vista previa';
+        img.onerror = () => {
+          img.style.display = 'none';
+          img.hidden = true;
+          if (empty) {
+            empty.hidden = false;
+            empty.removeAttribute('hidden');
+            empty.style.display = '';
+          }
+        };
       } else {
         img.hidden = true;
         img.setAttribute('hidden', '');
@@ -387,7 +404,8 @@
       if (price) price.value = item.price === null || item.price === undefined ? '' : String(item.price);
       if (label) label.value = item.label === null || item.label === undefined ? '' : String(item.label);
       if (radio) radio.checked = Boolean(item.cover);
-      setSlotPreview(slot, item.url || item.src || '', data?.Nombre || 'Producto');
+      const imgTarget = item.url || item.src || (slot === 0 ? (data?.Img_src || '') : '');
+      setSlotPreview(slot, imgTarget, data?.Nombre || 'Producto');
     });
     if (images.length && !coverRadios.some((radio) => radio.checked)) {
       coverRadios[0].checked = true;

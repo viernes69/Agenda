@@ -239,6 +239,36 @@ if (!function_exists('admin_tenant_asset_url')) {
         return url($storedPath);
     }
 }
+?>
+<script>
+  window.admin_tenant_asset_url = function(path) {
+    if (!path) return '';
+    if (/^(https?:|blob:|data:)/i.test(path)) return path;
+    var rel = String(path).replace(/^\/+/, '');
+    var appRoot = <?php echo json_encode(url(''), JSON_UNESCAPED_SLASHES); ?>.replace(/\/+$/, '');
+    var tenantSlug = <?php echo json_encode($tenantSlug ?? '', JSON_UNESCAPED_SLASHES); ?>.replace(/^\/+|\/+$/g, '');
+    var commId = <?php echo (int)(\Agenduy\Core\Auth::commerceId() ?? 0); ?>;
+    if (rel.startsWith('commerce-assets/')) {
+      return appRoot + '/src/API/commerce_asset.php?p=' + encodeURIComponent(rel);
+    }
+    if (!rel.includes('/')) {
+      if (commId > 0) {
+        return appRoot + '/src/API/commerce_asset.php?p=' + encodeURIComponent('commerce-assets/' + commId + '/products/' + rel);
+      }
+      if (tenantSlug && tenantSlug !== 'template') {
+        return appRoot + '/' + tenantSlug + '/src/img/products/' + rel;
+      }
+      return appRoot + '/src/img/products/' + rel;
+    }
+    if (rel.startsWith('src/img/') || rel.startsWith('assets/')) {
+      if (tenantSlug && tenantSlug !== 'template') {
+        return appRoot + '/' + tenantSlug + '/' + rel;
+      }
+    }
+    return appRoot + '/' + rel;
+  };
+</script>
+<?php
 $scheduleDays = [];
 if (isset($infoBarberia['horarios']) && is_array($infoBarberia['horarios'])) {
   $dayNameMap = [
@@ -1797,7 +1827,7 @@ $summaryCards = [
             data-admin-product-price="<?php echo e((string)$precio); ?>"
             data-admin-product-description="<?php echo e($descripcion); ?>"
             data-admin-product-points="<?php echo e((string)$puntos); ?>"
-            data-admin-product-image="<?php echo e($imgRel); ?>"
+            data-admin-product-image="<?php echo e($imgUrl !== '' ? $imgUrl : $imgRel); ?>"
             data-admin-product-gallery="<?php echo e((string)($prod['Img_Gallery'] ?? '')); ?>"
             data-admin-product-images="<?php echo e($productImagesJson); ?>"
             data-admin-product-discount="<?php echo e($discountLabel); ?>"

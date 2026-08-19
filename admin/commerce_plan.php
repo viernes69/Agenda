@@ -66,6 +66,14 @@ $availablePlans = $db->fetchAll(
 $csrfPlan = CSRF::generate('commerce_plan_select');
 $message = $_GET['msg'] ?? '';
 $error   = $_GET['err'] ?? '';
+
+if ($message === 'pay') {
+    $planId = (int)($_GET['id_membership'] ?? 0);
+    $period = $_GET['period'] ?? 'monthly';
+    $slug = trim((string)($commerce['slug'] ?? ''));
+    header('Location: commerce_panel.php?slug=' . urlencode($slug) . '&membership_modal=1&plan_id=' . $planId . '&period=' . $period);
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="es">

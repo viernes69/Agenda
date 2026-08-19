@@ -516,13 +516,13 @@
         if (targetPlanId > 0) {
           const planForm = modal.querySelector(`form[data-plan-membership-form][data-plan-id="${targetPlanId}"]`);
           if (planForm) {
-            const billingInput = planForm.querySelector('[data-plan-membership-billing-input]');
-            if (billingInput) billingInput.value = targetPeriod;
-            const billingToggle = planForm.closest('[data-plan-membership-card]')?.querySelector('[data-plan-membership-billing-toggle]');
-            if (billingToggle) {
-              billingToggle.querySelectorAll('button').forEach((b) => {
-                b.classList.toggle('is-active', b.getAttribute('data-billing') === targetPeriod);
-              });
+            const globalToggle = modal.querySelector('[data-plan-membership-billing]');
+            if (globalToggle) {
+              const btn = globalToggle.querySelector(`button[data-billing="${targetPeriod}"]`);
+              if (btn) btn.click();
+            } else {
+              const billingInput = planForm.querySelector('[data-plan-membership-billing-input]');
+              if (billingInput) billingInput.value = targetPeriod;
             }
             const info = resolveAmount(planForm);
             showPayStep(info);

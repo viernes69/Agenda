@@ -188,7 +188,20 @@ $useCarousel = $planTotal > 3;
               <?php endif; ?>
               <div class="plan-membership-card__cta">
                 <?php if ($isCurrent): ?>
-                  <button type="button" class="btn btn-outline" disabled>Plan actual</button>
+                  <?php if ($precio > 0): ?>
+                    <form method="post" action="<?php echo e($selectUrl); ?>" data-plan-membership-form
+                          data-plan-price="<?php echo e((string)$precio); ?>"
+                          data-plan-name="<?php echo e($nombre); ?>"
+                          data-plan-currency="<?php echo e($moneda); ?>"
+                          data-plan-id="<?php echo e((string)$pid); ?>">
+                      <input type="hidden" name="_csrf" value="<?php echo e($csrf); ?>">
+                      <input type="hidden" name="id_membership" value="<?php echo e((string)$pid); ?>">
+                      <input type="hidden" name="billing_period" value="monthly" data-plan-membership-billing-input>
+                      <button type="submit" class="btn btn-success">Pagar plan</button>
+                    </form>
+                  <?php else: ?>
+                    <button type="button" class="btn btn-outline" disabled>Plan actual</button>
+                  <?php endif; ?>
                 <?php elseif ($canSelect && $csrf !== '' && $pid > 0): ?>
                   <form method="post" action="<?php echo e($selectUrl); ?>" data-plan-membership-form
                         data-plan-price="<?php echo e((string)$precio); ?>"

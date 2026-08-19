@@ -427,6 +427,44 @@ if (!empty($errors)) {
 }
 
 if ($action === 'create') {
+function formatProductRowForResponse(array $row): array
+{
+    $tenantSlug = \Agenduy\Core\CommercePanel::resolveEffectiveSlug(dirname(__DIR__, 4));
+    $commerceId = tenantCommerceId();
+    $rawCover = (string)($row['Img_src'] ?? '');
+    $coverUrl = '';
+    if ($rawCover !== '') {
+        if (preg_match('#^https?://#i', $rawCover)) {
+            $coverUrl = $rawCover;
+        } elseif ($commerceId !== null && $commerceId > 0) {
+            $coverUrl = \Agenduy\Core\CommerceStorage::publicUrl($commerceId, $tenantSlug, $rawCover);
+        } else {
+            $coverUrl = url($tenantSlug . '/' . ltrim($rawCover, '/'));
+        }
+    }
+    $row['Img_src'] = $rawCover;
+    $row['Img_src_url'] = $coverUrl;
+
+    $media = ProductCatalog::mediaForRow($row);
+    foreach ($media as &$item) {
+        $src = (string)($item['src'] ?? '');
+        if ($src !== '') {
+            if (preg_match('#^https?://#i', $src)) {
+                $item['url'] = $src;
+            } elseif ($commerceId !== null && $commerceId > 0) {
+                $item['url'] = \Agenduy\Core\CommerceStorage::publicUrl($commerceId, $tenantSlug, $src);
+            } else {
+                $item['url'] = url($tenantSlug . '/' . ltrim($src, '/'));
+            }
+        } else {
+            $item['url'] = '';
+        }
+    }
+    unset($item);
+    $row['Imagenes'] = json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return $row;
+}
+
     $imageData = collectProductImages([], $errors);
     if (!empty($errors)) {
         http_response_code(422);
@@ -452,7 +490,7 @@ if ($action === 'create') {
             }
         }
         $row = AutoloadDB::insert('productos', $data);
-        echo json_encode(['ok' => true, 'data' => $row]);
+        echo json_encode(['ok' => true, 'data' => formatProductRowForResponse($row)]);
     } catch (Throwable $e) {
         http_response_code(500);
         echo json_encode(['ok' => false, 'error' => 'No se pudo crear el producto.']);
@@ -490,7 +528,7 @@ try {
         exit;
     }
     deleteProductImages($current, productImagePaths($row));
-    echo json_encode(['ok' => true, 'data' => $row]);
+    echo json_encode(['ok' => true, 'data' => formatProductRowForResponse($row)]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'No se pudo actualizar el producto.']);

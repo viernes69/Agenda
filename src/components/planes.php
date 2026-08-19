@@ -36,7 +36,7 @@ foreach ($planes as $ap) {
       <?php if ($anyAnnual): ?>
         <div class="plan-billing-toggle" data-landing-billing-toggle>
           <button type="button" class="is-active" data-billing="monthly">Facturación Mensual</button>
-          <button type="button" data-billing="yearly">Facturación Anual <span class="plan-badge-discount">-20% OFF</span></button>
+          <button type="button" data-billing="yearly">Facturación Anual</button>
         </div>
       <?php endif; ?>
       <div class="plan-grid" role="list">
