@@ -29,8 +29,8 @@ $currentRubroId = isset($infoBarberia['ID_Rubro']) ? (int)$infoBarberia['ID_Rubr
       <button type="button" class="modal__close" data-admin-config-info-close aria-label="Cerrar">&times;</button>
     </header>
     <form class="modal__body admin-form" data-admin-config-info-form autocomplete="off" novalidate>
-      <section class="admin-form__group">
-        <h3 class="admin-form__title">Identidad</h3>
+      <details class="admin-form__group" open>
+        <summary class="admin-form__title">Identidad</summary>
         <div class="admin-form__grid">
           <label class="admin-form__field" for="admin-config-info-nombre">
             <span class="admin-form__label">Nombre del negocio</span>
@@ -91,10 +91,10 @@ $currentRubroId = isset($infoBarberia['ID_Rubro']) ? (int)$infoBarberia['ID_Rubr
           <span class="admin-form__label">Descripci&oacute;n</span>
           <textarea id="admin-config-info-descripcion" rows="3" maxlength="150" data-admin-config-info-field="descripcion" placeholder="Describe brevemente tu negocio"></textarea>
         </label>
-      </section>
+      </details>
 
-      <section class="admin-form__group">
-        <h3 class="admin-form__title">Contacto</h3>
+      <details class="admin-form__group">
+        <summary class="admin-form__title">Contacto</summary>
         <div class="admin-form__grid">
           <label class="admin-form__field" for="admin-config-info-telefono">
             <span class="admin-form__label">Telefono</span>
@@ -124,10 +124,10 @@ $currentRubroId = isset($infoBarberia['ID_Rubro']) ? (int)$infoBarberia['ID_Rubr
             </div>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="admin-form__group">
-        <h3 class="admin-form__title">Direcci&oacute;n</h3>
+      <details class="admin-form__group">
+        <summary class="admin-form__title">Direcci&oacute;n</summary>
         <div class="admin-form__grid">
           <label class="admin-form__field" for="admin-config-info-pais">
             <span class="admin-form__label">Pa&iacute;s</span>
@@ -168,7 +168,7 @@ $currentRubroId = isset($infoBarberia['ID_Rubro']) ? (int)$infoBarberia['ID_Rubr
             <input id="admin-config-info-cp" type="text" maxlength="20" data-admin-config-info-field="direccion.codigo_postal" placeholder="11000">
           </label>
         </div>
-      </section>
+      </details>
 
       <p class="admin-form__error" data-admin-config-info-error hidden></p>
 

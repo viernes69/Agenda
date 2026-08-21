@@ -1060,7 +1060,7 @@ body[data-theme="dark"] .cart-contact { background: #161a23; }
 .modal-bg.is-open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius-lg);
-  width: 100%; max-width: 520px; max-height: 90vh; overflow: auto;
+  width: 92%; max-width: 520px; max-height: 90vh; overflow: auto;
   box-shadow: var(--shadow-lg);
   animation: pop .25s ease;
 }

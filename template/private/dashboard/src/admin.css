@@ -4611,6 +4611,34 @@ body {
   padding: 0;
 }
 
+details.admin-form__group summary.admin-form__title {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+details.admin-form__group summary.admin-form__title::-webkit-details-marker {
+  display: none;
+}
+
+details.admin-form__group summary.admin-form__title::after {
+  content: '\u25BC';
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+}
+
+details.admin-form__group[open] summary.admin-form__title::after {
+  transform: rotate(180deg);
+}
+
+details.admin-form__group[open] > .admin-form__grid,
+details.admin-form__group[open] > .admin-form__field {
+  margin-top: 0.75rem;
+}
+
 .admin-form__field input,
 .admin-form__field select,
 .admin-form__field textarea,
@@ -6626,15 +6654,20 @@ body {
   .modal__dialog, .modal__dialog--sm, .modal__dialog--md, .modal__dialog--lg, .modal__dialog--xl, .modal__dialog--barber {
     width: 92vw !important;
     max-width: 92vw !important;
+    max-height: 85dvh !important;
     margin: 1rem auto !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   .modal__body, .modal * {
     box-sizing: border-box !important;
   }
   .modal__body {
     overflow-x: hidden !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
   }
   .form-grid input, .form-grid select, .form-grid textarea {
     max-width: 100%;

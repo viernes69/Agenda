@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #0f1115;
   --panel: #151922;
   --muted: #9aa4b2;
@@ -961,6 +961,9 @@ body {
   padding: .55rem .75rem;
   color: var(--text);
   font-size: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .client-form input:focus {
   outline: none;
@@ -1186,6 +1189,7 @@ body {
   gap: .2rem;
   padding: .6rem;
   width: 180px;
+  max-width: 92vw;
   background: var(--panel);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: .9rem;
