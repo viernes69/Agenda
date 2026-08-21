@@ -6692,3 +6692,191 @@ body {
     min-width: 72px !important; 
   }
 }
+
+/* ============================================================
+   Responsive Refinements — mobile-first pass v2
+   Targets: header actions, orders dropdown, sidebar nav,
+            modals, config cards, logout button.
+   ============================================================ */
+
+/* ---------- 480px and below ---------- */
+@media (max-width: 480px) {
+
+  /* Header — collapse into a tight row */
+  .admin-main__header {
+    flex-wrap: wrap;
+    gap: .45rem;
+    align-items: flex-start;
+  }
+
+  /* Heading group takes full width */
+  .admin-heading-group {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+
+  /* Mode badge & plan badge: shrink text */
+  .admin-mode-badge {
+    font-size: .72rem !important;
+    padding: .3rem .6rem !important;
+  }
+
+  .admin-plan-badge {
+    font-size: .72rem;
+    padding: .25rem .55rem;
+  }
+
+  /* Theme toggle: icon only on very small screens */
+  .admin-theme-toggle [data-admin-theme-toggle-label] {
+    display: none;
+  }
+
+  .admin-theme-toggle {
+    padding: .48rem .6rem;
+    min-width: 2.45rem;
+  }
+
+  /* Header actions — align right, single line */
+  .admin-header-actions {
+    width: auto;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  /* Orders dropdown — full-width to avoid clipping */
+  .admin-orders__dropdown {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) translateY(-.4rem);
+    width: calc(100vw - 1.5rem);
+    max-width: 100%;
+  }
+
+  .admin-orders[open] .admin-orders__dropdown {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Orders filter buttons: wrap */
+  .admin-orders__filters {
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+
+  /* Share link: trim overflow */
+  .admin-share-link__btn span {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Config grid: 2 columns on narrow phones */
+  .admin-config-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .65rem;
+  }
+
+  .admin-config-card {
+    min-height: 100px;
+    padding: .85rem .6rem;
+  }
+
+  .admin-config-label {
+    font-size: .72rem;
+  }
+
+  /* Sidebar nav links: compact */
+  .admin-link {
+    font-size: .88rem;
+    padding: .55rem .7rem;
+  }
+
+  /* Modals: use almost full viewport height */
+  .admin-layout .modal {
+    padding: .5rem .5rem calc(var(--bottomnav-offset, 5rem) + .75rem);
+  }
+
+  .admin-layout .modal__dialog,
+  .admin-layout .modal__dialog--sm,
+  .admin-layout .modal__dialog--lg,
+  .admin-layout .modal__dialog--xl,
+  .admin-layout .modal__dialog--barber {
+    max-height: calc(100dvh - var(--bottomnav-offset, 5rem) - 1rem);
+    border-radius: .85rem;
+  }
+
+  /* Modal body: always scrollable */
+  .admin-layout .modal__body {
+    overflow-y: auto;
+    max-height: unset;
+    flex: 1;
+  }
+
+  /* Form grids inside modals: single column */
+  .modal .form-grid,
+  .modal__body .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Logout button: full label always visible */
+  .admin-bottomnav__logout span {
+    display: inline !important;
+  }
+
+  /* Plan inline banner: stack vertically */
+  .admin-header-plan-inline {
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+
+  /* Summary cards: 1 col on tiny screens */
+  .summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin section tools: stack */
+  .admin-section-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .4rem;
+  }
+
+  /* Tables: ensure cells don't overflow */
+  .table-wrap {
+    overflow-x: hidden !important;
+  }
+
+  .table td {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ---------- 360px and below (very small phones) ---------- */
+@media (max-width: 360px) {
+
+  .admin-config-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-mode-badge {
+    font-size: .68rem !important;
+    padding: .25rem .5rem !important;
+  }
+
+  .admin-heading {
+    font-size: 1rem;
+  }
+}
+
+/* ---------- Sidebar responsive (640px–900px tablet) ---------- */
+@media (min-width: 641px) and (max-width: 899px) {
+  .admin-aside {
+    --nav-width: min(250px, 78vw);
+  }
+
+  .admin-config-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

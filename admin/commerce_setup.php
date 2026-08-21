@@ -89,16 +89,43 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 }
 .setup-card h1 { margin: 0 0 .35rem; font-size: 1.45rem; }
 .setup-card p.lead { color: var(--muted); margin: 0 0 1.25rem; }
-.setup-steps {
-    display: flex; gap: .5rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+.setup-accordion {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    overflow: hidden;
 }
-.setup-step {
-    flex: 1; min-width: 120px; padding: .55rem .75rem; border-radius: 8px;
-    background: var(--surface-2); color: var(--muted); font-size: .85rem; text-align: center;
+.setup-accordion summary {
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(0,0,0,.02);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text);
 }
-.setup-step.is-active { background: rgba(99,102,241,.18); color: #c7d2fe; border: 1px solid rgba(99,102,241,.35); }
-.setup-step.is-done { color: var(--ok); }
-.setup-panel[hidden] { display: none !important; }
+.setup-accordion summary::-webkit-details-marker { display: none; }
+.setup-accordion summary::after {
+    content: '+';
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: var(--muted);
+    transition: transform 0.2s;
+}
+.setup-accordion[open] summary {
+    border-bottom: 1px solid var(--border);
+    background: rgba(99,102,241,.08);
+    color: #6366f1;
+}
+.setup-accordion[open] summary::after {
+    content: '−';
+}
+.setup-accordion-content {
+    padding: 1.25rem;
+}
 .setup-grid { display: grid; gap: .9rem; }
 .setup-grid label { display: grid; gap: .35rem; font-size: .9rem; }
 .setup-grid input,
@@ -170,104 +197,104 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
         <h1>Hola, <?= htmlspecialchars($userName, ENT_QUOTES, 'UTF-8') ?></h1>
         <p class="lead">Completá los datos de tu negocio para activar tu página pública y recibir reservas.</p>
 
-        <div class="setup-steps" aria-hidden="true">
-            <div class="setup-step is-active" data-step-indicator="1">1. Negocio</div>
-            <div class="setup-step" data-step-indicator="2">2. Contacto</div>
-            <div class="setup-step" data-step-indicator="3">3. <?= htmlspecialchars($itemsName, ENT_QUOTES, 'UTF-8') ?></div>
-        </div>
-
         <form id="setup-form" method="post" novalidate>
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
 
-            <div class="setup-panel" data-step="1">
-                <div class="setup-grid">
-                    <label>
-                        <span>Nombre del negocio *</span>
-                        <input type="text" name="nombre" required maxlength="120"
-                               value="<?= htmlspecialchars((string)$snapshot['nombre'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Ej: Consultorio Lucas Iglesias">
-                    </label>
-                    <label>
-                        <span>Departamento *</span>
-                        <select name="ciudad" required>
-                            <option value="">Seleccioná un departamento</option>
-                            <?php foreach ($departamentosUy as $departamento): ?>
-                                <option value="<?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>" <?= $selectedDepartamento === $departamento ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Dirección *</span>
-                        <input type="text" name="calle" required maxlength="160"
-                               value="<?= htmlspecialchars((string)$snapshot['calle'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="Calle y número">
-                    </label>
-                </div>
-            </div>
-
-            <div class="setup-panel" data-step="2" hidden>
-                <div class="setup-grid">
-                    <label>
-                        <span>Teléfono / WhatsApp *</span>
-                        <input type="tel" name="telefono" required maxlength="30"
-                               value="<?= htmlspecialchars((string)$snapshot['telefono'], ENT_QUOTES, 'UTF-8') ?>"
-                               placeholder="099 123 456">
-                    </label>
-                </div>
-            </div>
-
-            <div class="setup-panel" data-step="3" hidden>
-                <div style="margin-bottom: 1rem;">
-                    <h3 style="margin: 0 0 0.25rem; font-size: 1.1rem;"><?= htmlspecialchars($itemsName, ENT_QUOTES, 'UTF-8') ?> de tu negocio</h3>
-                    <p class="setup-hint" style="margin: 0;">Configurá los <?= htmlspecialchars(strtolower($itemsName), ENT_QUOTES, 'UTF-8') ?> que ofrecerá tu comercio (nombre, duración y precio).</p>
-                </div>
-
-                <div class="services-list" id="services-container">
-                    <?php 
-                    $servicios = is_array($snapshot['servicios'] ?? null) ? $snapshot['servicios'] : [];
-                    if (empty($servicios)) {
-                        $servicios = [['id_service' => 0, 'nombre' => ($isStore ? 'Producto de ejemplo' : 'Consulta'), 'duracion_min' => ($isStore ? 0 : 30), 'precio' => 0]];
-                    }
-                    foreach ($servicios as $idx => $srv):
-                    ?>
-                    <div class="service-card" data-service-card>
-                        <input type="hidden" name="servicios[<?= $idx ?>][id_service]" value="<?= (int)($srv['id_service'] ?? 0) ?>">
-                        <div class="service-col name-col">
-                            <label class="setup-sublabel">Nombre del <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?> *</label>
-                            <input type="text" name="servicios[<?= $idx ?>][nombre]" required maxlength="80"
-                                   value="<?= htmlspecialchars((string)($srv['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                                   placeholder="<?= $isStore ? 'Ej: Camiseta, Taza, etc.' : 'Ej: Consulta, Corte, Masaje' ?>">
-                        </div>
-                        <div class="service-col" <?= $isStore ? 'hidden' : '' ?>>
-                            <label class="setup-sublabel">Duración (min) *</label>
-                            <input type="number" name="servicios[<?= $idx ?>][duracion_min]" required min="<?= $isStore ? '0' : '5' ?>" max="480"
-                                   value="<?= (int)($srv['duracion_min'] ?? ($isStore ? 0 : 30)) ?>" placeholder="<?= $isStore ? '0' : '30' ?>">
-                        </div>
-                        <div class="service-col">
-                            <label class="setup-sublabel">Precio ($) *</label>
-                            <input type="number" name="servicios[<?= $idx ?>][precio]" required min="0" step="0.01"
-                                   value="<?= (float)($srv['precio'] ?? 0) ?>" placeholder="0">
-                        </div>
-                        <button type="button" class="btn-remove-service" title="Eliminar <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?>" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>
+            <details class="setup-accordion" open data-step="1">
+                <summary>1. Info del Negocio</summary>
+                <div class="setup-accordion-content">
+                    <div class="setup-grid">
+                        <label>
+                            <span>Nombre del negocio *</span>
+                            <input type="text" name="nombre" required maxlength="120"
+                                   value="<?= htmlspecialchars((string)$snapshot['nombre'], ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="Ej: Consultorio Lucas Iglesias">
+                        </label>
+                        <label>
+                            <span>Departamento *</span>
+                            <select name="ciudad" required>
+                                <option value="">Seleccioná un departamento</option>
+                                <?php foreach ($departamentosUy as $departamento): ?>
+                                    <option value="<?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>" <?= $selectedDepartamento === $departamento ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($departamento, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Dirección *</span>
+                            <input type="text" name="calle" required maxlength="160"
+                                   value="<?= htmlspecialchars((string)$snapshot['calle'], ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="Calle y número">
+                        </label>
                     </div>
-                    <?php endforeach; ?>
                 </div>
+            </details>
 
-                <button type="button" class="btn btn-ghost btn-sm" id="add-service-btn" style="margin-bottom: 1rem;">+ Agregar otro <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?></button>
-
-                <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem;">
-                    <p class="setup-hint" style="margin: 0 0 0.2rem;">Rubro actual: <strong><?= htmlspecialchars((string)$snapshot['rubro'], ENT_QUOTES, 'UTF-8') ?></strong></p>
-                    <p class="setup-hint" style="margin: 0;">Tu página pública: <strong><?= htmlspecialchars((string)$snapshot['slug'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+            <details class="setup-accordion" data-step="2">
+                <summary>2. Contacto</summary>
+                <div class="setup-accordion-content">
+                    <div class="setup-grid">
+                        <label>
+                            <span>Teléfono / WhatsApp *</span>
+                            <input type="tel" name="telefono" required maxlength="30"
+                                   value="<?= htmlspecialchars((string)$snapshot['telefono'], ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="099 123 456">
+                        </label>
+                    </div>
                 </div>
-            </div>
+            </details>
+
+            <details class="setup-accordion" data-step="3">
+                <summary>3. <?= htmlspecialchars($itemsName, ENT_QUOTES, 'UTF-8') ?></summary>
+                <div class="setup-accordion-content">
+                    <div style="margin-bottom: 1rem;">
+                        <p class="setup-hint" style="margin: 0;">Configurá los <?= htmlspecialchars(strtolower($itemsName), ENT_QUOTES, 'UTF-8') ?> que ofrecerá tu comercio (nombre, duración y precio).</p>
+                    </div>
+
+                    <div class="services-list" id="services-container">
+                        <?php 
+                        $servicios = is_array($snapshot['servicios'] ?? null) ? $snapshot['servicios'] : [];
+                        if (empty($servicios)) {
+                            $servicios = [['id_service' => 0, 'nombre' => ($isStore ? 'Producto de ejemplo' : 'Consulta'), 'duracion_min' => ($isStore ? 0 : 30), 'precio' => 0]];
+                        }
+                        foreach ($servicios as $idx => $srv):
+                        ?>
+                        <div class="service-card" data-service-card>
+                            <input type="hidden" name="servicios[<?= $idx ?>][id_service]" value="<?= (int)($srv['id_service'] ?? 0) ?>">
+                            <div class="service-col name-col">
+                                <label class="setup-sublabel">Nombre del <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?> *</label>
+                                <input type="text" name="servicios[<?= $idx ?>][nombre]" required maxlength="80"
+                                       value="<?= htmlspecialchars((string)($srv['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                       placeholder="<?= $isStore ? 'Ej: Camiseta, Taza, etc.' : 'Ej: Consulta, Corte, Masaje' ?>">
+                            </div>
+                            <div class="service-col" <?= $isStore ? 'hidden' : '' ?>>
+                                <label class="setup-sublabel">Duración (min) *</label>
+                                <input type="number" name="servicios[<?= $idx ?>][duracion_min]" required min="<?= $isStore ? '0' : '5' ?>" max="480"
+                                       value="<?= (int)($srv['duracion_min'] ?? ($isStore ? 0 : 30)) ?>" placeholder="<?= $isStore ? '0' : '30' ?>">
+                            </div>
+                            <div class="service-col">
+                                <label class="setup-sublabel">Precio ($) *</label>
+                                <input type="number" name="servicios[<?= $idx ?>][precio]" required min="0" step="0.01"
+                                       value="<?= (float)($srv['precio'] ?? 0) ?>" placeholder="0">
+                            </div>
+                            <button type="button" class="btn-remove-service" title="Eliminar <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?>" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <button type="button" class="btn btn-ghost btn-sm" id="add-service-btn" style="margin-bottom: 1rem;">+ Agregar otro <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?></button>
+
+                    <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem;">
+                        <p class="setup-hint" style="margin: 0 0 0.2rem;">Rubro actual: <strong><?= htmlspecialchars((string)$snapshot['rubro'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+                        <p class="setup-hint" style="margin: 0;">Tu página pública: <strong><?= htmlspecialchars((string)$snapshot['slug'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+                    </div>
+                </div>
+            </details>
 
             <div class="setup-actions">
-                <button type="button" class="btn btn-ghost btn-sm" id="setup-back" hidden>Atrás</button>
                 <div style="margin-left:auto; display:flex; gap:.5rem;">
-                    <button type="button" class="btn btn-primary btn-sm" id="setup-next">Siguiente</button>
-                    <button type="submit" class="btn btn-primary btn-sm" id="setup-save" hidden>Finalizar Configuración</button>
+                    <button type="submit" class="btn btn-primary" id="setup-save">Finalizar Configuración</button>
                 </div>
             </div>
         </form>
@@ -278,13 +305,6 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 
 <script>
 (function () {
-  var step = 1;
-  var maxStep = 3;
-  var panels = Array.prototype.slice.call(document.querySelectorAll('[data-step]'));
-  var indicators = Array.prototype.slice.call(document.querySelectorAll('[data-step-indicator]'));
-  var backBtn = document.getElementById('setup-back');
-  var nextBtn = document.getElementById('setup-next');
-  var saveBtn = document.getElementById('setup-save');
   var form = document.getElementById('setup-form');
   var toast = document.getElementById('setup-toast');
 
@@ -341,72 +361,46 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 
   window.AdminNotify = notify;
 
-  function visiblePanel(num) {
-    panels.forEach(function (panel) {
-      panel.hidden = panel.getAttribute('data-step') !== String(num);
-    });
-    indicators.forEach(function (el) {
-      var n = Number(el.getAttribute('data-step-indicator'));
-      el.classList.toggle('is-active', n === num);
-      el.classList.toggle('is-done', n < num);
-    });
-    backBtn.hidden = num <= 1;
-    if (num >= maxStep) {
-      nextBtn.style.display = 'none';
-      nextBtn.hidden = true;
-      saveBtn.style.display = 'inline-flex';
-      saveBtn.hidden = false;
-    } else {
-      nextBtn.style.display = 'inline-flex';
-      nextBtn.hidden = false;
-      saveBtn.style.display = 'none';
-      saveBtn.hidden = true;
-    }
-  }
+  function validateAll() {
+    var accordions = document.querySelectorAll('.setup-accordion');
+    var isValid = true;
 
-  function validateStep(num) {
-    var panel = document.querySelector('[data-step="' + num + '"]');
-    if (!panel) return true;
-    var fields = panel.querySelectorAll('input[required], select[required], textarea[required]');
-    for (var i = 0; i < fields.length; i++) {
-      if (!fields[i].value.trim()) {
-        fields[i].focus();
-        notify('Completá los campos obligatorios.', 'error');
-        return false;
-      }
-    }
-    if (num === 2) {
-      var tel = form.querySelector('[name="telefono"]');
-      var digits = (tel.value || '').replace(/\D+/g, '');
-      if (digits.length < 8) {
-        tel.focus();
-        notify('Ingresá un teléfono válido.', 'error');
-        return false;
+    for (var i = 0; i < accordions.length; i++) {
+      var acc = accordions[i];
+      var fields = acc.querySelectorAll('input[required], select[required], textarea[required]');
+      
+      for (var j = 0; j < fields.length; j++) {
+        var field = fields[j];
+        if (!field.value.trim()) {
+          acc.open = true; // Open the accordion with the error
+          field.focus();
+          notify('Completá los campos obligatorios.', 'error');
+          return false;
+        }
+
+        if (field.name === 'telefono') {
+          var digits = (field.value || '').replace(/\D+/g, '');
+          if (digits.length < 8) {
+            acc.open = true;
+            field.focus();
+            notify('Ingresá un teléfono válido.', 'error');
+            return false;
+          }
+        }
       }
     }
     return true;
   }
 
-  nextBtn.addEventListener('click', function () {
-    if (!validateStep(step)) return;
-    step = Math.min(maxStep, step + 1);
-    visiblePanel(step);
-    notify('Paso ' + step + ' de ' + maxStep, 'success');
-  });
-
-  backBtn.addEventListener('click', function () {
-    step = Math.max(1, step - 1);
-    visiblePanel(step);
-  });
-
   form.addEventListener('submit', function (e) {
-    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+    if (!validateAll()) {
       e.preventDefault();
     }
   });
 
-  visiblePanel(step);
-  notify('Completá tu negocio en 3 pasos rápidos.', 'success');
+  // Only open first accordion by default, close others if JS is active, 
+  // though we set open on the first in HTML already.
+  notify('Completá tu negocio rápidamente.', 'success');
 
   <?php if ($flash['type'] === 'error' && $flash['msg'] !== ''): ?>
   notify(<?= json_encode($flash['msg'], JSON_UNESCAPED_UNICODE) ?>, 'error');
