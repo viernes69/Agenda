@@ -240,7 +240,7 @@ $imagenIsListed = $editImagen !== '' && isset($imagenOptions[$editImagen]);
 
 <article class="card">
     <h2>Rubros existentes (<?= count($rubros) ?>)</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr>

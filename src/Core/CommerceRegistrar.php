@@ -368,11 +368,11 @@ final class CommerceRegistrar
 
         return array_replace($defaults, [
             'tipo_comercio' => 'servicios',
-            'productos' => true,
+            'productos' => false,
             'servicios' => true,
             'barberos' => true,
             'reservas' => true,
-            'carrito' => true,
+            'carrito' => false,
         ]);
     }
 
@@ -732,84 +732,7 @@ final class CommerceRegistrar
         return $map[$rubroId] ?? $defaults;
     }
 
-    /**
-     * Alta express con Google: crea comercio trial + panel con datos mínimos.
-     * El dueño completa teléfono, dirección y servicios desde el dashboard.
-     *
-     * @param array<string,mixed> $googleProfile Resultado de GoogleAuth::verifyIdToken()
-     * @return array{ok:bool, slug:string, redirect:string, id_commerce:int, trial_expires_at:string}
-     */
-    public static function registerWithGoogleProfile(array $googleProfile): array
-    {
-        $email = strtolower(trim((string)($googleProfile['email'] ?? '')));
-        self::assert($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL), 'Email de Google inválido.');
 
-        $name = trim((string)($googleProfile['given_name'] ?? ''));
-        $last = trim((string)($googleProfile['family_name'] ?? ''));
-        if ($name === '' && $last === '') {
-            $full = trim((string)($googleProfile['name'] ?? ''));
-            if ($full !== '') {
-                $parts = preg_split('/\s+/u', $full, 2) ?: [];
-                $name = trim((string)($parts[0] ?? ''));
-                $last = trim((string)($parts[1] ?? ''));
-            }
-        }
-        if ($name === '') {
-            $local = strstr($email, '@', true);
-            $name = $local !== false && $local !== '' ? ucfirst($local) : 'Usuario';
-        }
-        if ($last === '') {
-            $last = 'Google';
-        }
-
-        $bizLabel = trim($name . ' ' . $last);
-        $bizName = ($bizLabel !== '' ? $bizLabel : 'Mi Negocio') . ' - Negocio';
-
-        $db = Database::getInstance();
-        $rubroId = (int)$db->fetchValue(
-            'SELECT id_rubro FROM rubros WHERE activo = 1 ORDER BY orden ASC, id_rubro ASC LIMIT 1'
-        );
-        self::assert($rubroId > 0, 'No hay rubros activos para registrar.');
-        $planId = (int)$db->fetchValue(
-            'SELECT id_membership FROM memberships WHERE activo = 1 ORDER BY precio ASC, id_membership ASC LIMIT 1'
-        );
-
-        $schedule = CommerceSettings::defaultsForSection('horarios');
-        foreach (['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as $day) {
-            $schedule[$day] = [
-                'abierto'         => true,
-                'inicio'          => '09:00',
-                'fin'             => '18:00',
-                'descanso_inicio' => '',
-                'descanso_fin'    => '',
-            ];
-        }
-
-        $result = self::register([
-            'google_profile' => $googleProfile,
-            'planId'         => $planId,
-            'rubroId'        => $rubroId,
-            'owner'          => [
-                'nombre'  => $name,
-                'apellido'=> $last,
-                'email'   => $email,
-            ],
-            'negocio' => [
-                'rubroId'  => (string)$rubroId,
-                'nombre'   => $bizName,
-                'pais'     => 'UY',
-                'ciudad'   => 'Montevideo',
-                'calle'    => CommerceSetup::DEFAULT_PLACEHOLDER_STREET,
-                'telefono' => CommerceSetup::DEFAULT_PLACEHOLDER_PHONE,
-            ],
-            'servicios' => [
-                ['nombre' => 'Consulta', 'duracion' => 30, 'precio' => 0],
-            ],
-            'horarios' => $schedule,
-        ]);
-        CommerceSetup::markGoogleSignup((int)($result['id_commerce'] ?? 0));
-        return $result;
-    }
 
     /**
      * Alta express con link por email (registro rápido): crea comercio trial + panel

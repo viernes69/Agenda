@@ -212,7 +212,32 @@ final class CommerceSetup
         }
 
         $slug = trim((string)($commerce['slug'] ?? ''));
+        $newSlug = Keys::slug($nombre);
+        if ($newSlug !== '' && $newSlug !== $slug) {
+            $baseSlug = $newSlug;
+            $i = 2;
+            while ($db->fetchOne('SELECT id_commerce FROM commerces WHERE slug = :s AND id_commerce != :id', [':s' => $newSlug, ':id' => $idCommerce])) {
+                $newSlug = $baseSlug . '-' . $i++;
+            }
+            
+            $root = realpath(dirname(__DIR__, 3));
+            if ($root !== false) {
+                $oldPath = $root . DIRECTORY_SEPARATOR . $slug;
+                $newPath = $root . DIRECTORY_SEPARATOR . $newSlug;
+                
+                if (is_dir($oldPath) && !file_exists($newPath)) {
+                    if (rename($oldPath, $newPath)) {
+                        $slug = $newSlug;
+                    }
+                } else if (!is_dir($oldPath)) {
+                    // Si no usa legacy folders, simplemente actualizamos el slug
+                    $slug = $newSlug;
+                }
+            }
+        }
+
         $db->update('commerces', [
+            'slug'       => $slug,
             'nombre'     => $nombre,
             'telefono'   => $telefono,
             'whatsapp'   => $whatsapp !== '' ? $whatsapp : $telefono,

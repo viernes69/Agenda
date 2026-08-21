@@ -302,6 +302,15 @@ function updateCommerceConfig(string $slug, array $payload): array
     if ($columns !== []) {
         $columns['updated_at'] = date('Y-m-d H:i:s');
         Database::getInstance()->update('commerces', $columns, 'id_commerce = :id', [':id' => $commerceId]);
+        
+        if (isset($columns['email']) && trim((string)$columns['email']) !== '') {
+            Database::getInstance()->update(
+                'users', 
+                ['email' => trim((string)$columns['email'])], 
+                'id_commerce = :id AND (role = "commerce_admin" OR role = "super_admin" OR role = "admin")', 
+                [':id' => $commerceId]
+            );
+        }
     }
     foreach (sectionMap() as $section => $legacyKey) {
         if (isset($payload[$legacyKey]) && is_array($payload[$legacyKey])) {

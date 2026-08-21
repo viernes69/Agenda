@@ -58,6 +58,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $userName = trim((string)(Auth::user()['nombre'] ?? 'dueño'));
 $departamentosUy = CommerceSetup::URUGUAY_DEPARTMENTS;
+
+$isStore = false;
+$rubro = $db->fetchOne('SELECT tipo FROM rubros WHERE id_rubro = :id', [':id' => $commerce['id_rubro'] ?? 0]);
+if ($rubro && strtolower($rubro['tipo']) === 'tienda') {
+    $isStore = true;
+}
+$itemName = $isStore ? 'Producto' : 'Servicio';
+$itemsName = $isStore ? 'Productos' : 'Servicios';
 $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 ?>
 <!doctype html>
@@ -165,7 +173,7 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
         <div class="setup-steps" aria-hidden="true">
             <div class="setup-step is-active" data-step-indicator="1">1. Negocio</div>
             <div class="setup-step" data-step-indicator="2">2. Contacto</div>
-            <div class="setup-step" data-step-indicator="3">3. Servicios</div>
+            <div class="setup-step" data-step-indicator="3">3. <?= htmlspecialchars($itemsName, ENT_QUOTES, 'UTF-8') ?></div>
         </div>
 
         <form id="setup-form" method="post" novalidate>
@@ -212,42 +220,42 @@ $selectedDepartamento = (string)($snapshot['ciudad'] ?? '');
 
             <div class="setup-panel" data-step="3" hidden>
                 <div style="margin-bottom: 1rem;">
-                    <h3 style="margin: 0 0 0.25rem; font-size: 1.1rem;">Servicios de tu negocio</h3>
-                    <p class="setup-hint" style="margin: 0;">Configurá los servicios que ofrecerá tu comercio (nombre, duración y precio).</p>
+                    <h3 style="margin: 0 0 0.25rem; font-size: 1.1rem;"><?= htmlspecialchars($itemsName, ENT_QUOTES, 'UTF-8') ?> de tu negocio</h3>
+                    <p class="setup-hint" style="margin: 0;">Configurá los <?= htmlspecialchars(strtolower($itemsName), ENT_QUOTES, 'UTF-8') ?> que ofrecerá tu comercio (nombre, duración y precio).</p>
                 </div>
 
                 <div class="services-list" id="services-container">
                     <?php 
                     $servicios = is_array($snapshot['servicios'] ?? null) ? $snapshot['servicios'] : [];
                     if (empty($servicios)) {
-                        $servicios = [['id_service' => 0, 'nombre' => 'Consulta', 'duracion_min' => 30, 'precio' => 0]];
+                        $servicios = [['id_service' => 0, 'nombre' => ($isStore ? 'Producto de ejemplo' : 'Consulta'), 'duracion_min' => ($isStore ? 0 : 30), 'precio' => 0]];
                     }
                     foreach ($servicios as $idx => $srv):
                     ?>
                     <div class="service-card" data-service-card>
                         <input type="hidden" name="servicios[<?= $idx ?>][id_service]" value="<?= (int)($srv['id_service'] ?? 0) ?>">
                         <div class="service-col name-col">
-                            <label class="setup-sublabel">Nombre del servicio *</label>
+                            <label class="setup-sublabel">Nombre del <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?> *</label>
                             <input type="text" name="servicios[<?= $idx ?>][nombre]" required maxlength="80"
                                    value="<?= htmlspecialchars((string)($srv['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                                   placeholder="Ej: Consulta, Corte, Masaje">
+                                   placeholder="<?= $isStore ? 'Ej: Camiseta, Taza, etc.' : 'Ej: Consulta, Corte, Masaje' ?>">
                         </div>
-                        <div class="service-col">
+                        <div class="service-col" <?= $isStore ? 'hidden' : '' ?>>
                             <label class="setup-sublabel">Duración (min) *</label>
-                            <input type="number" name="servicios[<?= $idx ?>][duracion_min]" required min="5" max="480"
-                                   value="<?= (int)($srv['duracion_min'] ?? 30) ?>" placeholder="30">
+                            <input type="number" name="servicios[<?= $idx ?>][duracion_min]" required min="<?= $isStore ? '0' : '5' ?>" max="480"
+                                   value="<?= (int)($srv['duracion_min'] ?? ($isStore ? 0 : 30)) ?>" placeholder="<?= $isStore ? '0' : '30' ?>">
                         </div>
                         <div class="service-col">
                             <label class="setup-sublabel">Precio ($) *</label>
                             <input type="number" name="servicios[<?= $idx ?>][precio]" required min="0" step="0.01"
                                    value="<?= (float)($srv['precio'] ?? 0) ?>" placeholder="0">
                         </div>
-                        <button type="button" class="btn-remove-service" title="Eliminar servicio" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>
+                        <button type="button" class="btn-remove-service" title="Eliminar <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?>" style="align-self: flex-end; margin-bottom: 0.35rem;">&times;</button>
                     </div>
                     <?php endforeach; ?>
                 </div>
 
-                <button type="button" class="btn btn-ghost btn-sm" id="add-service-btn" style="margin-bottom: 1rem;">+ Agregar otro servicio</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="add-service-btn" style="margin-bottom: 1rem;">+ Agregar otro <?= htmlspecialchars(strtolower($itemName), ENT_QUOTES, 'UTF-8') ?></button>
 
                 <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem;">
                     <p class="setup-hint" style="margin: 0 0 0.2rem;">Rubro actual: <strong><?= htmlspecialchars((string)$snapshot['rubro'], ENT_QUOTES, 'UTF-8') ?></strong></p>

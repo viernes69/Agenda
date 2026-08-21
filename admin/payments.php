@@ -300,7 +300,7 @@ require __DIR__ . '/partials/header.php';
 
 <article class="card">
     <h2>Transferencias (<?= count($transfers) ?>)</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr>

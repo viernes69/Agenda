@@ -1454,13 +1454,14 @@ if ($commerceLogoRaw !== '') {
         <a class="admin-link" href="#resumen">Resumen</a>
         <?php if ($isStoreMode): ?>
         <a class="admin-link" href="#pedidos">Pedidos</a>
+        <a class="admin-link" href="#clientes">Clientes</a>
+        <a class="admin-link" href="#productos">Productos</a>
         <?php else: ?>
         <a class="admin-link" href="#reservas">Reservas</a>
         <a class="admin-link" href="#funcionarios">Profesionales</a>
         <a class="admin-link" href="#servicios">Servicios</a>
-        <?php endif; ?>
         <a class="admin-link" href="#clientes">Clientes</a>
-        <a class="admin-link" href="#productos">Productos</a>
+        <?php endif; ?>
         <a class="admin-link" href="#resumen" data-plan-membership-open>Mi Plan</a>
         <a class="admin-link" href="#config">Configuración</a>
       </nav>
@@ -2538,6 +2539,14 @@ if ($commerceLogoRaw !== '') {
         <i class="bx bx-cart" aria-hidden="true"></i>
         <span>Pedidos</span>
       </a>
+      <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
+        <i class="bx bx-user" aria-hidden="true"></i>
+        <span>Clientes</span>
+      </a>
+      <a class="admin-bottomnav__item" href="#productos" data-admin-nav-target="productos">
+        <i class="bx bx-package" aria-hidden="true"></i>
+        <span>Productos</span>
+      </a>
       <?php else: ?>
       <a class="admin-bottomnav__item" href="#reservas" data-admin-nav-target="reservas">
         <i class="bx bx-calendar" aria-hidden="true"></i>
@@ -2554,15 +2563,11 @@ if ($commerceLogoRaw !== '') {
         <i class="bx bx-cut" aria-hidden="true"></i>
         <span>Servicios</span>
       </a>
-      <?php endif; ?>
       <a class="admin-bottomnav__item" href="#clientes" data-admin-nav-target="clientes">
         <i class="bx bx-user" aria-hidden="true"></i>
         <span>Clientes</span>
       </a>
-      <a class="admin-bottomnav__item" href="#productos" data-admin-nav-target="productos">
-        <i class="bx bx-package" aria-hidden="true"></i>
-        <span>Productos</span>
-      </a>
+      <?php endif; ?>
       <a class="admin-bottomnav__item" href="#config" data-admin-nav-target="config">
         <i class="bx bx-cog" aria-hidden="true"></i>
         <span>Config</span>

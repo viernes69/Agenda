@@ -132,7 +132,7 @@ require __DIR__ . '/partials/header.php';
 
 <article class="card">
     <h2><?= count($subs) ?> suscripciones</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr>
@@ -155,25 +155,37 @@ require __DIR__ . '/partials/header.php';
                 <td><?= htmlspecialchars($s['plan'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><span class="badge badge--<?= htmlspecialchars($s['status'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($s['status'], ENT_QUOTES, 'UTF-8') ?></span></td>
                 <td><?= htmlspecialchars((string)($s['gateway'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars((string)($s['trial_expires_at'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
-                    <?= htmlspecialchars((string)($s['current_period_start'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
-                    →
-                    <?= htmlspecialchars((string)($s['current_period_end'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                    <?php if (strtolower($s['plan'] ?? '') === 'free'): ?>
+                        —
+                    <?php else: ?>
+                        <?= htmlspecialchars((string)($s['trial_expires_at'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                    <?php endif; ?>
                 </td>
                 <td>
-                    <form method="post" style="display:inline">
-                        <?= CSRF::field('subs_admin') ?>
-                        <input type="hidden" name="action" value="activate">
-                        <input type="hidden" name="id_subscription" value="<?= (int)$s['id_subscription'] ?>">
-                        <button class="btn btn-sm btn-ok" type="submit">Activar</button>
-                    </form>
-                    <form method="post" style="display:inline" onsubmit="return confirm('¿Cancelar?');">
-                        <?= CSRF::field('subs_admin') ?>
-                        <input type="hidden" name="action" value="cancel">
-                        <input type="hidden" name="id_subscription" value="<?= (int)$s['id_subscription'] ?>">
-                        <button class="btn btn-sm btn-danger" type="submit">Cancelar</button>
-                    </form>
+                    <?php if (strtolower($s['plan'] ?? '') === 'free'): ?>
+                        —
+                    <?php else: ?>
+                        <?= htmlspecialchars((string)($s['current_period_start'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                        →
+                        <?= htmlspecialchars((string)($s['current_period_end'] ?? '—'), ENT_QUOTES, 'UTF-8') ?>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if (strtolower($s['plan'] ?? '') !== 'free'): ?>
+                        <form method="post" style="display:inline">
+                            <?= CSRF::field('subs_admin') ?>
+                            <input type="hidden" name="action" value="activate">
+                            <input type="hidden" name="id_subscription" value="<?= (int)$s['id_subscription'] ?>">
+                            <button class="btn btn-sm btn-ok" type="submit">Activar</button>
+                        </form>
+                        <form method="post" style="display:inline" onsubmit="return confirm('¿Cancelar?');">
+                            <?= CSRF::field('subs_admin') ?>
+                            <input type="hidden" name="action" value="cancel">
+                            <input type="hidden" name="id_subscription" value="<?= (int)$s['id_subscription'] ?>">
+                            <button class="btn btn-sm btn-danger" type="submit">Cancelar</button>
+                        </form>
+                    <?php endif; ?>
                     <details style="display:inline-block">
                         <summary class="btn btn-sm btn-ghost" style="display:inline-block; cursor:pointer">cambiar plan</summary>
                         <form method="post" style="margin-top:.5rem">

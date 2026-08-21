@@ -275,7 +275,7 @@ if (is_array($edit)) {
 
 <article class="card">
     <h2>Planes existentes</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr>

@@ -752,6 +752,10 @@ if (!function_exists('agenduy_render_commerce')) {
                     <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars(url('admin/commerces.php'), ENT_QUOTES, 'UTF-8') ?>" title="Panel Super Admin">
                         <i class="bx bx-shield-quarter"></i> <span>Admin</span>
                     </a>
+                    <?php else: ?>
+                    <a class="client-auth-btn client-auth-btn--profile" href="<?= htmlspecialchars(url('admin/login.php'), ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="bx bx-user-circle"></i> <span>Ingresar</span>
+                    </a>
                     <?php endif; ?>
                     <?php if ($showBooking): ?>
                     <a href="#servicios" class="btn btn--primary topbar-cta">Reservar</a>
@@ -791,6 +795,10 @@ if (!function_exists('agenduy_render_commerce')) {
                 </a>
                 <a href="<?= htmlspecialchars(url('admin/commerces.php'), ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
                     <i class="bx bx-shield-quarter"></i> Panel Super Admin
+                </a>
+                <?php else: ?>
+                <a href="<?= htmlspecialchars(url('admin/login.php'), ENT_QUOTES, 'UTF-8') ?>" class="mobile-menu__panel-link">
+                    <i class="bx bx-user-circle"></i> Ingresar
                 </a>
                 <?php endif; ?>
                 <?php if ($showBooking): ?>

@@ -312,7 +312,7 @@ require __DIR__ . '/partials/header.php';
         <?php endforeach; ?>
     </ul>
     <?php if (!empty($tenantAudit['storage'])): ?>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead><tr><th>Comercio</th><th>Assets central</th><th>Carpeta legacy</th></tr></thead>
         <tbody>
@@ -334,7 +334,7 @@ require __DIR__ . '/partials/header.php';
 <article class="card">
     <h2>Carpetas tenant vs base central</h2>
     <p class="muted">La web pública (<code>/slug/</code>) solo funciona si el comercio existe en SQLite. Una carpeta en disco no alcanza.</p>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr><th>Slug</th><th>Nombre</th><th>Carpeta</th><th>En SQLite</th><th></th></tr>
@@ -529,7 +529,7 @@ require __DIR__ . '/partials/header.php';
 
 <article class="card">
     <h2>Listado de comercios (<?= count($commerces) ?>)</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--scroll">
     <table class="table">
         <thead>
             <tr>
@@ -552,28 +552,36 @@ require __DIR__ . '/partials/header.php';
                 <td><?= htmlspecialchars($c['rubro_nombre'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($c['plan_nombre'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><span class="badge badge--<?= htmlspecialchars($c['status'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['status'], ENT_QUOTES, 'UTF-8') ?></span></td>
-                <td><?= htmlspecialchars($c['trial_expires_at'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                <td>
+                    <?php if (strtolower($c['plan_nombre'] ?? '') === 'free'): ?>
+                        —
+                    <?php else: ?>
+                        <?= htmlspecialchars($c['trial_expires_at'] ?? '—', ENT_QUOTES, 'UTF-8') ?>
+                    <?php endif; ?>
+                </td>
                 <td><?= (int)$c['admins_count'] ?></td>
                 <td><?= (int)$c['appt_count'] ?></td>
                 <td style="white-space:nowrap; text-align:right">
                     <a class="btn btn-sm btn-primary" href="commerce_products.php?id_commerce=<?= (int)$c['id_commerce'] ?>" title="Gestionar catálogo de productos">📦 Productos</a>
                     <a class="btn btn-sm" href="<?= htmlspecialchars(url($c['slug']), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" title="Ver web y editar con lápiz">🌐 Web ✏️</a>
                     <a class="btn btn-sm" href="commerces.php?id=<?= (int)$c['id_commerce'] ?>">editar</a>
-                    <details style="display:inline-block; text-align:left">
-                        <summary class="btn btn-sm btn-ghost" style="display:inline-block; cursor:pointer">⋯</summary>
-                        <div style="position:absolute; right:1rem; background:var(--surface); border:1px solid var(--border); padding:.5rem; border-radius:8px; margin-top:.25rem; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,0.15)">
-                            <form method="post" style="display:inline">
+                    <details style="display:inline-block; text-align:left; position:relative;">
+                        <summary class="btn btn-sm btn-ghost" style="display:inline-block; cursor:pointer; list-style:none;">⋯</summary>
+                        <div style="position:absolute; right:0; background:var(--surface); border:1px solid var(--border); padding:.75rem; border-radius:8px; margin-top:.25rem; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:.5rem; min-width: 150px;">
+                            <?php if (strtolower($c['plan_nombre'] ?? '') !== 'free'): ?>
+                            <form method="post" style="display:flex; gap:.25rem; align-items:center;">
                                 <?= CSRF::field('commerces_admin') ?>
                                 <input type="hidden" name="action" value="extend_trial">
                                 <input type="hidden" name="id_commerce" value="<?= (int)$c['id_commerce'] ?>">
-                                <input type="number" name="days" value="7" min="1" max="365" style="width:60px">
-                                <button class="btn btn-sm" type="submit">+ días trial</button>
+                                <input type="number" name="days" value="7" min="1" max="365" style="width:60px; padding:.25rem;">
+                                <button class="btn btn-sm" style="flex:1" type="submit">+ días trial</button>
                             </form>
-                            <form method="post" style="display:inline" onsubmit="return confirm('¿Eliminar comercio?');">
+                            <?php endif; ?>
+                            <form method="post" style="display:flex; width:100%;" onsubmit="return confirm('¿Eliminar comercio?');">
                                 <?= CSRF::field('commerces_admin') ?>
                                 <input type="hidden" name="action" value="delete_commerce">
                                 <input type="hidden" name="id_commerce" value="<?= (int)$c['id_commerce'] ?>">
-                                <button class="btn btn-sm btn-danger" type="submit">eliminar</button>
+                                <button class="btn btn-sm btn-danger" style="width:100%" type="submit">Eliminar</button>
                             </form>
                         </div>
                     </details>
